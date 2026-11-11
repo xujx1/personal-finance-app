@@ -1,1 +1,7 @@
-import {env} from 'cloudflare:workers';import {getChatGPTUser} from '../../chatgpt-auth';import {createAttachmentHandlers} from '../../../src/server/attachment-http';const h=createAttachmentHandlers({getUser:getChatGPTUser,getOwner:()=>(env as any).OWNER_SUBJECT_ID,getDb:()=>env.DB,getKey:()=>(env as any).ATTACHMENT_KEY});export const GET=h.GET;export const POST=h.POST;
+import {env} from 'cloudflare:workers';
+import {getChatGPTUser} from '../../chatgpt-auth';
+import {withFamilyRequest} from '../../../src/server/family-route';
+import {createAttachmentHandlers} from '../../../src/server/attachment-http';
+const e=env as any;
+export const GET=(req:Request)=>withFamilyRequest(req,getChatGPTUser,e,d=>createAttachmentHandlers({...d,getKey:()=>e.ATTACHMENT_KEY}).GET(req));
+export const POST=(req:Request)=>withFamilyRequest(req,getChatGPTUser,e,d=>createAttachmentHandlers({...d,getKey:()=>e.ATTACHMENT_KEY}).POST(req));

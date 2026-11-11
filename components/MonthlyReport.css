@@ -1,0 +1,13 @@
+.monthly-report-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.monthly-report-heading h2 { margin-top: 0; }
+.monthly-report-heading .field { min-width: 160px; }
+.monthly-report-currency { border-top: 1px solid #e5ecea; margin-top: 22px; padding-top: 14px; }
+.monthly-report-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 16px 0; }
+.monthly-report-metrics strong { display: block; font-size: 21px; margin-top: 8px; overflow-wrap: anywhere; }
+.monthly-report-table { max-width: 100%; overflow-x: auto; margin: 12px 0 20px; }
+.monthly-report-table table { min-width: 680px; width: 100%; white-space: nowrap; }
+@media (max-width: 480px) {
+ .monthly-report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+ .monthly-report-metrics strong { font-size: 17px; }
+ .monthly-report-metrics .card { padding: 12px; }
+}

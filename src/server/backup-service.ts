@@ -3,7 +3,7 @@ const columns:any={accounts:['dataset_id','id','name','kind','category','currenc
 const enc=new TextEncoder(),dec=new TextDecoder();
 const b64=(bytes:Uint8Array)=>{let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s)};
 const from64=(s:string)=>{if(typeof s!=='string'||s.length>15000000||!/^[A-Za-z0-9+/]*={0,2}$/.test(s))throw Error('备份编码无效');return Uint8Array.from(atob(s),c=>c.charCodeAt(0))};
-async function key(password:string,salt:Uint8Array){if(typeof password!=='string'||password.length<12||password.length>300)throw Error('备份密码需12–300个字符');const k=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:210000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function key(password:string,salt:Uint8Array){if(typeof password!=='string'||password.length<12||password.length>300)throw Error('备份密码需12–300个字符');const k=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt:new Uint8Array(salt).buffer,iterations:210000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 const digest=async(s:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export async function exportBackup(db:any,password:string){
  await ensureBook(db);const tables=Object.entries(columns).map(([t,c]:any)=>`'${t}',json((SELECT COALESCE(json_group_array(json_object(${c.map((x:string)=>`'${x}',${x}`).join(',')})),'[]') FROM ${t} WHERE ${t}.dataset_id=b.active_dataset))`).join(',');

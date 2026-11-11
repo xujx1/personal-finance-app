@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS households(id TEXT PRIMARY KEY,name TEXT NOT NULL,owner_subject TEXT NOT NULL,book_id TEXT NOT NULL UNIQUE,revision INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS household_members(household_id TEXT NOT NULL REFERENCES households(id),user_id TEXT NOT NULL,display_name TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN('owner','viewer')),active INTEGER NOT NULL CHECK(active IN(0,1)),joined_at INTEGER NOT NULL,PRIMARY KEY(household_id,user_id));
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS household_one_active ON household_members(user_id) WHERE active=1;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS household_invites(id TEXT PRIMARY KEY,household_id TEXT NOT NULL REFERENCES households(id),token_hash TEXT NOT NULL UNIQUE,expires_at INTEGER NOT NULL,status TEXT NOT NULL CHECK(status IN('pending','revoked','accepted')),accepted_by TEXT,created_at INTEGER NOT NULL);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS household_guards(id TEXT PRIMARY KEY,allowed INTEGER NOT NULL CHECK(allowed=1));
+--> statement-breakpoint

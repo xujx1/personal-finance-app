@@ -9,7 +9,7 @@ export async function runScheduledJobs(db:any,deps:any,today=new Intl.DateTimeFo
   if(r.type==='price'){
    if(r.checkedDate&&Date.parse(today)-Date.parse(r.checkedDate)<7*86400000)continue;const q:any=Object.values(quotes).find((q:any)=>q.symbol===r.symbol&&q.price&&q.status==='ok');if(!q)continue;
    const date=String(q.asOf??'').replace(/^(\d{4})(\d{2})(\d{2}).*$/,'$1-$2-$3').slice(0,10),age=Date.parse(today)-Date.parse(date);if(!Number.isFinite(age)||age<0||age>7*86400000)continue;
-   const next=thresholdAlerts({symbol:r.symbol,levels:r.levels,previous:r.previous??null,current:q.price,sent:r.sent??[]});await send('reminder.check',{id:d.id,previous:q.price,sent:next.sent,checkedDate:today},'price-check:'+d.id+':'+today);
+   const next=thresholdAlerts({levels:r.levels,previous:r.previous??null,current:q.price,sent:r.sent??[]});await send('reminder.check',{id:d.id,previous:q.price,sent:next.sent,checkedDate:today},'price-check:'+d.id+':'+today);
    if(next.crossed.length)await notify('price:'+d.id+':'+next.crossed.join('-'),r.symbol+'触达提醒',r.symbol+'报价 '+q.price+' USD；本次向上触达 '+next.crossed.join(' / ')+' USD。来源 '+(q.source??'公共行情')+'；报价时间 '+q.asOf+'；可能延迟，请结合最新资料重新评估，本系统不执行交易。');
   }
  }return {ok:true,checkedAt:today};

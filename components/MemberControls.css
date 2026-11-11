@@ -1,0 +1,1 @@
+.member-filter{display:flex;align-items:flex-end;gap:12px;margin:0 0 18px}.member-filter .field{width:min(100%,320px);margin:0}.member-filter select{width:100%}.transaction-parties{display:grid;gap:8px;min-width:180px}.transaction-parties small{display:block;color:var(--muted,#68756c);font-size:12px;margin-top:3px}.member-owner-label{font-size:12px;color:var(--muted,#68756c)}

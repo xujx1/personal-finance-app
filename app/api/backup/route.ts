@@ -1,1 +1,2 @@
-import {env} from 'cloudflare:workers';import {getChatGPTUser} from '../../chatgpt-auth';import {createBackupHandlers} from '../../../src/server/backup-http';const h=createBackupHandlers({getUser:getChatGPTUser,getOwner:()=>(env as any).OWNER_SUBJECT_ID,getDb:()=>env.DB});export const POST=h.POST;
+// Backup and restore were removed from the product by request.
+export const POST=async()=>Response.json({error:'备份与恢复功能已停用，请以数据库为准'},{status:410});

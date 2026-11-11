@@ -4,9 +4,33 @@ const date=x=>{if(typeof x!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x)||Number.is
 export function classifyExpense(question,override='auto'){if(['travel','shopping','dining','general'].includes(override))return {kind:override,source:'本人调整'};const s=String(question??'');const kind=/旅行|旅游|亲子游|自驾游|机票|火车票|高铁|行程|出游|酒店预订/.test(s)?'travel':/餐饮|梭子蟹|海鲜|菜单|做饭|买菜|聚餐|一顿饭|食材/.test(s)?'dining':/购物|商品|游戏卡|京东|淘宝|拼多多|item\..*\.com|买.*(电脑|手机|汽车|家电|卡带)|switch|比价/i.test(s)?'shopping':'general';return {kind,source:kind==='general'?'待AI复核':'关键词预识别，生成时由AI复核'}}
 export function normalizeExpenseDraft(p,{requireReview=true}={}){
  if(!p||!['travel','shopping','dining','general'].includes(p.kind)||requireReview&&p.reviewed!==true||!Array.isArray(p.items)||!p.items.length||p.items.length>50)throw Error('请先核对并确认消费清单');
- const ids=new Set();const items=p.items.map((x,i)=>{const id=String(x.id??i);if(ids.has(id)||id.length>100)throw Error('清单ID重复或过长');ids.add(id);const quantity=String(x.quantity??'1');if(!/^\d+(\.\d{1,4})?$/.test(quantity)||Number(quantity)<=0)throw Error('清单数量无效');const unitPrice=x.unitPrice??(x.amount==null?'':decimal(x.amount)),unit=minor(String(unitPrice)),[a,b='']=quantity.split('.'),q=BigInt(a)*10000n+BigInt(b.padEnd(4,'0')),amount=Number((BigInt(unit)*q+5000n)/10000n);if(!Number.isSafeInteger(amount)||amount>9000000000000)throw Error('清单金额过大');return {id,name:text(x.name,100),category:text(x.category??'其他',40),quantity,unitPrice:decimal(unit),amount,selected:x.selected!==false,sourceUrl:x.sourceUrl?https(x.sourceUrl):null,sourceType:['user_quote','retrieved_reference'].includes(x.sourceType)?x.sourceType:'scenario_estimate',note:String(x.note??'').slice(0,600)}});
- const itinerary=(p.itinerary??[]).map(x=>({date:date(x.date),time:String(x.time??'').slice(0,30),title:text(x.title,150),notes:String(x.notes??'').slice(0,800)}));if(itinerary.length>80)throw Error('行程过长');
- const comparisons=(p.comparisons??[]).map(x=>({title:text(x.title,150),merchant:String(x.merchant??'').slice(0,100),version:String(x.version??'').slice(0,200),price:x.price==null?null:minor(String(x.price)),shipping:String(x.shipping??'未核实').slice(0,100),url:https(x.url),checkedAt:x.checkedAt&&Number.isFinite(Date.parse(x.checkedAt))?x.checkedAt:null,comparability:['same_sku','different_spec'].includes(x.comparability)?x.comparability:'unverified',note:String(x.note??'').slice(0,500)}));if(comparisons.length>15)throw Error('比价条目过多');
+ const ids=new Set();const items=p.items.map((x,i)=>{const id=String(x.id??i);if(ids.has(id)||id.length>100)throw Error('清单ID重复或过长');ids.add(id);const quantity=String(x.quantity??'1');if(!/^\d+(\.\d{1,4})?$/.test(quantity)||Number(quantity)<=0)throw Error('清单数量无效');const unitPrice=x.unitPrice??(x.amount==null?'':decimal(x.amount)),unit=minor(String(unitPrice)),[a,b='']=quantity.split('.'),q=BigInt(a)*10000n+BigInt(b.padEnd(4,'0')),amount=Number((BigInt(unit)*q+5000n)/10000n);if(!Number.isSafeInteger(amount)||amount>9000000000000)throw Error('清单金额过大');return {id,itineraryId:x.itineraryId==null||x.itineraryId===''?null:text(x.itineraryId,100),name:text(x.name,100),category:text(x.category??'其他',40),quantity,unitPrice:decimal(unit),amount,selected:x.selected!==false,sourceUrl:x.sourceUrl?https(x.sourceUrl):null,...expensePriceEvidence(x),alternatives:(x.alternatives??[]).slice(0,8).map(a=>({merchant:text(a.merchant,100),unitPrice:decimal(minor(String(a.unitPrice))),...expensePriceEvidence(a)})),note:String(x.note??'').slice(0,600)}});
+ const itinerary=(p.itinerary??[]).map((x,i)=>({id:x.id==null?'activity-'+i:text(x.id,100),date:date(x.date),time:String(x.time??'').slice(0,30),title:text(x.title,150),notes:String(x.notes??'').slice(0,800)}));if(itinerary.length>80)throw Error('行程过长');const activityIds=new Set(itinerary.map(x=>x.id));if(activityIds.size!==itinerary.length||items.some(x=>x.itineraryId&&!activityIds.has(x.itineraryId)))throw Error('费用关联的行程无效或行程ID重复');
+ const comparisons=(p.comparisons??[]).map(x=>({title:text(x.title,150),merchant:String(x.merchant??'').slice(0,100),version:String(x.version??'').slice(0,200),price:x.price==null?null:decimal(minor(String(x.price))),priceEvidence:typeof x.priceEvidence==='string'?x.priceEvidence.slice(0,1000):null,shipping:String(x.shipping??'未核实').slice(0,100),url:https(x.url),checkedAt:x.checkedAt&&Number.isFinite(Date.parse(x.checkedAt))?x.checkedAt:null,comparability:['same_sku','different_spec'].includes(x.comparability)?x.comparability:'unverified',note:String(x.note??'').slice(0,500)}));if(comparisons.length>15)throw Error('比价条目过多');
  const totalMinor=items.filter(x=>x.selected).reduce((n,x)=>n+x.amount,0);if(!Number.isSafeInteger(totalMinor)||totalMinor>9000000000000)throw Error('预算合计过大');return {kind:p.kind,reviewed:p.reviewed===true,items,itinerary,comparisons,totalMinor};
 }
+export function reviewExpenseRequest(input){
+ const draft=normalizeExpenseDraft(input.expenseDraft),start=date(input.date),end=date(input.tripEnd||input.date);
+ if(end<start)throw Error('结束日期早于开始日期');
+ if(draft.itinerary.some(x=>x.date<start||x.date>end))throw Error('行程日期必须在计划起止日期内');
+ if(input.budget!=null&&input.budget!==''&&minor(String(input.budget))!==draft.totalMinor)throw Error('预算与已确认清单合计不一致，请重新核对');
+ return {draft,start,end,budget:decimal(draft.totalMinor)};
+}
 function https(value){const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)throw Error('清单来源须为HTTPS网页');return u.href}
+
+export function removeExpenseActivity(draft,id){return {...draft,reviewed:false,itinerary:(draft.itinerary??[]).filter((x,i)=>(x.id??'activity-'+i)!==id),items:(draft.items??[]).filter(x=>x.itineraryId!==id)}}
+
+export function expensePriceEvidence(x){
+ const sourceUrl=x.sourceUrl?https(x.sourceUrl):null,checkedAt=x.checkedAt&&Number.isFinite(Date.parse(x.checkedAt))?x.checkedAt:null,priceEvidence=typeof x.priceEvidence==='string'?x.priceEvidence.trim().slice(0,1000):null;
+ const sourceType=x.sourceType==='user_quote'?'user_quote':x.sourceType==='retrieved_reference'&&sourceUrl&&checkedAt&&priceEvidence?'retrieved_reference':'scenario_estimate';
+ return {merchant:String(x.merchant??'').slice(0,100),sourceUrl,sourceType,checkedAt:sourceType==='retrieved_reference'?checkedAt:null,priceEvidence:sourceType==='retrieved_reference'?priceEvidence:null};
+}
+export function updateExpenseItem(draft,index,patch){
+ const priceChanged=['unitPrice','merchant','name'].some(key=>Object.hasOwn(patch,key)&&patch[key]!==draft.items[index]?.[key]);
+ return {...draft,reviewed:false,items:draft.items.map((x,i)=>i===index?{...x,...patch,...(priceChanged?{sourceType:'user_quote',sourceUrl:null,checkedAt:null,priceEvidence:null}:{})}:x)};
+}
+export function selectExpenseAlternative(draft,index,alternativeIndex){
+ const candidate=draft.items[index]?.alternatives?.[alternativeIndex];if(!candidate)throw Error('候选商家无效');
+ return {...draft,reviewed:false,items:draft.items.map((x,i)=>i===index?{...x,...candidate}:x)};
+}
+export function expenseDraftReviewForm(form,draft,advice){return {...form,...(advice?.status==='ACCEPTED'&&advice.planId?{planId:advice.planId}:{}),budget:decimal(normalizeExpenseDraft(draft,{requireReview:false}).totalMinor)}}

@@ -1,0 +1,16 @@
+.annual-budget-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.annual-budget-heading h2 { margin-top: 0; }
+.annual-budget-heading .field { min-width: 120px; }
+.annual-budget-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin: 16px 0; }
+.annual-budget-metrics .metric-value { font-size: 22px; overflow-wrap: anywhere; }
+.annual-budget-table { overflow-x: auto; max-width: 100%; margin: 12px 0 22px; }
+.annual-budget-table table { min-width: 660px; width: 100%; white-space: nowrap; }
+.annual-budget-table td small { display: block; }
+.annual-budget-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.annual-budget-plans article { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+ .annual-budget-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+ .annual-budget-metrics .metric-value { font-size: 18px; }
+ .annual-budget-plans { grid-template-columns: 1fr; }
+ .annual-budget-metrics .card { padding: 12px; }
+}

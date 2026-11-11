@@ -1,1 +1,6 @@
-import {env} from 'cloudflare:workers';import {getChatGPTUser} from '../../chatgpt-auth';import {createJobsHandlers} from '../../../src/server/jobs-http';import {createMarketHandlers} from '../../../src/server/market-http';const market=createMarketHandlers({getUser:getChatGPTUser,getDb:()=>env.DB});const h=createJobsHandlers({getUser:getChatGPTUser,getOwner:()=>(env as any).OWNER_SUBJECT_ID,getDb:()=>env.DB,getQuotes:async()=>((await(await market.GET(new Request('https://site.local/api/market'))).json()) as any).quotes});export const POST=h.POST;
+import {env} from 'cloudflare:workers';
+import {getChatGPTUser} from '../../chatgpt-auth';
+import {withFamilyRequest} from '../../../src/server/family-route';
+import {createJobsHandlers} from '../../../src/server/jobs-http';
+import {createMarketHandlers} from '../../../src/server/market-http';
+export const POST=(req:Request)=>withFamilyRequest(req,getChatGPTUser,env,d=>createJobsHandlers({...d,getQuotes:async()=>((await(await createMarketHandlers(d).GET(req)).json()) as any).quotes}).POST(req));

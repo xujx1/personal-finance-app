@@ -45,3 +45,5 @@ yarn-error.log*
 .DS_Store
 
 !.env.example
+/.idea/
+/.openai/

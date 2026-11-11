@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {evaluateAssetRegistration} from '../src/domain/asset-advice.mjs';
+const input={date:'2026-11-11',asset:{name:'模拟股票',category:'stock',currency:'USD',amount:'100.00',owned:true,source:'模拟本人核实',code:'BABA'}};
+test('registration preserves only an explicitly selected market and never infers it from currency or ticker',()=>{assert.equal(evaluateAssetRegistration({accounts:[]},input).inputs.asset.market,null);assert.equal(evaluateAssetRegistration({accounts:[]},{...input,asset:{...input.asset,market:'US'}}).inputs.asset.market,'US');assert.throws(()=>evaluateAssetRegistration({accounts:[]},{...input,asset:{...input.asset,market:'NASDAQ'}}),/市场/)});
