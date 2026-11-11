@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import path from 'node:path';
+import fs from 'node:fs';
+const modules=process.argv[2];const {chromium}=createRequire(path.resolve(modules,'../package.json'))(path.resolve(modules,'playwright'));
+const browser=await chromium.launch({channel:'chrome',headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],results=[];
+page.on('pageerror',e=>errors.push(e.message));const check=async(name,fn)=>{await fn();results.push({name,status:'passed'});console.log('PASS '+name)};
+try{
+ await page.goto('http://127.0.0.1:5173/',{waitUntil:'networkidle'});
+ await check('手动新增资产和计划入口已移除',async()=>{assert.equal(await page.getByRole('button',{name:'新增资产',exact:true}).count(),0);await page.getByRole('navigation').getByRole('button',{name:'资产与贷款',exact:true}).click();await page.getByRole('button',{name:'AI登记资产',exact:true}).waitFor();await page.getByRole('navigation').getByRole('button',{name:'预算与大型支出',exact:true}).click();assert.equal(await page.getByRole('button',{name:'新增计划',exact:true}).count(),0);assert.equal(await page.getByRole('button',{name:'确认预算',exact:true}).count(),0)});
+ await check('消费时不再输入月度收入生活费和房贷',async()=>{await page.getByRole('navigation').getByRole('button',{name:'AI消费助手',exact:true}).click();await page.getByRole('heading',{name:'自动读取的财务依据'}).waitFor();for(const label of ['固定月收入 CNY（可空）','每月生活费 CNY（不含房贷）','每月贷款合计 CNY（可空）','希望保留的应急金 CNY（可空）'])assert.equal(await page.getByLabel(label,{exact:true}).count(),0)});
+ await check('资产由AI助手登记，规则测算不能批准入库',async()=>{await page.getByRole('navigation').getByRole('button',{name:'AI投资助手',exact:true}).click();await page.getByLabel('登记说明').fill('模拟界面登记已有账户');await page.getByLabel('资产名称',{exact:true}).fill('模拟界面账户-'+Date.now());await page.getByLabel('已核实余额／估值（原币）').fill('10.00');await page.getByLabel('余额／估值来源').fill('本地模拟测试，非真实银行数据');await page.getByRole('checkbox').check();await page.getByRole('button',{name:'只做资金测算',exact:true}).click();await page.getByText('规则测算 · 非AI回复',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'确认登记到资产库',exact:true}).isDisabled(),true)});
+ await check('设置页不展示操作记录',async()=>{await page.getByRole('navigation').getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('heading',{name:'家庭规划参数',exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'操作记录',exact:true}).count(),0)});
+ await check('后端拒绝绕过AI手工新增',async()=>{const s=await(await page.request.get('http://127.0.0.1:5173/api/finance')).json();for(const [action,body] of [['account.save',{name:'不应创建',category:'cash',currency:'CNY',amount:'1.00'}],['plan.save',{name:'不应创建',category:'其他',date:'2026-12-01',budget:'1.00'}]]){const r=await page.request.post('http://127.0.0.1:5173/api/finance',{data:{key:crypto.randomUUID(),revision:s.book.revision,action,body}});assert.equal(r.status(),403)}});
+ assert.deepEqual(errors,[]);fs.mkdirSync('.sites-runtime/e2e',{recursive:true});fs.writeFileSync('.sites-runtime/e2e/current-ui-results.json',JSON.stringify({results,errors,realModelUsed:false},null,2));console.log(JSON.stringify({passed:results.length,failed:0,pageErrors:errors.length}));
+}catch(e){console.error(e);console.error((await page.locator('body').innerText()).slice(-5000));process.exitCode=1}finally{await browser.close()}

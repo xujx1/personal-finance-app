@@ -1,0 +1,10 @@
+import {minor} from './finance.mjs';
+export function evaluateAssetRegistration(state,input){
+ const a=input.asset??{},name=String(a.name??'').trim(),source=String(a.source??'').trim();
+ if(!name||name.length>100)throw Error('请填写资产名称');if(!['cash','fund','stock','property','loan','other'].includes(a.category))throw Error('资产类型无效');if(!['CNY','USD'].includes(a.currency))throw Error('原始币种无效');
+ const amount=minor(String(a.amount));const date=String(input.date??'');if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date)throw Error('核实日期无效');
+ if(source.length>1500)throw Error('金额来源说明过长');const monthly=a.monthly==null||a.monthly===''?'':String(a.monthly);if(monthly)minor(monthly);
+ const missing_inputs=[];if(!source)missing_inputs.push('余额/估值的核实来源');if(a.owned!==true)missing_inputs.push('确认这项资产已经持有或款项已经到账，不是预计购买/到账');if(state.accounts.some(x=>!x.archived&&x.category===a.category&&x.name.toLowerCase()===name.toLowerCase()))missing_inputs.push('已有同名资产，请核对是否重复登记，已有资产可直接调整');
+ const quantity=String(a.quantity??'').slice(0,80),cost=String(a.cost??'').slice(0,80);
+ return {intent:'asset',source:'rules',verdict:missing_inputs.length?'信息不足':'可考虑',summary:'这是已有资产/负债的登记审阅，不是消费预算或证券买入。AI评估通过并经本人确认后，才建立资产及开账分录。',missing_inputs,risk_reasons:[],options:[],budget_items:[],assumptions:['金额为用户核实的原币余额或估值，不等于实时行情。','只登记已经持有的资产和当前负债；未来工资、待到账赎回、预约还款和投资意向不能提前开账。'],inputs:{question:input.question||'登记已有资产：'+name,date,asset:{name,category:a.category,currency:a.currency,amountMinor:amount,source,monthly,quantity,cost,code:String(a.code??'').slice(0,20),price:String(a.price??'').slice(0,50),status:a.status==='redeeming'?'redeeming':'holding',owned:a.owned===true}},metrics:{cash:state.accounts.filter(x=>x.kind==='ASSET'&&x.category==='cash'&&x.currency==='CNY').reduce((n,x)=>n+x.balance,0),otherPlans:null,proposedRemaining:0,cashAfter:null,freeAfter:null,monthlySurplus:null,loanMonthly:null,registeredAmount:amount,registeredCurrency:a.currency}};
+}

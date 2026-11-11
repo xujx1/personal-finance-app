@@ -1,0 +1,1 @@
+import {env} from 'cloudflare:workers';import {getChatGPTUser} from '../../chatgpt-auth';import {createBackupHandlers} from '../../../src/server/backup-http';const h=createBackupHandlers({getUser:getChatGPTUser,getOwner:()=>(env as any).OWNER_SUBJECT_ID,getDb:()=>env.DB});export const POST=h.POST;

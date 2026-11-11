@@ -1,0 +1,2 @@
+import {env} from 'cloudflare:workers';import {getChatGPTUser} from '../../chatgpt-auth';import {createImageHandlers} from '../../../src/server/image-http';
+const e=env as any;const h=createImageHandlers({getUser:getChatGPTUser,getOwner:()=>e.OWNER_SUBJECT_ID,getDb:()=>env.DB,getConfig:()=>({baseUrl:e.NEW_API_BASE_URL,key:e.NEW_API_KEY,model:e.NEW_API_VISION_MODEL})});export const GET=h.GET;export const POST=h.POST;

@@ -1,0 +1,1 @@
+import {env} from 'cloudflare:workers';import {getChatGPTUser} from '../../chatgpt-auth';import {createMarketHandlers} from '../../../src/server/market-http';const h=createMarketHandlers({getUser:getChatGPTUser,getDb:()=>env.DB});export const GET=h.GET;

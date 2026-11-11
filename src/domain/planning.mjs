@@ -1,0 +1,14 @@
+export function mortgageSchedule({principal,rate,months,prepayment=0,payment=null,mode='reduce_payment'}){
+ if(!Number.isSafeInteger(principal)||principal<0||!Number.isInteger(months)||months<1||months>600||!Number.isSafeInteger(prepayment)||prepayment<0||prepayment>principal||!/^\d+(\.\d{1,4})?$/.test(String(rate))||Number(rate)>50)throw Error('贷款测算参数无效');
+ const r=Number(rate)/1200,remaining=principal-prepayment,annuity=p=>r?Math.round(p*r/(1-(1+r)**-months)):Math.ceil(p/months),pay=mode==='reduce_term'?(payment??annuity(principal)):annuity(remaining);
+ let balance=remaining,total=0;const rows=[];for(let i=0;balance>0&&i<600;i++){const interest=Math.round(balance*r);if(pay<=interest)throw Error('月供不足以覆盖利息');const paidPrincipal=Math.min(balance,pay-interest);balance-=paidPrincipal;total+=interest;rows.push({month:i+1,payment:paidPrincipal+interest,principal:paidPrincipal,interest,balance})}if(balance>0)throw Error('超过600期仍未还清');return {rows,payment:pay,interest:total,prepayment,months:rows.length,disclaimer:'等额本息情景估算；利率变化、实际计息天数和提前还款费用以银行为准，不修改真实贷款'};
+}
+export function annualForecast(state,today,months=12){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(today)||!Number.isInteger(months)||months<3||months>12)throw Error('预测区间无效');let balance=state.accounts.filter(a=>!a.archived&&a.category==='cash'&&a.currency==='CNY').reduce((n,a)=>n+a.balance,0);const results=[];const start=new Date(today+'T00:00:00Z');
+ for(let i=0;i<months;i++){const d=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+i,1)),month=d.toISOString().slice(0,7);let income=0,fixed=0,planned=0,unknown=0;
+  for(const rule of state.documents.filter(d=>d.kind==='recurring_rule'&&!d.payload.paused)){const r=rule.payload,date=month+'-'+String(Math.min(r.day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate())).padStart(2,'0');if(date<today||date<r.start||r.end&&date>r.end||state.documents.some(x=>x.id==='occurrence:'+rule.id+':'+date&&x.payload.status==='POSTED'))continue;if(r.type==='income')income+=r.amount;else fixed+=r.amount}
+  for(const p of state.documents.filter(d=>d.kind==='plan'&&!['CANCELLED','COMPLETED'].includes(d.payload.status))){const r=p.payload;if((r.date<today?today:r.date).slice(0,7)!==month)continue;if(r.budget===null)unknown++;else planned+=Math.max(0,r.budget-(state.planSummaries?.find(x=>x.planId===p.id)?.paid??0))}
+  const opening=balance;balance+=income-fixed-planned;results.push({month,opening,income,fixed,planned,closing:balance,unknown,negative:balance<0})
+ }return results;
+}
+export function thresholdAlerts({levels,previous,current,sent=[]}){const valid=x=>typeof x==='string'&&/^\d+(\.\d+)?$/.test(x);if(!valid(current)||previous!==null&&!valid(previous)||!Array.isArray(levels)||levels.some(x=>!valid(x)))throw Error('阈值价格无效');const crossed=previous===null?[]:levels.filter(x=>Number(previous)<Number(x)&&Number(current)>=Number(x)&&!sent.includes(x));return {crossed,sent:[...new Set([...sent,...crossed])]}}

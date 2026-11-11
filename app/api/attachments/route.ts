@@ -1,0 +1,1 @@
+import {env} from 'cloudflare:workers';import {getChatGPTUser} from '../../chatgpt-auth';import {createAttachmentHandlers} from '../../../src/server/attachment-http';const h=createAttachmentHandlers({getUser:getChatGPTUser,getOwner:()=>(env as any).OWNER_SUBJECT_ID,getDb:()=>env.DB,getKey:()=>(env as any).ATTACHMENT_KEY});export const GET=h.GET;export const POST=h.POST;

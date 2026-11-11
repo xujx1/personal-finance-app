@@ -1,0 +1,46 @@
+PRAGMA foreign_keys = ON;
+--> statement-breakpoint
+CREATE TABLE books (id TEXT PRIMARY KEY, active_dataset TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0, fence INTEGER NOT NULL DEFAULT 0, maintenance_until INTEGER NOT NULL DEFAULT 0);
+--> statement-breakpoint
+CREATE TABLE accounts (dataset_id TEXT NOT NULL, id TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('ASSET','LIABILITY','EQUITY','INCOME','EXPENSE')), category TEXT NOT NULL, currency TEXT NOT NULL CHECK(currency IN ('CNY','USD')), archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)), metadata TEXT NOT NULL CHECK(json_valid(metadata)), PRIMARY KEY(dataset_id,id), UNIQUE(dataset_id,id,currency));
+--> statement-breakpoint
+CREATE TABLE transactions (dataset_id TEXT NOT NULL, id TEXT NOT NULL, kind TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('DRAFT','POSTED')), total_minor INTEGER NOT NULL CHECK(total_minor BETWEEN 0 AND 9000000000000), original_id TEXT, business_date TEXT NOT NULL, metadata TEXT NOT NULL CHECK(json_valid(metadata)), PRIMARY KEY(dataset_id,id), FOREIGN KEY(dataset_id,original_id) REFERENCES transactions(dataset_id,id) ON DELETE RESTRICT);
+--> statement-breakpoint
+CREATE TABLE entries (dataset_id TEXT NOT NULL, transaction_id TEXT NOT NULL, account_id TEXT NOT NULL, currency TEXT NOT NULL, amount_minor INTEGER NOT NULL CHECK(typeof(amount_minor)='integer' AND amount_minor<>0 AND amount_minor BETWEEN -9000000000000 AND 9000000000000), PRIMARY KEY(dataset_id,transaction_id,account_id), FOREIGN KEY(dataset_id,transaction_id) REFERENCES transactions(dataset_id,id) ON DELETE RESTRICT, FOREIGN KEY(dataset_id,account_id,currency) REFERENCES accounts(dataset_id,id,currency) ON DELETE RESTRICT);
+--> statement-breakpoint
+CREATE TABLE commands (book_id TEXT NOT NULL REFERENCES books(id), dataset_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, request_hash TEXT NOT NULL, expected_revision INTEGER NOT NULL, expected_fence INTEGER NOT NULL, now_ms INTEGER NOT NULL, result_json TEXT NOT NULL CHECK(json_valid(result_json)), PRIMARY KEY(book_id,dataset_id,idempotency_key));
+--> statement-breakpoint
+CREATE TABLE documents (dataset_id TEXT NOT NULL, id TEXT NOT NULL, kind TEXT NOT NULL, payload TEXT NOT NULL CHECK(json_valid(payload)), PRIMARY KEY(dataset_id,id));
+--> statement-breakpoint
+CREATE TABLE audit_events (dataset_id TEXT NOT NULL, id TEXT NOT NULL, created_at TEXT NOT NULL, actor_ref TEXT NOT NULL, action TEXT NOT NULL, payload TEXT NOT NULL CHECK(json_valid(payload)), PRIMARY KEY(dataset_id,id));
+--> statement-breakpoint
+CREATE TABLE runtime_cache (id TEXT PRIMARY KEY, payload TEXT NOT NULL CHECK(json_valid(payload)));
+--> statement-breakpoint
+CREATE INDEX entries_account ON entries(dataset_id,account_id);
+--> statement-breakpoint
+CREATE INDEX transactions_date ON transactions(dataset_id,business_date);
+--> statement-breakpoint
+CREATE INDEX documents_kind ON documents(dataset_id,kind);
+--> statement-breakpoint
+CREATE TRIGGER command_guard BEFORE INSERT ON commands BEGIN
+ SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM books WHERE id=NEW.book_id AND active_dataset=NEW.dataset_id AND revision=NEW.expected_revision AND fence=NEW.expected_fence AND maintenance_until<=NEW.now_ms) THEN RAISE(ABORT,'STALE_OR_LOCKED') END;
+END;
+--> statement-breakpoint
+CREATE TRIGGER transaction_insert_draft BEFORE INSERT ON transactions WHEN NEW.status<>'DRAFT' BEGIN SELECT RAISE(ABORT,'INSERT_DRAFT_FIRST'); END;
+--> statement-breakpoint
+CREATE TRIGGER transaction_immutable BEFORE UPDATE ON transactions WHEN OLD.status='POSTED' BEGIN SELECT RAISE(ABORT,'POSTED_IMMUTABLE'); END;
+--> statement-breakpoint
+CREATE TRIGGER transaction_no_delete BEFORE DELETE ON transactions WHEN OLD.status='POSTED' BEGIN SELECT RAISE(ABORT,'POSTED_IMMUTABLE'); END;
+--> statement-breakpoint
+CREATE TRIGGER entries_insert_guard BEFORE INSERT ON entries WHEN EXISTS(SELECT 1 FROM transactions WHERE dataset_id=NEW.dataset_id AND id=NEW.transaction_id AND status='POSTED') BEGIN SELECT RAISE(ABORT,'POSTED_IMMUTABLE'); END;
+--> statement-breakpoint
+CREATE TRIGGER entries_update_guard BEFORE UPDATE ON entries WHEN EXISTS(SELECT 1 FROM transactions WHERE dataset_id=OLD.dataset_id AND id=OLD.transaction_id AND status='POSTED') BEGIN SELECT RAISE(ABORT,'POSTED_IMMUTABLE'); END;
+--> statement-breakpoint
+CREATE TRIGGER entries_delete_guard BEFORE DELETE ON entries WHEN EXISTS(SELECT 1 FROM transactions WHERE dataset_id=OLD.dataset_id AND id=OLD.transaction_id AND status='POSTED') BEGIN SELECT RAISE(ABORT,'POSTED_IMMUTABLE'); END;
+--> statement-breakpoint
+CREATE TRIGGER posting_guard BEFORE UPDATE OF status ON transactions WHEN NEW.status='POSTED' AND OLD.status='DRAFT' BEGIN
+ SELECT CASE WHEN (SELECT COUNT(*) FROM entries WHERE dataset_id=NEW.dataset_id AND transaction_id=NEW.id)<2 THEN RAISE(ABORT,'EMPTY_JOURNAL') END;
+ SELECT CASE WHEN EXISTS(SELECT currency FROM entries WHERE dataset_id=NEW.dataset_id AND transaction_id=NEW.id GROUP BY currency HAVING SUM(amount_minor)<>0) THEN RAISE(ABORT,'UNBALANCED_JOURNAL') END;
+ SELECT CASE WHEN EXISTS(SELECT 1 FROM accounts a WHERE a.dataset_id=NEW.dataset_id AND a.category='cash' AND COALESCE((SELECT SUM(e.amount_minor) FROM entries e JOIN transactions t ON t.dataset_id=e.dataset_id AND t.id=e.transaction_id WHERE e.dataset_id=a.dataset_id AND e.account_id=a.id AND (t.status='POSTED' OR t.id=NEW.id)),0)<0) THEN RAISE(ABORT,'INSUFFICIENT_CASH') END;
+ SELECT CASE WHEN NEW.kind='REFUND' AND (NEW.original_id IS NULL OR NOT EXISTS(SELECT 1 FROM transactions p WHERE p.dataset_id=NEW.dataset_id AND p.id=NEW.original_id AND p.status='POSTED' AND p.kind='PAYMENT') OR NEW.total_minor+COALESCE((SELECT SUM(r.total_minor) FROM transactions r WHERE r.dataset_id=NEW.dataset_id AND r.original_id=NEW.original_id AND r.kind='REFUND' AND r.status='POSTED'),0)>(SELECT total_minor FROM transactions p WHERE p.dataset_id=NEW.dataset_id AND p.id=NEW.original_id)) THEN RAISE(ABORT,'REFUND_LIMIT') END;
+END;

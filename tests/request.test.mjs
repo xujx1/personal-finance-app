@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {CommandTracker} from '../src/domain/request.mjs';
+const storage=()=>{let value=null;return{getItem(){return value},setItem(k,v){value=v},removeItem(){value=null}}};
+test('lost response retry preserves key despite revision and key order',async()=>{const s=storage(),t=new CommandTracker(s);const a=await t.prepare('transaction.add',{amount:'10.00',accountId:'a'},1);const b=await t.prepare('transaction.add',{accountId:'a',amount:'10.00'},2);assert.equal(a.key,b.key);assert.equal(s.getItem().includes('10.00'),false);});
+test('pending key survives page reload without storing financial details',async()=>{const s=storage();const a=await new CommandTracker(s).prepare('loan.pay',{principal:'800.00',interest:'200.00'},1);const b=await new CommandTracker(s).prepare('loan.pay',{principal:'800.00',interest:'200.00'},2);assert.equal(a.key,b.key);assert.equal(s.getItem().includes('principal'),false);});
+test('unresolved request blocks a different command until resolved',async()=>{const t=new CommandTracker(storage());await t.prepare('transaction.add',{amount:'10.00'},1);await assert.rejects(t.prepare('transaction.add',{amount:'11.00'},2));t.complete();assert.ok((await t.prepare('transaction.add',{amount:'11.00'},2)).key);});

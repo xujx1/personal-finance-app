@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {getConsumptionMemory} from '../src/server/consumption-memory.ts';
+import {snapshot,executeCommand} from '../src/server/finance-store.ts';
+import {openTestDatabase} from './helpers/d1.mjs';
+async function cmd(db,action,body){const s=await snapshot(db);return executeCommand(db,{key:crypto.randomUUID(),revision:s.book.revision,action,body},'fixture');}
+test('candidates and cancelled plans do not become completed consumption history',async()=>{const {db,sqlite}=openTestDatabase();await cmd(db,'plan.save',{name:'模拟尚未去的旅行',category:'国内旅行',date:'2026-11-08',budget:'200.00'});const m=await getConsumptionMemory(db,await snapshot(db),'2026-11-11');assert.equal(m.records.length,0);sqlite.close();});
+test('confirmed payments are grouped by plan and full refunds remove duplicate-purchase evidence',async()=>{const {db,sqlite}=openTestDatabase();const a=await cmd(db,'account.save',{name:'模拟现金',category:'cash',currency:'CNY',amount:'1000.00'});const p=await cmd(db,'plan.save',{name:'模拟游戏卡购买',category:'大件采购',date:'2026-11-08',budget:'200.00',approve:true});const payment=await cmd(db,'plan.pay',{planId:p.id,accountId:a.id,amount:'100.00',date:'2026-11-08',note:'模拟付款'});await cmd(db,'plan.pay',{planId:p.id,accountId:a.id,amount:'50.00',date:'2026-11-08',note:'模拟另一笔付款'});let m=await getConsumptionMemory(db,await snapshot(db),'2026-11-11');assert.equal(m.records.length,1);assert.equal(m.records[0].paymentIds.length,2);await cmd(db,'transaction.refund',{transactionId:payment.transactionId,amount:'100.00',date:'2026-11-09'});m=await getConsumptionMemory(db,await snapshot(db),'2026-11-11');assert.equal(m.records[0].paymentIds.length,1);sqlite.close();});
