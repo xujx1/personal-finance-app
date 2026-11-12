@@ -1,3 +1,5 @@
+import {clearReusedQuoteEvidence} from '../domain/stale-quote.mjs';
+import {validateStagedDraft} from './mcp-draft-stage.ts';
 import {isPensionAccount,validatePensionProductTypes} from '../domain/pension.mjs';
 import {setupBasis,stageValidation,adoptSetupDraft} from './setup-draft.ts';
 import {assetTypeForWrite,getAssetTypes} from '../domain/asset-types.mjs';
@@ -11,16 +13,18 @@ const localDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',ye
 const only=(body:any,keys:string[])=>{if(Object.keys(body).some(k=>!keys.includes(k)))throw Error('确认字段无效，不能指定审批人或审批状态')};
 export async function extendMcpDraft(c:any){
  const {action,body,state,rows,db,ds,account,doc,writeDoc,journal,entry,system,result,stagedAccounts,actor}=c;
- if(action==='mcp.draft.submit'){
-  only(body,['kind','payload']);const payload:any=normalizeFinanceDraft(body.kind,body.payload),id=crypto.randomUUID();let targetVersion,targetFingerprint,candidateEvidence,setupBasisFingerprint;
-  // Validate family ownership and account references before saving any external draft.
-  if(body.kind==='setup'){Object.assign(payload,stageValidation(state,payload));setupBasisFingerprint=await setupBasis(state,payload);}
-  else if(body.kind==='cashflow'){const a=account(payload.accountId);if(a.kind!=='ASSET'||a.category!=='cash'||a.currency!=='CNY'||resolveFinanceMember(state,payload.cashMemberId,{write:true}).id!==accountMember(a,state).id)throw Error('现金账户或资金成员不一致');}
-  else if(body.kind==='recurring'){candidateEvidence=(await suggestRecurring(db)).candidates.find((x:any)=>x.id===payload.candidateId);if(!candidateEvidence)throw Error('周期候选不存在或证据已变化，请重新读取');}
-  else {ownerFields(state,payload.ownerMemberId);if(body.kind==='asset'){assetTypeForWrite(state,payload.assetTypeId,payload);if(payload.pension)validatePensionProductTypes(payload.pension,getAssetTypes(state));if(payload.pension&&payload.ownerMemberId==='family')throw Error('个人养老金须归属具体成员');}}
-  if(body.kind==='monthly_review'&&(await getMonthlyContext(db,state,payload.month)).basisFingerprint!==payload.basisFingerprint)throw Error('月报依据已变化，请重新读取并总结');
-  if(body.kind==='budget'&&payload.planId){const plan=doc(payload.planId);if(plan.kind!=='plan'||['COMPLETED','CANCELLED'].includes(plan.payload.status)||plan.payload.scheduleOnly)throw Error('原预算不存在、已结束或属于须单独核对本息的还款预约');if(body.payload.ownerMemberId==null)payload.ownerMemberId=plan.payload.ownerMemberId;targetVersion=plan.payload.version??0;targetFingerprint=await evidenceHash(plan.payload);}
-  writeDoc(id,'financial_draft',{kind:body.kind,payload,...(setupBasisFingerprint?{setupBasisFingerprint}:{}),...(targetVersion!==undefined?{targetVersion,targetFingerprint}:{}),...(candidateEvidence?{candidateEvidence}:{}),status:'PENDING',source:'ChatGPT/MCP，外部分析待本人核对',submittedBy:actor,createdAt:new Date().toISOString()});result.id=id;return true;
+ if(action==='mcp.draft.submit'||action==='mcp.draft.update'){
+  const updating=action==='mcp.draft.update';only(body,updating?['draftId','expectedDraftVersion','payload','changeNote']:['kind','payload']);
+  const old=updating?doc(body.draftId):null;if(old&&(old.kind!=='financial_draft'||old.payload.status!=='PENDING'))throw Error('仅可修改待本人核对的财务草稿；已采用或拒绝的记录保持历史');
+  const previousVersion=old?.payload.draftVersion??1;
+  if(updating&&(!Number.isInteger(body.expectedDraftVersion)||body.expectedDraftVersion!==previousVersion))throw Error('CONFLICT:草稿版本已变化，请读取最新草稿再修改');
+  if(body.changeNote!==undefined&&(typeof body.changeNote!=='string'||body.changeNote.length>1000))throw Error('修改说明无效或过长');
+  const kind=old?.payload.kind??body.kind;
+  if(old&&(kind==='budget'&&(old.payload.payload.planId??null)!==(body.payload?.planId??null)||kind==='setup'&&old.payload.payload.section!==body.payload?.section||kind==='recurring'&&old.payload.payload.candidateId!==body.payload?.candidateId))throw Error('不能在续改时更换原计划、建档阶段或周期候选；请为新目标另建草稿');
+  const validated=await validateStagedDraft(c,kind,body.payload),id=old?.id??crypto.randomUUID(),now=new Date().toISOString(),draftVersion=old?previousVersion+1:1;
+  if(old&&kind==='budget'){const cleaned=clearReusedQuoteEvidence(old.payload.payload.expenseDraft,validated.payload.expenseDraft);validated.payload.expenseDraft=cleaned.draft;if(cleaned.reset)result.warnings=[cleaned.reset+'项报价条件已更改，旧证据失效，已改为估算/预留，请重新核价'];}
+  if(old)writeDoc(crypto.randomUUID(),'financial_draft_revision',{draftId:id,draftVersion:previousVersion,previousDraft:old.payload,changedAt:now,changedBy:actor,changeNote:body.changeNote??''});
+  writeDoc(id,'financial_draft',{kind,...validated,draftVersion,status:'PENDING',source:'ChatGPT/MCP，外部分析待本人核对',submittedBy:old?.payload.submittedBy??actor,createdAt:old?.payload.createdAt??now,...(old?{updatedAt:now,updatedBy:actor,changeNote:body.changeNote??''}:{})});result.id=id;result.draftVersion=draftVersion;result.status='PENDING';return true;
  }
  if(action!=='mcp.draft.accept'&&action!=='mcp.draft.reject')return false;
  only(body,action==='mcp.draft.accept'?['draftId','confirmed','reviewedPayload','actualConfirmed']:['draftId','reason']);

@@ -1,3 +1,4 @@
+import {validateItineraryWindow} from './executable-costs.mjs';
 import {normalizePension,PENSION_TYPE} from './pension.mjs';
 import {consumptionTypeForWrite} from './consumption.mjs';
 import {minor,decimal} from './finance.mjs';
@@ -11,8 +12,8 @@ const date=x=>{if(typeof x!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x)||!Number.i
 const amount=(x,allowZero=false)=>{if(typeof x!=='string')throw Error('金额须使用十进制字符串，单位为元');const n=minor(x);if(!n&&!allowZero)throw Error('金额必须大于0');return decimal(n)};
 function only(p,keys){if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).some(k=>!keys.includes(k)))throw Error('草稿包含无效或不允许的字段');}
 export function downgradeExternalExpenseDraft(draft){
- const downgrade=x=>({...x,...(x.sourceType==='retrieved_reference'?{sourceType:'scenario_estimate',checkedAt:null,priceEvidence:null}:{}),...(x.alternatives?{alternatives:x.alternatives.map(downgrade)}:{})});
- return {...draft,items:draft.items.map(downgrade),comparisons:draft.comparisons.map(x=>({...x,price:null,checkedAt:null,priceEvidence:null,comparability:'unverified'}))};
+ const downgrade=x=>({...x,...(x.sourceType==='retrieved_reference'?{sourceType:'external_reference'}:{}),...(x.alternatives?{alternatives:x.alternatives.map(downgrade)}:{})});
+ return {...draft,items:draft.items.map(downgrade),comparisons:draft.comparisons.map(x=>({...x,verification:'external_unverified',comparability:'unverified'}))};
 }
 /** External MCP analysis is never an approval or proof of an actual transaction. */
 export function normalizeFinanceDraft(kind,p){
@@ -24,7 +25,7 @@ export function normalizeFinanceDraft(kind,p){
   const start=date(p.date),end=date(p.end??p.date);if(end<start)throw Error('结束日期不能早于开始日期');
   if(!Array.isArray(p.expenseDraft?.items)||p.expenseDraft.items.some(x=>typeof x.unitPrice!=='string'||typeof x.quantity!=='string'||(x.alternatives??[]).some(a=>typeof a.unitPrice!=='string')))throw Error('清单价格和数量须使用十进制字符串');
   const expenseDraft=downgradeExternalExpenseDraft(normalizeExpenseDraft({...p.expenseDraft,reviewed:false},{requireReview:false}));
-  if(expenseDraft.itinerary.some(x=>x.date<start||x.date>end))throw Error('行程日期必须在预算起止日期内');
+  validateItineraryWindow(expenseDraft.itinerary,start,end);
   const total=amount(p.budget);if(minor(total)!==expenseDraft.totalMinor)throw Error('预算与消费清单合计不一致');
   return {consumptionType:consumptionTypeForWrite({...p,expenseDraft}),name:txt(p.name,100),category:txt(p.category??'其他',30),date:start,end,budget:total,ownerMemberId:txt(p.ownerMemberId??'family',120),...(p.planId?{planId:txt(p.planId,120)}:{}),expenseDraft,note:String(p.note??'').slice(0,3000),analysis:txt(p.analysis,6000)};
  }

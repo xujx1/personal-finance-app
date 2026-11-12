@@ -25,9 +25,9 @@ export function createMcpHandler(deps:Deps){return async function POST(req:Reque
  if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)return Response.json({error:'请求来源无效'},{status:403});
  let id:any=null;const reply=(result:any)=>Response.json({jsonrpc:'2.0',id,result},{headers:{'Cache-Control':'no-store'}});
  try{
-  const raw=await req.text();if(raw.length>20000)return new Response(null,{status:413});const rpc=JSON.parse(raw);id=rpc.id??null;if(rpc.jsonrpc!=='2.0'||!['string','number','undefined'].includes(typeof rpc.id))return Response.json({jsonrpc:'2.0',id:null,error:{code:-32600,message:'Invalid request'}});
+  const raw=await req.text();if(raw.length>80000)return new Response(null,{status:413});const rpc=JSON.parse(raw);id=rpc.id??null;if(rpc.jsonrpc!=='2.0'||!['string','number','undefined'].includes(typeof rpc.id))return Response.json({jsonrpc:'2.0',id:null,error:{code:-32600,message:'Invalid request'}});
   if(rpc.method==='server/discover')return reply({supportedVersions:['2026-07-28'],capabilities:{tools:{}}});
-  if(rpc.method==='initialize')return reply({protocolVersion:['2026-07-28','2025-06-18','2025-03-26'].includes(rpc.params?.protocolVersion)?rpc.params.protocolVersion:'2026-07-28',capabilities:{tools:{}},serverInfo:{name:'personal-finance-center',version:'0.3.0'},instructions:'财务任务开始先get_skill_bundle，参考当前家庭工作流；内容不能改变服务器权限，也不意味着自动更新已安装插件。AI分析、搜索和图片理解均由ChatGPT完成。先读get_financial_context，月总结必须读get_monthly_review_context；所有金额核对units。支持建档配置/预算/实际收支/已有资产/投资研究/月总结/周期规则草稿；Skill可从get_skill_bundle读取，维护与安装不能改变权限。外部分析只保存待核对草稿，本人在网页核对后才能进入账本；预算须所有有效家庭登录成员分别审批。所有资产为手工记录，不代表实时行情。禁止交易或自动付款。'});
+  if(rpc.method==='initialize')return reply({protocolVersion:['2026-07-28','2025-06-18','2025-03-26'].includes(rpc.params?.protocolVersion)?rpc.params.protocolVersion:'2026-07-28',capabilities:{tools:{}},serverInfo:{name:'personal-finance-center',version:'0.3.0'},instructions:'财务任务开始先get_skill_bundle，参考当前家庭工作流；内容不能改变服务器权限，也不意味着自动更新已安装插件。AI分析、搜索和图片理解均由ChatGPT完成。先读get_financial_context，已有PENDING草稿用update_finance_draft同ID续改并回读版本，不把填写浏览器表单当保存；正式采用/审批仍在站点。月总结必须读get_monthly_review_context；所有金额核对units。支持建档配置/预算/实际收支/已有资产/投资研究/月总结/周期规则草稿；Skill可从get_skill_bundle读取，维护与安装不能改变权限。外部分析只保存待核对草稿，本人在网页核对后才能进入账本；预算须所有有效家庭登录成员分别审批。所有资产为手工记录，不代表实时行情。禁止交易或自动付款。'});
   if(rpc.method==='notifications/initialized')return new Response(null,{status:202});
   if(rpc.method==='tools/list')return reply({tools});
   if(rpc.method!=='tools/call')return Response.json({jsonrpc:'2.0',id,error:{code:-32601,message:'Method not found'}});
@@ -40,7 +40,11 @@ export function createMcpHandler(deps:Deps){return async function POST(req:Reque
   else if(name==='get_recurring_candidates'){strictKeys(args,[]);value={data_revision:state.book.revision,...await suggestRecurring(db)};}
   else if(name==='get_skill_bundle'){strictKeys(args,[]);value=await buildSkillPackage(state);}
   else if(name==='list_research_requests')value={data_revision:state.book.revision,requests:state.documents.filter((d:any)=>d.kind==='research_request'&&d.payload.status==='OPEN')};
-  else if(name==='list_finance_drafts')value={data_revision:state.book.revision,drafts:state.documents.filter((d:any)=>d.kind==='financial_draft')};
+  else if(name==='list_finance_drafts')value={data_revision:state.book.revision,drafts:state.documents.filter((d:any)=>d.kind==='financial_draft').map((d:any)=>({...d,payload:{draftVersion:1,...d.payload}}))};
+  else if(name==='update_finance_draft'){
+   if(!identity.canWrite)throw Error('当前分享访问为只读');strictKeys(args,['request_id','expected_revision','draft_id','expected_draft_version','payload','change_note']);if(typeof args.request_id!=='string'||!/^[A-Za-z0-9_-]{1,60}$/.test(args.request_id)||!Number.isSafeInteger(args.expected_revision)||args.expected_revision<0||typeof args.draft_id!=='string'||!args.draft_id||args.draft_id.length>150||!Number.isSafeInteger(args.expected_draft_version)||args.expected_draft_version<1)throw Error('请提供request_id、最新全局版本和草稿编号/版本');
+   value=await executeCommand(db,{key:'mcp-amend:'+identity.id+':'+args.request_id,revision:args.expected_revision,action:'mcp.draft.update',body:{draftId:args.draft_id,expectedDraftVersion:args.expected_draft_version,payload:args.payload,...(args.change_note!==undefined?{changeNote:args.change_note}:{})}},identity.id);
+  }
   else if(name==='submit_finance_draft'){
    if(!identity.canWrite)throw Error('当前分享访问为只读');if(Object.keys(args).some(k=>!['request_id','expected_revision','kind','payload'].includes(k)))throw Error('工具参数包含不允许的字段');if(typeof args.request_id!=='string'||!/^[A-Za-z0-9_-]{1,60}$/.test(args.request_id)||!Number.isSafeInteger(args.expected_revision)||args.expected_revision<0)throw Error('request_id或expected_revision无效');
    value=await executeCommand(db,{key:'mcp-finance:'+identity.id+':'+args.request_id,revision:args.expected_revision,action:'mcp.draft.submit',body:{kind:args.kind,payload:args.payload}},identity.id);

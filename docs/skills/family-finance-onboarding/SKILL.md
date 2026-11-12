@@ -14,7 +14,7 @@ description: "Use when 用户首次整理家庭财务，或家庭财务中心的
 4. 没有家庭访问权限时，引导使用网站现有ChatGPT登录及家庭邀请入口；MCP和本Skill不能创建登录家庭、邀请账号或修改权限。不索取密码、API Key、登录标识或完整银行账号；财务成员只需用户选择的昵称。
 
 ## 分段提交和采用
-每段先向用户说明具体内容、归属和影响。用户明确要求建立、登记或保存该段即可按正常客户端确认提交，例如“先把小林作为记账人”；不要求额外说出“保存”口令。重新读取context，以最新data_revision作为expected_revision，用唯一request_id调用submit_finance_draft；网络重试复用同ID与内容。提交成功仅表示草稿已保存，返回草稿ID与网站财务草稿核对入口。出现isError或冲突就读取最新状态和草稿，不能盲目另建。已有相同待核对草稿时返回其真实ID和网站核对入口，不重复提交；MCP没有通用草稿更新工具。内容需修改时到网站编辑或核对，不能编辑的内容先由用户在网站拒绝原草稿，读回拒绝结果后才按最新事实另提，不能同时留下重复待核对草稿。
+每段先向用户说明具体内容、归属和影响。用户明确要求建立、登记或保存该段即可按正常客户端确认提交，例如“先把小林作为记账人”；不要求额外说出“保存”口令。重新读取context，以最新data_revision作为expected_revision，用唯一request_id调用submit_finance_draft；网络重试复用同ID与内容。提交成功仅表示草稿已保存，返回草稿ID与网站财务草稿核对入口。出现isError或冲突就读取最新状态和草稿，不能盲目另建。已有同一待核对草稿需调整时，先读真实ID、draftVersion和最新data_revision，用update_finance_draft完整替换同ID并回读；section不可切换，不应拒绝后重提或仅填浏览器表单。网络重试复用request_id，冲突先读最新版本。已采用/拒绝不可改，正式配置仍须站点采用核对。
 每一段在网站核对采用后，再读list_finance_drafts与get_financial_context确认采用结果并刷新ID。成员、类型、账户或目标配置变化会使旧建档草稿失效；依赖项尚未采用时停在这一步，不凭空引用新ID，不一次提交整套相互依赖的草稿。被拒绝或已过期的草稿需按最新事实重新整理。
 
 | 要保存的内容 | 草稿契约与边界 |
@@ -23,6 +23,9 @@ description: "Use when 用户首次整理家庭财务，或家庭财务中心的
 | 新增资产类型 | kind=setup，payload={section:'asset_types',data:{additions:[{id,name,baseCategory}]},analysis}。baseCategory为cash/term_deposit/fund/stock/property/loan/other。用户确认后提供独特id，采用后重新读取真实类型ID；不重命名或修改已有类型。新类型不指定固定目标组，在目标中自由勾选；goalBucket只兼容旧资料，新输入可省略。房产、贷款和预付款不能纳入此储蓄目标。 |
 | 用户自己的目标 | kind=setup，payload={section:'goals',data:{name,targets:[{name,assetTypeIds,target}],monthlyTarget,deadline},analysis}。每个组合有用户自定名称，assetTypeIds勾选本次返回onboarding.goalCombinationTypes中的一个或多个真实类型ID，不是固定四种组合。同一类型不能跨组合重复；未选类型不计进度，新类型不自动加入。旧scope格式仅兼容旧草稿，不与新格式混用。target与monthlyTarget用大于零的人民币元十进制字符串。这是替换当前家庭目标，不能作为第二份目标叠加。提交前列出当前目标（默认值须标参考）与拟采用的完整组合名称、类型、金额、总额、月目标、期限，请用户确认前后变化和被移除范围。不能把“攒钱”直接解释成净资产或把负债当储蓄；“都算存款”先确认具体勾选哪些真实类型，如活期、定期和国债，不改变资产性质或把基金一律归为现金。月目标或期限未知可用null。 |
 | 明确固定的收支 | kind=setup，payload={section:'recurring',data:{name,type,accountId,cashMemberId,amount,day,start,end},analysis}。type为income/expense/loan/investment，amount为人民币元十进制字符串，day为每月日期整数，start为今天或未来日期，end为null或日期；loan必须补真实loanId，investment必须补真实assetId，其他类型不传这两个字段；accountId为人民币现金账户，cashMemberId须与其归属一致。只用用户明确陈述的固定规则与已采用账户/成员ID，不能用一笔到账推断周期；没有历史也可登记明确固定规则。autoPost始终关闭，规则不创造过去流水或当期到账，未来每期仍需确认实际发生。 |
+
+## 续改待核对配置
+七类PENDING草稿共用update_finance_draft，先读最新draftVersion和data_revision，完整替换同ID并回读；不能切换建档section，不把填浏览器表单当保存；正式配置仍须网站核对采用。
 
 ## 已有会员权益
 可问用户是否有景区年卡、酒店会籍等出行偏好，先读取get_financial_context.memberships或get_memberships核对是否已登记。用户明确表示晚些提供的等级/权益留未知，不追问无关资料。会员不是可变现资产或已发生收支，不提交asset/cashflow草稿冒充维护；资料在站点“会员权益”中填写，当前无直接写会员工具。

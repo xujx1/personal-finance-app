@@ -1,4 +1,5 @@
 "use client";
+import CostBasisPanel from './CostBasisPanel';
 import {PensionFields,pensionValue} from './PensionAccount';
 import HouseholdSetupReview from './HouseholdSetup';
 import {useState} from 'react';
@@ -27,7 +28,8 @@ export default function McpDraftInbox({state,kinds=['budget','cashflow','asset',
   <div className="mcp-inbox-heading"><div>{!compact&&<div className="eyebrow">CHATGPT · MCP</div>}<h2>{compact?(kinds[0]==='setup'?'待核对家庭建档':kinds[0]==='recurring'?'待核对周期规则':kinds[0]==='investment'?'待核对投资研究':'待核对月度总结'):'外部分析草稿'} <span className="badge gray">待核对 {pending.length}</span></h2></div>{closed.length>0&&<button className="text-button" type="button" aria-expanded={history} onClick={()=>setHistory(!history)}>{history?'收起处理历史':'处理历史 '+closed.length}</button>}</div>
   {!compact&&<p className="help-text">在ChatGPT中选择家庭财务中心，分析后保存为相应草稿，再回这里核对。提交草稿不会批准预算或扣款；无需本站再次调用AI。</p>}
   {!pending.length&&<p className="mcp-inbox-empty">当前没有待核对的外部{ kinds.length===1?kindNames[kinds[0]]:'' }草稿。</p>}
-  {pending.map((d:any)=>d.payload.kind==='setup'?<HouseholdSetupReview key={d.id} document={d} state={state} onSave={onSave}/>:['investment','monthly_review','recurring'].includes(d.payload.kind)?<ExternalWorkflowDraftReview key={d.id} document={d} state={state} onSave={onSave}/>:<DraftReview key={d.id} document={d} state={state} onSave={onSave}/>)}
+  {pending.some((d:any)=>(d.payload.draftVersion??1)>1)&&<p className="help-text" role="status">草稿已在ChatGPT续改并保存，请按当前版本重新核对；旧版本确认不沿用。</p>}
+  {pending.map((d:any)=>d.payload.kind==='setup'?<HouseholdSetupReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>:['investment','monthly_review','recurring'].includes(d.payload.kind)?<ExternalWorkflowDraftReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>:<DraftReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>)}
   {history&&<div className="mcp-draft-history">{closed.map((d:any)=><article key={d.id} className="mcp-history-row"><div><strong>{d.payload.payload?.name??d.payload.payload?.title??d.payload.payload?.note??kindNames[d.payload.kind]}</strong><small>{kindNames[d.payload.kind]} · {d.payload.source}</small>{d.payload.destinationKind==='plan'&&<small>已提交家庭审批；全体有效家庭成员确认后才进入正式预算与生活日历。</small>}{d.payload.rejectionReason&&<small>拒绝原因：{d.payload.rejectionReason}</small>}</div><span className="badge gray">{statusNames[d.payload.status]??d.payload.status}</span></article>)}</div>}
  </section>;
 }
@@ -46,7 +48,7 @@ function DraftReview({document,state,onSave}:{document:any;state:any;onSave:Prop
  }
  async function reject(){if(!writable||saving)return;setSaving(true);try{await onSave('mcp.draft.reject',{draftId:document.id,reason});setRejecting(false)}catch(e){setError(e instanceof Error?e.message:'无法拒绝草稿')}finally{setSaving(false)}}
  return <article className="mcp-draft-card" data-draft-id={document.id} data-draft-kind={kind}>
-  <details><summary className="mcp-draft-summary"><span><strong>{meta.payload.name??meta.payload.note??kindNames[kind]}</strong><small>{kindNames[kind]} · {meta.createdAt?new Date(meta.createdAt).toLocaleString('zh-CN'): '提交时间待核实'}</small></span><span className="badge">待本人核对</span></summary>
+  <details><summary className="mcp-draft-summary"><span><strong>{meta.payload.name??meta.payload.note??kindNames[kind]}</strong><small>{kindNames[kind]} · {meta.createdAt?new Date(meta.createdAt).toLocaleString('zh-CN'): '提交时间待核实'}</small></span><span className="badge">待本人核对 · v{meta.draftVersion??1}</span></summary>
    <p className="mcp-source-label">来源：{meta.source??'ChatGPT/MCP，外部分析待本人核对'}</p>
    {payload.analysis&&<details className="mcp-analysis"><summary>查看外部分析依据</summary><p>{payload.analysis}</p></details>}
    {!writable&&<p className="notice neutral">家庭成员可查看草稿；仅账本本人可核对采用。预算提交后，每位有效家庭成员需单独确认。</p>}
@@ -86,10 +88,10 @@ function DraftReview({document,state,onSave}:{document:any;state:any;onSave:Prop
 function BudgetDraftFields({draft,onChange}:{draft:any;onChange:(draft:any)=>void}){
  const value=draft??{kind:'general',items:[],itinerary:[],comparisons:[]};
  const change=(patch:any)=>onChange({...value,...patch,reviewed:false});
- const item=(index:number,patch:any)=>change({items:(value.items??[]).map((x:any,i:number)=>i===index?{...x,...patch,...(['unitPrice','merchant','name'].some(key=>Object.hasOwn(patch,key)&&patch[key]!==x[key])?{sourceType:'user_quote',sourceUrl:null,checkedAt:null,priceEvidence:null}:{})}:x)});
+ const item=(index:number,patch:any)=>change({items:(value.items??[]).map((x:any,i:number)=>i===index?{...x,...patch,...(['unitPrice','quantity','merchant','name','version'].some(key=>Object.hasOwn(patch,key)&&patch[key]!==x[key])?{sourceType:'user_quote',sourceUrl:null,checkedAt:null,priceEvidence:null,pricing:undefined}:{})}:x)});
  let total='待补齐';try{total=decimal(normalizeExpenseDraft(value,{requireReview:false}).totalMinor)+' CNY'}catch{}
  return <section className="mcp-budget-items" aria-label="外部预算费用和行程"><div className="mcp-inbox-heading"><h3>核对费用与行程</h3><strong className="money">{total}</strong></div>
-  <p className="help-text">参考报价不代表成交价。无可核验来源的金额属于情景估算；更改商家、名称或价格后按本人填写参考处理。</p>
+  <CostBasisPanel draft={value}/><p className="help-text">参考报价不代表成交价。无可核验来源的金额属于情景估算；更改商家、名称或价格后按本人填写参考处理。</p>
   <label className="field">消费场景<select aria-label="外部预算消费场景" value={value.kind??'general'} onChange={e=>change({kind:e.target.value})}><option value="travel">旅行</option><option value="shopping">购物</option><option value="dining">餐饮</option><option value="general">其他消费</option></select></label>
   {(value.items??[]).map((x:any,i:number)=><article className="mcp-budget-item" key={x.id??i}>
    <div className="mcp-item-heading"><label className="mcp-confirmation"><input type="checkbox" aria-label={'外部预算纳入项目 '+(i+1)} checked={x.selected!==false} onChange={e=>item(i,{selected:e.target.checked})}/>计入预算 {i+1}</label><button type="button" className="text-button" onClick={()=>change({items:value.items.filter((_:any,j:number)=>j!==i)})}>移除费用 {i+1}</button></div>
@@ -98,7 +100,7 @@ function BudgetDraftFields({draft,onChange}:{draft:any;onChange:(draft:any)=>voi
    <label className="field">费用备注<input aria-label={'外部费用备注 '+(i+1)} value={x.note??''} onChange={e=>item(i,{note:e.target.value})}/></label>
   </article>)}
   <button className="text-button" type="button" disabled={(value.items??[]).length>=50} onClick={()=>change({items:[...(value.items??[]),{id:crypto.randomUUID(),name:'',quantity:'1',unitPrice:'',category:'其他',selected:true,sourceType:'user_quote'}]})}>添加外部预算费用</button>
-  {(value.itinerary??[]).map((a:any,i:number)=><article className="mcp-budget-item" key={a.id??i}><h4>行程 {i+1}</h4>{(['date','time','title','notes'] as const).map(key=><label className="field" key={key}>{{date:'日期',time:'时间',title:'安排',notes:'备注'}[key]}<input aria-label={'外部行程'+{date:'日期',time:'时间',title:'安排',notes:'备注'}[key]+' '+(i+1)} type={key==='date'?'date':'text'} value={a[key]??''} required={key==='date'||key==='title'} onChange={e=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,[key]:e.target.value}:x)})}/></label>)}<button className="text-button" type="button" onClick={()=>change({itinerary:value.itinerary.filter((_:any,j:number)=>i!==j),items:value.items.map((x:any)=>x.itineraryId===a.id?{...x,itineraryId:null}:x)})}>移除行程 {i+1}并解除费用关联</button></article>)}
+  {(value.itinerary??[]).map((a:any,i:number)=><article className="mcp-budget-item" key={a.id??i}><h4>行程 {i+1}</h4><label className="field">阶段<select aria-label={'外部行程阶段 '+(i+1)} value={a.phase??'trip'} onChange={e=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,phase:e.target.value}:x)})}><option value="preparation">出发前准备</option><option value="trip">出游</option><option value="follow_up">后续安排</option></select></label>{(['date','time','title','location','notes'] as const).map(key=><label className="field" key={key}>{{date:'日期',time:'时间',title:'安排',location:'具体地点',notes:'备注'}[key]}<input aria-label={'外部行程'+{date:'日期',time:'时间',title:'安排',location:'具体地点',notes:'备注'}[key]+' '+(i+1)} type={key==='date'?'date':'text'} value={a[key]??''} required={key==='date'||key==='title'} onChange={e=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,[key]:e.target.value}:x)})}/></label>)}<button className="text-button" type="button" onClick={()=>change({itinerary:value.itinerary.filter((_:any,j:number)=>i!==j),items:value.items.map((x:any)=>x.itineraryId===a.id?{...x,itineraryId:null}:x)})}>移除行程 {i+1}并解除费用关联</button></article>)}
   <button className="text-button" type="button" disabled={(value.itinerary??[]).length>=80} onClick={()=>change({itinerary:[...(value.itinerary??[]),{id:crypto.randomUUID(),date:'',time:'',title:'',notes:''}]})}>添加外部行程安排</button>
   {value.comparisons?.length>0&&<details className="mcp-analysis"><summary>原始商品比价参考</summary>{value.comparisons.map((c:any,i:number)=><p key={i}>{c.title} · {c.merchant} · {c.version} · {c.price??'未核价'} · {c.checkedAt??'查询时间未提供'}{safeLink(c.url)&&<> · <a href={safeLink(c.url)} target="_blank" rel="noreferrer">参考来源</a></>} · {c.note}</p>)}</details>}
  </section>;

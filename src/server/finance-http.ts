@@ -18,7 +18,7 @@ export function createFinanceHandlers(deps:Dependencies){
    if(req.headers.get('origin')&&new URL(req.headers.get('origin')!).origin!==new URL(req.url).origin)return json({error:'请求来源无效'},403);
    const db=deps.getDb();if(!db)return json({error:'数据库尚未绑定'},503);
    const raw=await req.text();if(raw.length>80000)return json({error:'请求内容过长'},413);
-   const input=JSON.parse(raw);if(raw.length>20000&&input.action!=='skills.save')return json({error:'请求内容过长'},413);const action=typeof input.action==='string'?input.action.trim():'';
+   const input=JSON.parse(raw);if(raw.length>20000&&!['skills.save','mcp.draft.accept'].includes(input.action))return json({error:'请求内容过长'},413);const action=typeof input.action==='string'?input.action.trim():'';
    if(!['membership.save','pension.holding.classify','pension.trade','pension.contribute','monthly.report.save','asset.types.save','skills.save','skills.restore','mcp.draft.accept','mcp.draft.reject','transaction.record','member.save','account.owner.set','account.save','account.archive','plan.save','plan.cancel','plan.approve','plan.schedule','plan.reserve','plan.pay','transaction.refund','loan.pay','advice.accept','research.request','financial.profile.save','preferences.save','cash.transfer','asset.trade','recurring.save','recurring.run','recurring.confirm','import.confirm','plan.details','plan.prepay','plan.consume','plan.prepay.refund','reminder.save','notification.read','savings.goal.save','attachment.archive'].includes(action))return json({error:'此操作不允许通过公开账本接口调用'},403);
    if(owner&&owner!==user.userId&&(action!=='plan.approve'||!(db as any).ledgerScope))return json({error:'当前分享访问为只读'},403);
    input.action=action;
