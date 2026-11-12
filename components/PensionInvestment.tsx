@@ -3,11 +3,11 @@ import {useState} from 'react';
 import {minor,decimal} from '../src/domain/finance.mjs';
 import {getAssetTypes} from '../src/domain/asset-types.mjs';
 import {normalizePension} from '../src/domain/pension.mjs';
-export const pensionKinds:Record<string,string>={fund:'养老基金',insurance:'养老保险',deposit:'养老金存款',other:'其他养老产品'};
-const base:Record<string,string>={fund:'fund',insurance:'other',deposit:'term_deposit',other:'other'};
+export const pensionKinds:Record<string,string>={fund:'养老基金',bond:'债券',insurance:'养老保险',deposit:'养老金存款',other:'其他养老产品'};
+const base:Record<string,string>={fund:'fund',bond:'other',insurance:'other',deposit:'term_deposit',other:'other'};
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-export default function PensionInvestment({state,asset,mode,onSave,busy}:{state:any;asset:any;mode:'buy'|'sell';onSave:any;busy:boolean}){
- const p=normalizePension(asset.metadata.pension,decimal(asset.balance)),[selected,setSelected]=useState(mode==='buy'?'new':p.holdings[0]?.id??''),[kind,setKind]=useState('fund'),[assetTypeId,setAssetTypeId]=useState('fund'),[full,setFull]=useState(true),[amount,setAmount]=useState(''),[fee,setFee]=useState('0'),[error,setError]=useState('');
+export default function PensionInvestment({state,asset,mode,onSave,busy,initialHoldingId}:{state:any;asset:any;mode:'buy'|'sell';onSave:any;busy:boolean;initialHoldingId?:string}){
+ const p=normalizePension(asset.metadata.pension,decimal(asset.balance)),[selected,setSelected]=useState(initialHoldingId??(mode==='buy'?'new':p.holdings[0]?.id??'')),[kind,setKind]=useState('fund'),[assetTypeId,setAssetTypeId]=useState('fund'),[full,setFull]=useState(true),[amount,setAmount]=useState(''),[fee,setFee]=useState('0'),[error,setError]=useState('');
  const types=getAssetTypes(state).filter((t:any)=>t.enabled&&t.baseCategory===base[kind]&&t.id!=='personal_pension'),h=p.holdings.find((h:any)=>h.id===selected),buy=mode==='buy';let insufficient=false;try{insufficient=buy&&minor(amount||'0')+minor(fee||'0')>minor(p.cashBalance)}catch{}
  return <form className="section-space pension-investment" aria-label={buy?'养老金内买入核对':'养老金内卖出核对'} onSubmit={async e=>{e.preventDefault();setError('');const f=Object.fromEntries(new FormData(e.currentTarget));try{const product=buy&&selected==='new'?{name:f.productName,kind,assetTypeId,...(f.code?{code:f.code}:{})}:undefined;await onSave('pension.trade',{assetId:asset.id,mode,...(product?{product}:{holdingId:selected}),amount,fee,date:f.date,...(!buy?{full,...(!full?{carryingValue:f.carryingValue,costBasis:f.costBasis}:{})}:{}),actualConfirmed:f.actualConfirmed==='on',balanceUncovered:f.balanceUncovered==='on',note:f.note??''})}catch(e:any){setError(e.message)}}}>
   <fieldset disabled={!state.viewer?.canWrite||busy}><h3>{buy?'记录养老金账户内买入':'记录养老金账户内卖出 / 赎回'}</h3><p className="help-text">按养老金平台已确认的成交记录填写。本站只记账，不发起购买或赎回。资金始终留在养老金内，不改变普通银行现金，也不占用新的年度缴费额度。</p><p>账户内可投资余额 <strong className="money">¥{p.cashBalance}</strong></p>

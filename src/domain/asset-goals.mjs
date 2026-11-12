@@ -1,3 +1,4 @@
+import {goalAssetAccounts} from './asset-view.mjs';
 import {MAX_MINOR,minor} from './finance.mjs';
 import {buildMonthlyReport} from './monthly-report.mjs';
 
@@ -81,7 +82,7 @@ export function buildAssetGoalOverview(state,valueCNY,month=currentGoalMonth()){
  const goal=getAssetGoal(state);
  const buckets=goal.schemaVersion===4?goal.targets.map((row,i)=>({...row,scope:'selection:'+row.id,label:row.name,color:ASSET_GOAL_BUCKETS[i%ASSET_GOAL_BUCKETS.length].color,hint:row.assetTypeIds.map(id=>getAssetTypes(state).find(t=>t.id===id)?.name??id).join('、'),current:0,complete:true,accountNames:[]})):goal.schemaVersion===3?goal.targets.map(row=>({...goalScopeOptions(state).find(o=>o.scope===row.scope),id:row.scope,target:row.target,current:0,complete:true,accountNames:[]})):ASSET_GOAL_BUCKETS.map(bucket=>({...bucket,target:goal.bucketTargets[bucket.id],current:0,complete:true,accountNames:[]}));
  let current=0,unassigned=0,complete=true,unassignedComplete=true;const unassignedNames=[],unknownNames=[];
- for(const account of (state?.accounts??[]).filter(eligible)){
+ for(const account of goalAssetAccounts(state,goal).filter(eligible)){
   const bucket=goal.schemaVersion===4?buckets.find(bucket=>bucket.assetTypeIds.includes(accountAssetType(account,state)?.id)):goal.schemaVersion===3?buckets.find(bucket=>goalScopeMatches(bucket.scope,account,state)):buckets.find(bucket=>bucket.id===assetGoalBucket(account,state));
   if(bucket)bucket.accountNames.push(account.name);else unassignedNames.push(account.name);
   const value=valueCNY(account);

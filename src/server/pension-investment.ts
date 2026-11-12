@@ -22,7 +22,7 @@ export function extendPensionInvestment(c:any){
   if(gross+fee>MAX_MINOR||gross+fee>cash)throw Error('养老金内可投资余额不足；卖出回款或实际充值后再记录');
   if(body.product!==undefined){
    if(body.holdingId||!body.product||typeof body.product!=='object'||Array.isArray(body.product)||Object.keys(body.product).some(k=>!['name','kind','assetTypeId','code'].includes(k)))throw Error('新产品资料或目标持仓无效');
-   const product=body.product,name=text(product.name),kind=product.kind,base=({fund:'fund',insurance:'other',deposit:'term_deposit',other:'other'} as Record<string,string>)[kind];if(!base)throw Error('养老金产品种类无效');
+   const product=body.product,name=text(product.name),kind=product.kind,base=({fund:'fund',bond:'other',insurance:'other',deposit:'term_deposit',other:'other'} as Record<string,string>)[kind];if(!base)throw Error('养老金产品种类无效');
    const type=getAssetTypes(state).find((t:any)=>t.id===(product.assetTypeId??base)&&t.enabled&&t.baseCategory===base&&t.id!=='personal_pension');if(!type)throw Error('产品资产类型不属于本家庭、已停用或性质不符');
    const code=product.code?text(product.code,30):undefined;if(holdings.some((x:any)=>key(x.name)===key(name)||code&&x.code===code&&x.kind===kind))throw Error('已有同名或同代码养老金产品，请选择已有持仓');
    if(holdings.length>=50)throw Error('养老金产品数量已达上限');

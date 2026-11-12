@@ -1,3 +1,4 @@
+import {extendPensionClassification} from './pension-classification.ts';
 import {extendPensionInvestment} from './pension-investment.ts';
 import {extendPension} from './pension.ts';
 import {consumptionTypeOf,consumptionTypeForWrite} from '../domain/consumption.mjs';
@@ -14,6 +15,7 @@ const txt=(x:any,n=200)=>{if(typeof x!=='string'||!x.trim()||x.length>n)throw Er
 const day=(x:any)=>{if(typeof x!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x)||new Date(x).toISOString().slice(0,10)!==x)throw Error('日期无效');return x};
 const positive=(x:any)=>{const n=minor(String(x));if(!n)throw Error('金额必须大于0');return n};
 export async function extendFinance(c:any){
+ if(extendPensionClassification(c))return true;
  if(extendPensionInvestment(c))return true;
  if(extendPension(c))return true;
  if(await extendMonthlyReports(c))return true;
