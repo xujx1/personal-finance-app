@@ -4,12 +4,12 @@ import {useState} from 'react';
 import {buildLifeCalendar,shanghaiToday,shiftCalendarDate,MIN_CALENDAR_DATE,MAX_CALENDAR_DATE} from '../src/domain/life-calendar.mjs';
 import {decimal} from '../src/domain/finance.mjs';
 
-type Props={plans:any[];onPlan:(id:string)=>void;onNew:(date:string)=>void;onCancel?:(id:string)=>void;canWrite?:boolean;busy?:boolean};
+type Props={onMemberships?:()=>void;plans:any[];onPlan:(id:string)=>void;onNew:(date:string)=>void;onCancel?:(id:string)=>void;canWrite?:boolean;busy?:boolean};
 const weekdays=['周一','周二','周三','周四','周五','周六','周日'];
 const statuses:Record<string,string>={PLANNED:'计划中',BOOKED:'已预订',IN_PROGRESS:'执行中',COMPLETED:'已完成',CANCELLED:'已取消',DRAFT:'草稿'};
 const fullDate=(date:string)=>new Intl.DateTimeFormat('zh-CN',{timeZone:'UTC',month:'long',day:'numeric',weekday:'long'}).format(new Date(date+'T00:00:00Z'));
 
-export default function LifeCalendar({plans,onPlan,onNew,onCancel,canWrite=false,busy=false}:Props){
+export default function LifeCalendar({onMemberships,plans,onPlan,onNew,onCancel,canWrite=false,busy=false}:Props){
  const today=shanghaiToday();
  const [selected,setSelected]=useState(today),[anchor,setAnchor]=useState(today),[view,setView]=useState<'month'|'week'>('month');
  const [kind,setKind]=useState('all'),[includeCancelled,setIncludeCancelled]=useState(false);
@@ -19,7 +19,7 @@ export default function LifeCalendar({plans,onPlan,onNew,onCancel,canWrite=false
  function move(date:string){setAnchor(date);setSelected(date);}
  const period=view==='month'?`${anchor.slice(0,4)}年${Number(anchor.slice(5,7))}月`:`${days[0].date} — ${days[6].date}`;
  return <>
-  <div className="page-title"><div><div className="eyebrow">MAKE ROOM FOR THE WEEKEND</div><h1>生活日历</h1><p className="subtitle">把出游和一日三餐，放进期待的日子里。</p></div><button className="btn primary" onClick={()=>onNew(selected)}>在ChatGPT规划这一天</button></div>
+  <div className="page-title"><div><div className="eyebrow">MAKE ROOM FOR THE WEEKEND</div><h1>生活日历</h1><p className="subtitle">把出游和一日三餐，放进期待的日子里。</p></div><div className="actions">{onMemberships&&<button className="btn" onClick={onMemberships}>会员权益</button>}<button className="btn primary" onClick={()=>onNew(selected)}>在ChatGPT规划这一天</button></div></div>
   <section className="card life-calendar" aria-label="旅行与餐饮日历">
    <div className="life-calendar-toolbar">
     <div className="life-calendar-period"><button className="icon-button" aria-label={view==='month'?'上个月':'上一周'} disabled={previous===anchor} onClick={()=>move(previous)}>‹</button><h2 aria-live="polite">{period}</h2><button className="icon-button" aria-label={view==='month'?'下个月':'下一周'} disabled={next===anchor} onClick={()=>move(next)}>›</button></div>

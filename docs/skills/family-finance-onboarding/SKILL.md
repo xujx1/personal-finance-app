@@ -24,6 +24,9 @@ description: "Use when 用户首次整理家庭财务，或家庭财务中心的
 | 用户自己的目标 | kind=setup，payload={section:'goals',data:{name,targets:[{name,assetTypeIds,target}],monthlyTarget,deadline},analysis}。每个组合有用户自定名称，assetTypeIds勾选本次返回onboarding.goalCombinationTypes中的一个或多个真实类型ID，不是固定四种组合。同一类型不能跨组合重复；未选类型不计进度，新类型不自动加入。旧scope格式仅兼容旧草稿，不与新格式混用。target与monthlyTarget用大于零的人民币元十进制字符串。这是替换当前家庭目标，不能作为第二份目标叠加。提交前列出当前目标（默认值须标参考）与拟采用的完整组合名称、类型、金额、总额、月目标、期限，请用户确认前后变化和被移除范围。不能把“攒钱”直接解释成净资产或把负债当储蓄；“都算存款”先确认具体勾选哪些真实类型，如活期、定期和国债，不改变资产性质或把基金一律归为现金。月目标或期限未知可用null。 |
 | 明确固定的收支 | kind=setup，payload={section:'recurring',data:{name,type,accountId,cashMemberId,amount,day,start,end},analysis}。type为income/expense/loan/investment，amount为人民币元十进制字符串，day为每月日期整数，start为今天或未来日期，end为null或日期；loan必须补真实loanId，investment必须补真实assetId，其他类型不传这两个字段；accountId为人民币现金账户，cashMemberId须与其归属一致。只用用户明确陈述的固定规则与已采用账户/成员ID，不能用一笔到账推断周期；没有历史也可登记明确固定规则。autoPost始终关闭，规则不创造过去流水或当期到账，未来每期仍需确认实际发生。 |
 
+## 已有会员权益
+可问用户是否有景区年卡、酒店会籍等出行偏好，先读取get_financial_context.memberships或get_memberships核对是否已登记。用户明确表示晚些提供的等级/权益留未知，不追问无关资料。会员不是可变现资产或已发生收支，不提交asset/cashflow草稿冒充维护；资料在站点“会员权益”中填写，当前无直接写会员工具。
+
 ## 现有资产与历史的不同路线
 - 已持有余额、存款、基金、股票、房产或贷款走已有kind=asset：payload至少{name,category,currency,amount,ownerMemberId,asOf,owned:true}，按真实assetTypes补assetTypeId并保持category一致，amount使用对应币种的元或美元十进制字符串。asOf是用户确认的真实现有快照日期，不能在未来。银行现金、贷款和外币分开，不能把计划买入当持仓；存款/贷款/证券的必要字段以当前工具schema为准，不知道就先问或跳过。核对重复，开账登记不扣现金，不补造收益或交易历史。用户明确确认某个人民币现金账户余额为零时，可以amount="0"登记真实账户及余额日期；采用不产生零金额开账分录。没有账户或余额未知时，不为凑建档进度创造零余额账户。
 - 银行现金草稿采用并读回真实accountId、成员ID和该账户metadata.asOf（余额核实日期）之后，才讨论历史流水。用户明确已到账/已支付且希望补录时，用list_transactions按日期范围完整分页检查重复，再走kind=cashflow及当前schema，不把资产余额登记为收入。
