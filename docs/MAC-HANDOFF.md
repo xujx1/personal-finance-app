@@ -1,3 +1,5 @@
+> **最新增量**：请同时读取 [npm安装、日历取消与周期MCP](requirements-npm-calendar-2026-11-12.md) 和 [本轮验证](VERIFICATION-NPM-CALENDAR-2026-11-12.md)。公开npx包仅通用入口，家庭正文仍通过认证MCP读取。
+
 <!-- current-chatgpt-migration -->
 > **2026-11-12现行方案：ChatGPT + MCP + Skill。** 以[迁移需求](requirements-chatgpt-mcp-2026-11-12.md) M001–M012、[完整需求规范](requirements-consolidated-2026-11-12.md)的现行修订及[使用与接续说明](CHATGPT-MCP-SKILLS.md)为准。AI消费、投资、图片理解、周期归并与月度AI总结由ChatGPT处理；网站保留核对、家庭审批、真实记账和展示。本站不再需要模型或搜索Key。后续旧阶段的v30、AI配置、SSE和历史验收数量只作历史，不代表现行实现或本轮覆盖率。本轮变更在 codex/chatgpt-mcp-skills 分支。
 <!-- /current-chatgpt-migration -->

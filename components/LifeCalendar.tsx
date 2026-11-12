@@ -4,12 +4,12 @@ import {useState} from 'react';
 import {buildLifeCalendar,shanghaiToday,shiftCalendarDate,MIN_CALENDAR_DATE,MAX_CALENDAR_DATE} from '../src/domain/life-calendar.mjs';
 import {decimal} from '../src/domain/finance.mjs';
 
-type Props={plans:any[];onPlan:(id:string)=>void;onNew:(date:string)=>void};
+type Props={plans:any[];onPlan:(id:string)=>void;onNew:(date:string)=>void;onCancel?:(id:string)=>void;canWrite?:boolean;busy?:boolean};
 const weekdays=['周一','周二','周三','周四','周五','周六','周日'];
 const statuses:Record<string,string>={PLANNED:'计划中',BOOKED:'已预订',IN_PROGRESS:'执行中',COMPLETED:'已完成',CANCELLED:'已取消',DRAFT:'草稿'};
 const fullDate=(date:string)=>new Intl.DateTimeFormat('zh-CN',{timeZone:'UTC',month:'long',day:'numeric',weekday:'long'}).format(new Date(date+'T00:00:00Z'));
 
-export default function LifeCalendar({plans,onPlan,onNew}:Props){
+export default function LifeCalendar({plans,onPlan,onNew,onCancel,canWrite=false,busy=false}:Props){
  const today=shanghaiToday();
  const [selected,setSelected]=useState(today),[anchor,setAnchor]=useState(today),[view,setView]=useState<'month'|'week'>('month');
  const [kind,setKind]=useState('all'),[includeCancelled,setIncludeCancelled]=useState(false);
@@ -48,7 +48,7 @@ export default function LifeCalendar({plans,onPlan,onNew}:Props){
       <h3>{event.name}</h3><p className="life-calendar-event-range">{event.date===event.end?event.date:`${event.date} — ${event.end}`}</p>
       {event.activities.length>0?<ul className="life-calendar-activities">{event.activities.map((activity,i)=><li key={i}><span>{activity.time||'时间待定'}</span><div><strong>{activity.title}</strong>{activity.notes&&<p>{activity.notes}</p>}</div></li>)}</ul>:<p className="life-calendar-no-details">{event.kind==='travel'?'暂未提供当天行程，当前仅展示出行日期范围。':'暂未提供具体餐次或菜单。'}</p>}
       <p className="life-calendar-budget">整项预算（非当日开销）：<span className="money">{event.budget==null?'待制定':'¥'+decimal(event.budget)}</span><small>{event.budgetStatus==='APPROVED'?'预算已确认':'预算待确认'}</small></p>
-      <button className="text-button" onClick={()=>onPlan(event.planId)}>查看计划详情 →</button>
+      <div className="actions"><button className="text-button" onClick={()=>onPlan(event.planId)}>查看计划详情 →</button>{onCancel&&!['CANCELLED','COMPLETED'].includes(event.status)&&<button className="btn" disabled={!canWrite||busy} aria-label={'取消计划：'+event.name} onClick={()=>onCancel(event.planId)}>取消计划</button>}</div>
      </article>)}
     </section>
    </div>

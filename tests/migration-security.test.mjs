@@ -91,3 +91,9 @@ test('M012 ordinary family member reads own family only, cannot adopt/edit workf
  for(const name of ['get_financial_context','list_reviews','get_skill_bundle','list_finance_drafts'])assert.equal((await rpc(mcp,name)).isError,true,name);
  assert.equal(await familyContext(x.db,member,config),null);
 });
+
+test('N003 populated families cannot cancel one another’s plans or retrieve private handoff tasks',async t=>{
+ const x=await setup(t),{a,b}=x;
+ for(const f of [a,b]){f.plan=await f.send('plan.save',{name:f.user.displayName+'旅行',category:'国内旅行',date:'2026-11-14',end:'2026-11-15',budget:'100.00',approve:true});await f.send('research.request',{kind:'monthly',title:f.user.displayName+'私有任务',question:f.user.displayName+'只在本家庭可见的月份上下文'});}
+ const before=x.durable();for(const [self,foreign]of [[a,b],[b,a]]){assert.equal((await postFinance(self,'plan.cancel',{planId:foreign.plan.id,version:1,confirmed:true})).status,422);const tasks=await rpc(self.mcp,'list_research_requests');assert.ok(!tasks.isError);assert.ok(JSON.stringify(tasks).includes(self.user.displayName+'只在本家庭'));assert.ok(!JSON.stringify(tasks).includes(foreign.user.displayName+'只在本家庭'));}assert.equal(x.durable(),before);
+});

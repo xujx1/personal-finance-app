@@ -13,11 +13,11 @@ const formattedAmount=(value:unknown)=>{
 
 const amount=(value:unknown)=><span className="money">{formattedAmount(value)}</span>;
 
-export default function MonthlyReport({state}:{state:any}){
+export default function MonthlyReport({state,onSave}:{state:any;onSave?:any}){
  const [month,setMonth]=useState(currentMonth),report=buildMonthlyReport(state,month);
  return <section className="card section-space monthly-report" aria-label="月度报告">
   <div className="monthly-report-heading"><div><h2>月度报告</h2><p className="help-text">本站现金流水与资产、负债和净资产的账面增减。</p></div><label className="field">月份<input aria-label="月份" type="month" value={month} onChange={event=>setMonth(event.target.value)}/></label></div>
-  <MonthlySummary state={state} month={month}/>
+  <MonthlySummary state={state} month={month} onSave={onSave}/>
   <p className="help-text">{report.basisNote}</p>
   {!report.available?<p className="notice neutral" role="status">{report.reason}</p>:report.currencies.map((currency:any)=><section className="monthly-report-currency" key={currency.currency} aria-label={currency.currency+'月报'}>
    <h3>{currency.currency} 原币月报</h3>
