@@ -27,6 +27,6 @@ export function researchRecords(state){
 export function filterResearchRecords(records,{query='',kind='all',from='',to=''}={}){
  const needle=query.trim().toLocaleLowerCase();return records.filter(d=>{
   const p=d.payload,when=researchRecordDate(d).date;
-  return (kind==='all'||consumptionTypeOf(d)===kind)&&dateInRange(when,null,from,to)&&(!needle||JSON.stringify([p.title,p.summary,p.inputs?.question,p.content,p.analysis]).toLocaleLowerCase().includes(needle));
+  return (kind==='all'||consumptionTypeOf(d)===kind)&&dateInRange(when,null,from,to)&&(!needle||JSON.stringify([d.id,p.title,p.summary,p.inputs?.question,p.content,p.analysis]).toLocaleLowerCase().includes(needle));
  });
 }

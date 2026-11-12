@@ -5,7 +5,7 @@ const DAY=86400000;
 export const MIN_CALENDAR_DATE='0001-01-01',MAX_CALENDAR_DATE='9998-12-31';
 const supported=value=>typeof value==='string'&&value>=MIN_CALENDAR_DATE&&value<=MAX_CALENDAR_DATE;
 /** @typedef {{date:string,time?:string,title:string,notes?:string,location?:string,phase?:string}} Activity */
-/** @typedef {{planId:string,name:string,kind:string,date:string,end:string,status:string,budget:number|null,budgetStatus:string,pendingApproval:boolean,activities:Activity[]}} CalendarEvent */
+/** @typedef {{planId:string,name:string,kind:string,date:string,end:string,status:string,budget:number|null,budgetStatus:string,reviewId?:string,pendingApproval:boolean,activities:Activity[]}} CalendarEvent */
 function parseDay(value){
  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return null;
  const d=new Date(value+'T00:00:00Z');
@@ -24,6 +24,7 @@ export function shiftCalendarDate(anchor,view,direction){
 }
 
 function planKind(p){
+ if(p.sourceType==='investment_review'&&p.reviewId)return 'investment';
  if(p.consumptionType)return ['travel','dining'].includes(p.consumptionType)?p.consumptionType:null;
  if(['travel','dining'].includes(p.expenseDraft?.kind))return p.expenseDraft.kind;
  const category=String(p.category??'').toLowerCase();
@@ -47,7 +48,7 @@ export function buildLifeCalendar(plans,{anchor,view='month',kind='all',includeC
   for(const day of days){
    const activities=sortItineraryActivitiesByTime((Array.isArray(p.itinerary)?p.itinerary:[]).filter(a=>a&&parseDay(a.date)&&a.date===day.date&&typeof a.title==='string'&&a.title.trim()));
    if((day.date<p.date||day.date>key(end))&&!activities.some(a=>['preparation','follow_up'].includes(a.phase)&&activityInWindow(a,p.date,key(end))))continue;
-   day.events.push({planId:p.id,name:p.name,kind:type,date:p.date,end:key(end),status:p.status,budget:p.budget,budgetStatus:p.budgetStatus,pendingApproval,activities});
+   day.events.push({planId:p.id,name:p.name,kind:type,date:p.date,end:key(end),status:p.status,budget:p.budget,budgetStatus:p.budgetStatus,...(p.reviewId?{reviewId:p.reviewId}:{}),pendingApproval,activities});
   }
  }
  for(const day of days)day.events.sort((a,b)=>a.date.localeCompare(b.date)||String(a.planId).localeCompare(String(b.planId)));

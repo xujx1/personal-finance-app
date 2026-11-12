@@ -1,3 +1,4 @@
+import {normalizeFollowUps} from '../domain/investment-followups.mjs';
 import {normalizePension,isPensionAccount,PENSION_TYPE,validatePensionProductTypes} from '../domain/pension.mjs';
 import {consumptionTypeOf,consumptionTypeForWrite} from '../domain/consumption.mjs';
 import {getAssetTypes,assetTypeCatalogue,assetTypeForWrite,accountAssetType} from '../domain/asset-types.mjs';
@@ -108,7 +109,9 @@ export async function executeCommand(db:DB,input:any,actor:string,options:{signa
  };
  const entry=(a:any,amount:number)=>({account_id:a.id,currency:a.currency,amount});
  const system=(id:string,currency='CNY')=>({id:`${id}:${currency}`,currency});
- if(action==='member.save'){
+ if(action==='investment.followups.save'){
+  if(Object.keys(body).some(k=>!['reviewId','followUps'].includes(k))||!Array.isArray(body.followUps))throw Error('复核字段无效');const review=doc(text(body.reviewId));if(review.kind!=='investment_review')throw Error('投资研究不存在');writeDoc(review.id,'investment_review',{...review.payload,followUps:normalizeFollowUps(body.followUps),followUpsUpdatedAt:new Date().toISOString(),followUpsUpdatedBy:actor});result.id=review.id;
+ }else if(action==='member.save'){
   if(body.id!==undefined&&(typeof body.id!=='string'||!/^person:[A-Za-z0-9_-]{1,100}$/.test(body.id)||!state.documents.some((d:any)=>d.id===body.id&&d.kind==='financial_member')))throw Error('记账成员不存在');
   const profile=normalizeMemberProfile(body,state),id=body.id??'person:'+uid();const updated={...state,documents:state.documents.filter((d:any)=>d.id!==id).concat({id,kind:'financial_member',payload:{...profile,id}})};updated.financeMembers=buildFinanceMembers(updated);const pensions=state.accounts.filter(isPensionAccount),seen=new Set();for(const a of pensions){const owner=accountMember(a,updated);if(owner.id==='family'||owner.id==='unknown'||seen.has(owner.id))throw Error('成员关联会合并或失去个人养老金归属，请先核对养老金账户');seen.add(owner.id);const old=accountMember(a,state);if(old.userId&&old.userId!==owner.userId)throw Error('已有养老金的登录身份不能转给其他成员');}writeDoc(id,'financial_member',{...profile,id});result.id=id;
  }else if(action==='account.owner.set'){

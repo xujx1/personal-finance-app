@@ -48,7 +48,8 @@ ${shared}
 ## 工作流
 1. 从自然语言识别旅行、餐饮或购物。读取财务与已有计划；用户是在调整旧计划时取得其真实planId，不新建重复预算。会员资料需按出行日期通过get_memberships核对；需要历史偏好时list_transactions按日期/成员完整分页，complete=true才读完；不是把计划当已消费。
 2. 使用ChatGPT侧可用搜索与图片理解研究。旅行明确日期、人数、交通会合和午睡等约束；列具体酒店/餐厅候选及对应日期可核实程度。购物核对精确型号、地区SKU、面板/接口/保修/运费，不能将不同规格直接比最低价。
-2a. 先列可执行参数：出行日期/人数/宝宝身高和作息、具体入口和路线、交通能源（电车不默认燃油）、餐厅门店及具体餐品/份数或酒店房型/入住条件、预约与含费项。能查询的先查，关键缺项集中问，不用随机整数补齐。使用当前可用旅行插件（如Trip.com景点、酒店、车票）或官方页面查对应日期和规格；搜到门店名/交通文章不等于菜单价或导航报价。里程、电耗、电价、收费路段未知时，只可列明确假设的计算/预留，不声称精确成本。
+2a. 用户要求菜品、景点或酒店配图时，实际查看并核对图片与事项匹配，把配图写入对应expenseDraft.itinerary[].images=[{url,alt,kind:'reference'或'generated',sourceUrl,checkedAt,caption}]，每事项最多4张。只在聊天中贴图、analysis/notes放Markdown，不等于结构化配图已同步。参考图与AI生成图分开标识；图片不证明菜单价、房态或实物外观。url须为无凭据的公开HTTPS图片地址；ChatGPT临时文件、sandbox/blob路径、需要登录的图片不能假称站点可读取，缺少可用地址时保留待补图并说明。提交后list_finance_drafts回读各事项的images与真实id；未回读到不得说已保存配图。采用后再核对日历事项与图片。
+2b. 先列可执行参数：出行日期/人数/宝宝身高和作息、具体入口和路线、交通能源（电车不默认燃油）、餐厅门店及具体餐品/份数或酒店房型/入住条件、预约与含费项。能查询的先查，关键缺项集中问，不用随机整数补齐。使用当前可用旅行插件（如Trip.com景点、酒店、车票）或官方页面查对应日期和规格；搜到门店名/交通文章不等于菜单价或导航报价。里程、电耗、电价、收费路段未知时，只可列明确假设的计算/预留，不声称精确成本。
 2b. 前一天核库存、采购/充电/订票/打包也要列入：买什么、数量、具体门店或待选、已有库存不再买，先核对园区携带和投喂规则。itinerary.phase=preparation/trip/follow_up，准备可在正程前30天内，不改真实出游date；location写具体门店/入口/集合点，未落实的在notes标待核对。
 2c. 每项pricing={basis,specification,serviceDate,unit,formula,inputs,missing,conditions}。basis=external_quote须完整sourceUrl/checkedAt/priceEvidence，sourceType=external_reference，标外部引用、本站未核验；写清日期/人数/房型或套餐、税费、停车/预约、库存条件，不等于可订确认。calculated列公式和输入，每个假设标明；allowance是预算预留，不冒充真实价；unknown须selected=false、unitPrice="0"仅占位并列missing，不能说0元免费；included按已确认会员覆盖填0元，额外支付另列。更改商家、型号、价格或服务日期后须重新查证，否则旧证据失效降为估算。商品comparisons保留价格/摘录/时间供核对，不强行把不同规格比最低价。
 3. 先给关键结论与资金影响，再给可调整攻略和费用小票。必要费用不得为凑预算删改。每项quantity和unitPrice都是十进制字符串；总额为选中项目数量乘单价之和，精确到分。
@@ -56,7 +57,7 @@ ${shared}
 4a. 会员预算单独核对：已购成本是沉没成本，不重复摊入本次新增预算。清单写明覆盖人数、儿童身高/持卡人绑定、预约限制，以及未覆盖票、车辆、餐饮、油费高速等新增费用；每车每次和每人每次不可混用。杭州野生动物园双人年卡不自动覆盖第三位成人，120cm以下儿童是否符合以最新规则及实际身高核对；自驾车行区220元仅用户截图参考价，按车辆数另列一项user_quote并注明日期，非全年固定报价。已获确认覆盖的成人票可列0元并在note中引用会员名称/有效期，不能把整张年卡购价又加进来。
 5. 用户调整后只复核当前清单，不恢复已删除候选、不重新生成无关选型。检查票数按参加该活动的人数，早饭/停车是否含在房价，退房后午睡地点，以及全程费用不重复。
 6. 首次新增用submit_finance_draft，已有PENDING草稿用update_finance_draft同ID完整替换并回读；新增预算payload使用kind=budget，payload={name,category,date,end,budget,ownerMemberId,analysis,note,expenseDraft}。更新原预算时加入planId并保留原归属（除非用户明确调整）；重新读取data_revision后提交expected_revision。budget与小票合计一致。消费类别以expenseDraft.kind保存为稳定的consumptionType（travel/shopping/dining/general），不要靠标题猜分类；可显式传同值，历史未知保持未分类。
-7. 返回草稿ID和“预算与大型支出/生活日历”核对入口。提交不扣钱；网站编辑后需要重新确认并发起家庭审批。`
+7. 返回草稿ID和“研究记录 → 同步草稿 → 待处理”核对入口。提交不扣钱；网站采用后才以待审批候选进入预算/生活日历，全家确认后才成为正式预算。用户只要求存草稿时不能声称已显示日历。`
  },
  {id:'family-finance-investment',title:'投资研究',description:'结合家庭财务、贷款、预算、资产目标与持仓做投资或理财研究并保存只读研究草稿时使用；不执行交易或把买入意向登记成已有资产。',body:`# 家庭投资研究
 ${shared}
@@ -65,7 +66,7 @@ ${shared}
 1. 读取资产、负债、可用现金、预算、目标、周期与预测。用ChatGPT可用搜索取得所讨论标的的最新可得报价、原报价时间/时区、币种、市场与一手公司资料；资料时间早于当前日期时不称其为未来事件。
 2. 开头给可行性结论，随后列同一组报价的股数乘单价、卖出款、买入款、费用未知项和差额。美元与人民币分开；人民币基金赎回、证券与房产不能当作已可用美元现金。
 3. 用实际已有股数算换仓前后集中度，补足新现金会改变组合分母；手续费/税费/点差/汇兑未知时不得填0当已核实。对比大型支出备款和月积累目标，资料不足时明确缺项。
-4. 用户要求保存研究时调用submit_finance_draft，kind=investment，payload={title,summary,content,sources:[{title,url,checkedAt}],missing:[...],ownerMemberId}。summary先给结论，content保留详细计算、假设与来源；保存后网站核对并展示。
+4. 用户要求保存研究时调用submit_finance_draft，kind=investment，payload={title,summary,content,sources:[{title,url,checkedAt}],missing:[...],ownerMemberId,followUps:[{id,title,date,time,condition,notes,status:'PLANNED'}]}。summary先给结论，content保留详细计算、假设与来源；保存后网站核对并展示。对于分批减仓、财报后复核等用户要跟进的安排，将每个复核/决策节点放入followUps（最多12项）；date为明确的北京时间YYYY-MM-DD，未定则null，time为北京时间HH:mm或空字符串全天，保留条件和日期依据。美东财报日期与北京时间跨日要核对，不能把未确定的第一批卖出安排硬塞到今天。仅研究点评不强行排交易。用户采用研究后，明确日期才在生活日历显示“投资复核 · 未交易”，未定日期列待排期；保存研究不代表股票已减仓。提交后回读list_finance_drafts核对followUps；用户采用后list_reviews回读正式研究及日程。已采用研究只补日程时，指向研究记录对应研究的“日历复核安排”，不以重复研究模拟更新，更不能自动交易。
 5. 不调用资产新增、实际支出或预算接口模拟股票成交；只有用户确认已经持有而尚未登记的资产，才另走已有资产草稿，并核对重复。已经发生且需要同步银行现金的新买入或清仓，转到网站资产页的买入/清仓核对，不用已有资产开账草稿代替交易。`
  },
  {id:'family-finance-images',title:'图片识别与记账',description:'用户提供账单、消费凭证、银行或持仓截图，希望识别并记录到家庭财务中心时使用；先核对实际事实和余额覆盖，不能仅凭截图直接扣账。',body:`# 图片识别与家庭记账

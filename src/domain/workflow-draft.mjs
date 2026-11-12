@@ -1,12 +1,13 @@
+import {normalizeFollowUps} from './investment-followups.mjs';
 const text=(v,max)=>{if(typeof v!=='string'||!v.trim()||v.length>max)throw Error('请填写有效的总结或研究文字');return v.trim()};
 const only=(p,fields)=>{if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).some(k=>!fields.includes(k)))throw Error('草稿包含不允许的字段')};
 const list=(v=[])=>{if(!Array.isArray(v)||v.length>12)throw Error('列表过长');return v.map(x=>text(x,500))};
 export function normalizeWorkflowDraft(kind,p){
  if(kind==='investment'){
-  only(p,['title','summary','content','sources','missing','ownerMemberId']);
+  only(p,['title','summary','content','sources','missing','ownerMemberId','followUps']);
   if(!Array.isArray(p.sources??[])||(p.sources??[]).length>15)throw Error('研究来源过多');
   const sources=(p.sources??[]).map(s=>{only(s,['title','url','checkedAt']);let u;try{u=new URL(s.url)}catch{throw Error('来源链接无效')}if(u.protocol!=='https:'||u.username||u.password)throw Error('来源链接须为无凭据HTTPS地址');return {title:text(s.title,200),url:u.href,checkedAt:s.checkedAt==null?null:text(s.checkedAt,60)};});
-  return {title:text(p.title,100),summary:text(p.summary,2000),content:text(p.content,10000),sources,missing:list(p.missing),ownerMemberId:text(p.ownerMemberId??'family',120)};
+  return {title:text(p.title,100),summary:text(p.summary,2000),content:text(p.content,10000),sources,missing:list(p.missing),...(p.followUps!==undefined?{followUps:normalizeFollowUps(p.followUps)}:{}),ownerMemberId:text(p.ownerMemberId??'family',120)};
  }
  if(kind==='monthly_review'){
   only(p,['month','title','summary','sections','limitations','nextActions','basisFingerprint','ownerMemberId']);

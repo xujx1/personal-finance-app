@@ -18,5 +18,5 @@ description: "结合家庭财务、贷款、预算、资产目标与持仓做投
 1. 读取资产、负债、可用现金、预算、目标、周期与预测。用ChatGPT可用搜索取得所讨论标的的最新可得报价、原报价时间/时区、币种、市场与一手公司资料；资料时间早于当前日期时不称其为未来事件。
 2. 开头给可行性结论，随后列同一组报价的股数乘单价、卖出款、买入款、费用未知项和差额。美元与人民币分开；人民币基金赎回、证券与房产不能当作已可用美元现金。
 3. 用实际已有股数算换仓前后集中度，补足新现金会改变组合分母；手续费/税费/点差/汇兑未知时不得填0当已核实。对比大型支出备款和月积累目标，资料不足时明确缺项。
-4. 用户要求保存研究时调用submit_finance_draft，kind=investment，payload={title,summary,content,sources:[{title,url,checkedAt}],missing:[...],ownerMemberId}。summary先给结论，content保留详细计算、假设与来源；保存后网站核对并展示。
+4. 用户要求保存研究时调用submit_finance_draft，kind=investment，payload={title,summary,content,sources:[{title,url,checkedAt}],missing:[...],ownerMemberId,followUps:[{id,title,date,time,condition,notes,status:'PLANNED'}]}。summary先给结论，content保留详细计算、假设与来源；保存后网站核对并展示。对于分批减仓、财报后复核等用户要跟进的安排，将每个复核/决策节点放入followUps（最多12项）；date为明确的北京时间YYYY-MM-DD，未定则null，time为北京时间HH:mm或空字符串全天，保留条件和日期依据。美东财报日期与北京时间跨日要核对，不能把未确定的第一批卖出安排硬塞到今天。仅研究点评不强行排交易。用户采用研究后，明确日期才在生活日历显示“投资复核 · 未交易”，未定日期列待排期；保存研究不代表股票已减仓。提交后回读list_finance_drafts核对followUps；用户采用后list_reviews回读正式研究及日程。已采用研究只补日程时，指向研究记录对应研究的“日历复核安排”，不以重复研究模拟更新，更不能自动交易。
 5. 不调用资产新增、实际支出或预算接口模拟股票成交；只有用户确认已经持有而尚未登记的资产，才另走已有资产草稿，并核对重复。已经发生且需要同步银行现金的新买入或清仓，转到网站资产页的买入/清仓核对，不用已有资产开账草稿代替交易。
