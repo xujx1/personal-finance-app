@@ -56,3 +56,6 @@ export function visibleAssetAccounts(accounts,includeClosed=false){
 export function categoryValuation(accounts,category,valueCNY){
  return accounts.filter(a=>category==='all'||a.category===category).reduce((sum,a)=>{const value=valueCNY(a);if(value==null)sum.missing++;else sum.amountMinor+=value;return sum;},{amountMinor:0,missing:0});
 }
+export function rankedAssetCategories(types,accounts,typeOf,valueCNY){
+ return types.map((type,index)=>({...type,index,...categoryValuation(accounts.filter(a=>typeOf(a)===type.id),'all',valueCNY)})).sort((a,b)=>b.amountMinor-a.amountMinor||(a.amountMinor===0?Number(a.missing>0)-Number(b.missing>0):0)||a.index-b.index);
+}
