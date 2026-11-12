@@ -204,7 +204,7 @@ writeDoc(id,'research_proposal',{...payload,status:'PENDING',createdAt:new Date(
  }else if(action==='plan.cancel'){
   if(Object.keys(body).some(k=>!['planId','version','confirmed'].includes(k)))throw Error('取消字段无效');if(body.confirmed!==true)throw Error('请确认同时取消计划和预算');const p=doc(text(body.planId));if(p.kind!=='plan')throw Error('计划不存在');
   if(body.version!==(p.payload.version??0))throw Error('CONFLICT:计划版本已变化，请刷新后重新确认');if(['COMPLETED','CANCELLED'].includes(p.payload.status))throw Error('计划已结束，不能再次取消');
-  writeDoc(p.id,'plan',{...p.payload,status:'CANCELLED',reserved:0,version:(p.payload.version??0)+1,cancelledAt:new Date().toISOString(),cancelledBy:actor});result.id=p.id;
+  const cancelledPlan={id:p.id,name:p.payload.name,status:'CANCELLED',reserved:0,version:(p.payload.version??0)+1,cancelledAt:new Date().toISOString(),cancelledBy:actor};const {id,...cancelledPayload}=cancelledPlan;writeDoc(p.id,'plan',{...p.payload,...cancelledPayload});Object.assign(result,{id,revision:book.revision+1,dataset:ds,cancelledPlan});
  }else if(action==='plan.save'){
   const id=body.id?text(body.id):uid();const old=state.documents.find((d:any)=>d.id===id)?.payload??{};if(old.status==='CANCELLED')throw Error('已取消计划保留历史，不可重新编辑恢复');
   const budget=body.budget===''||body.budget==null?null:minor(String(body.budget));
