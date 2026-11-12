@@ -14,5 +14,5 @@ description: "用户提供账单、消费凭证、银行或持仓截图，希望
 2. 读取真实家庭账户/成员，确认每笔已到账或已支付、资金归属、是否已包含在当前登记余额。用list_transactions检索可能重复记录，多个截图重叠同笔只能提交一笔。无法确认余额覆盖就保留讨论，不提交实际流水。
 3. 新实际人民币收支：submit_finance_draft kind=cashflow，payload={type:income或expense,accountId,cashMemberId,amount,date,note,analysis,balanceIncluded:false}。时间不能在未来，也不能早于该银行余额核实日期；采用后只扣对应成员的银行账户一次。
 4. 已包含在余额中的历史：balanceIncluded=true，同时snapshotDate须等于该账户已登记asOf，交易日期不晚于snapshotDate；网站会核对覆盖范围并只补历史分录，不重复改变银行现金。无登记asOf时先在网站核对余额日期，不能猜。
-5. 现有但未登记资产：kind=asset，payload={name,category,currency,amount,ownerMemberId,asOf,owned:true,...}。category支持cash/term_deposit/fund/stock/property/loan/other。股票基金可加market/code/quantity/price/cost；定期需bank/startDate/annualRate/maturityDate。开账登记不是新买入，不扣现金。同名同币种同归属已存在时不再新增。
+5. 现有但未登记资产：kind=asset，payload={name,category,currency,amount,ownerMemberId,asOf,owned:true,...}。category支持cash/term_deposit/fund/stock/property/loan/other。股票基金可加market/code/quantity/price/cost；定期需bank/startDate/annualRate/maturityDate。开账登记不是新买入，不扣现金；已经发生且需要同步现金的买入/清仓请到资产页相应交易入口核对，不用开账代替。同名同币种同归属已存在时不再新增。
 6. 一张图多笔逐条说明是否重复，用户授权后分别提交，每次读最新revision；网站仍须逐笔确认事实、成员和账户。图片识别完成不等于已经记账。

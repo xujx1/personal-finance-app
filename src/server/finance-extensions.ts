@@ -1,3 +1,4 @@
+import {extendAssetTrade} from './asset-trade.ts';
 import {extendMcpDraft} from './mcp-draft.ts';
 import {extendSkills} from '../domain/skill-catalog.mjs';
 import {beginFamilyApproval,applyFamilyApproval} from '../domain/family-approval.mjs';
@@ -7,8 +8,6 @@ import {accountMember,ownerFields} from '../domain/member-ownership.mjs';
 const txt=(x:any,n=200)=>{if(typeof x!=='string'||!x.trim()||x.length>n)throw Error('内容无效');return x.trim()};
 const day=(x:any)=>{if(typeof x!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x)||new Date(x).toISOString().slice(0,10)!==x)throw Error('日期无效');return x};
 const positive=(x:any)=>{const n=minor(String(x));if(!n)throw Error('金额必须大于0');return n};
-const units=(x:any)=>{if(!/^\d+(\.\d{1,6})?$/.test(String(x)))throw Error('数量无效');const [a,b='']=String(x).split('.');return BigInt(a)*1000000n+BigInt(b.padEnd(6,'0'))};
-const unitText=(n:bigint)=>{const a=n/1000000n,b=(n%1000000n).toString().padStart(6,'0').replace(/0+$/,'');return a.toString()+(b?'.'+b:'')};
 export async function extendFinance(c:any){
  if(extendSkills(c))return true;
  if(await extendMcpDraft(c))return true;
@@ -81,22 +80,7 @@ export async function extendFinance(c:any){
   if(a.category!=='cash'||b.category!=='cash'||a.kind!=='ASSET'||b.kind!=='ASSET'||a.id===b.id||a.currency!==b.currency)throw Error('转账须在两个同币种现金账户之间');assertCashMember(a,body.cashMemberId??body.fromMemberId);assertCashMember(b,body.toMemberId);
   journal('TRANSFER',n,[entry(a,-n),entry(b,n)],{accountId:a.id,toId:b.id,note:txt(body.note??'本人账户内部转账')});return true;
  }
- if(action==='asset.trade'){
-  const a=account(body.assetId),bank=account(body.accountId),n=positive(body.amount),fee=minor(String(body.fee||'0'));
-  if(a.kind!=='ASSET'||['cash','system','prepayment'].includes(a.category)||bank.category!=='cash'||a.currency!==bank.currency)throw Error('请选择已登记资产及同币种现金账户');
-  assertCashMember(bank,body.cashMemberId);
-  if(!['sell','buy'].includes(body.side))throw Error('交易方向无效');
-  const sell=body.side==='sell',carrying=sell?positive(body.carrying):n;
-  if(sell&&(carrying>a.balance||fee>n))throw Error('出售账面金额或费用超限');
-  const m={...a.metadata},oldQ=m.quantity?units(m.quantity):null,q=body.quantity?units(body.quantity):null;
-  if(oldQ!==null&&(q===null||q<=0n||sell&&q>oldQ))throw Error('请填写有效的本次数量，不能超过持有数量');
-  if(oldQ!==null&&q!==null){if(sell&&((q===oldQ)!==(carrying===a.balance)))throw Error('全部卖出数量和账面金额须一致');m.quantity=unitText(sell?oldQ-q:oldQ+q)}
-  let costBasis=null,realizedProfit=null;
-  if(oldQ!==null&&q!==null&&a.metadata.cost){const oldCost=units(a.metadata.cost);costBasis=Number((oldCost*q+5000000000n)/10000000000n);if(sell)realizedProfit=n-fee-costBasis;else m.cost=unitText((oldCost*oldQ+BigInt(n+fee)*10000000000n+(oldQ+q)/2n)/(oldQ+q));}
-  const entries=sell?[entry(a,-carrying),entry(bank,n-fee),...(fee?[entry(system('expense',a.currency),fee)]:[]),...(n!==carrying?[entry(system('income',a.currency),carrying-n)]:[])]:[entry(a,n),entry(bank,-n-fee),...(fee?[entry(system('expense',a.currency),fee)]:[])];
-  journal(sell?'ASSET_SALE':'ASSET_BUY',n,entries,{assetId:a.id,accountId:bank.id,fee,carrying,costBasis,realizedProfit,quantity:body.quantity??null,note:txt(body.note??(sell?'本人确认资产变现到账':'本人确认买入到账')),profitBasis:'账面差额，原始投资成本另行核对'});
-  metadata(a,{...m,status:'holding',lastTradeAt:body.date??new Date().toISOString().slice(0,10)});return true;
- }
+ if(extendAssetTrade(c))return true;
  if(action==='recurring.save'){
   const id=body.id?txt(body.id):crypto.randomUUID(),existing=body.id?doc(id):null,old=existing?.payload??{};if(existing&&existing.kind!=='recurring_rule')throw Error('规则类型不符');
   if(body.confirmed!==true)throw Error('请本人明确确认周期规则');
