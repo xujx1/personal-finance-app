@@ -18,9 +18,9 @@ export function normalizeSetupDraft(p){
  if(p.section==='members'){
   only(d,['members']);data={members:unique(list(d.members,20).map(m=>{only(m,['name']);return {name:normalizeMemberProfile({name:text(m.name,60)},{}).name};}),'name')};
  }else if(p.section==='asset_types'){
-  only(d,['additions']);const additions=list(d.additions,10).map(t=>{only(t,['id','name','baseCategory','goalBucket']);const id=text(t.id,64),name=text(t.name,40);if(!/^[a-z][a-z0-9_-]{0,63}$/.test(id)||!Object.hasOwn(BASE_ASSET_CATEGORIES,t.baseCategory)||t.baseCategory==='prepayment'||!['stock','deposits','broadIndex','preciousMetals',null].includes(t.goalBucket)||['property','loan'].includes(t.baseCategory)&&t.goalBucket!==null)throw Error('资产类型标识、性质或目标组合无效');return {id,name,baseCategory:t.baseCategory,goalBucket:t.goalBucket};});unique(additions,'id');unique(additions,'name');data={additions};
+  only(d,['additions']);const additions=list(d.additions,10).map(t=>{only(t,['id','name','baseCategory','goalBucket'],['id','name','baseCategory']);t={...t,goalBucket:t.goalBucket??null};const id=text(t.id,64),name=text(t.name,40);if(!/^[a-z][a-z0-9_-]{0,63}$/.test(id)||!Object.hasOwn(BASE_ASSET_CATEGORIES,t.baseCategory)||t.baseCategory==='prepayment'||!['stock','deposits','broadIndex','preciousMetals',null].includes(t.goalBucket)||['property','loan'].includes(t.baseCategory)&&t.goalBucket!==null)throw Error('资产类型标识、性质或目标组合无效');return {id,name,baseCategory:t.baseCategory,goalBucket:t.goalBucket};});unique(additions,'id');unique(additions,'name');data={additions};
  }else if(p.section==='goals'){
-  only(d,['name','targets','monthlyTarget','deadline']);data={name:text(d.name,100),targets:list(d.targets,20).map(t=>{only(t,['scope','target']);return {scope:text(t.scope,80),target:amount(t.target)};}),monthlyTarget:d.monthlyTarget===null?null:amount(d.monthlyTarget),deadline:d.deadline===null?null:date(d.deadline)};
+  only(d,['name','targets','monthlyTarget','deadline']);data={name:text(d.name,100),targets:list(d.targets,20).map(t=>{if(t&&Object.hasOwn(t,'assetTypeIds')){only(t,['name','assetTypeIds','target']);return {name:text(t.name,100),assetTypeIds:list(t.assetTypeIds,50).map(id=>text(id,64)),target:amount(t.target)};}only(t,['scope','target']);return {scope:text(t.scope,80),target:amount(t.target)};}),monthlyTarget:d.monthlyTarget===null?null:amount(d.monthlyTarget),deadline:d.deadline===null?null:date(d.deadline)};
  }else if(p.section==='recurring'){
   only(d,['name','type','accountId','cashMemberId','amount','day','start','end','loanId','assetId'],['name','type','accountId','cashMemberId','amount','day','start','end']);if(!['income','expense','loan','investment'].includes(d.type)||!Number.isInteger(d.day)||d.day<1||d.day>31)throw Error('周期规则类型或每月日期无效');
   if(d.type==='loan'?!d.loanId||d.assetId!==undefined:d.type==='investment'?!d.assetId||d.loanId!==undefined:d.loanId!==undefined||d.assetId!==undefined)throw Error('周期规则贷款或投资账户字段无效');
@@ -36,8 +36,8 @@ export function validateSetupDraft(payload,state,{today=localDate()}={}){
   const names=new Set((state.financeMembers??buildFinanceMembers(state)).map(m=>key(m.name)));for(const m of d.members)if(names.has(key(m.name)))throw Error('已有同名成员，请核对重复建档');
  }else if(p.section==='asset_types'){
   const types=normalizeAssetTypes([...getAssetTypes(state),...d.additions.map(t=>({...t,enabled:true}))],state),updated={...state,documents:(state.documents??[]).filter(x=>x.kind!=='asset_type_catalog').concat({id:'asset-types',kind:'asset_type_catalog',payload:{types}})};
-  const goal=getAssetGoal(state);if(goal.schemaVersion===3)normalizeAssetGoalInput({...goal,targets:goal.targets.map(t=>({...t,target:decimal(t.target)})),monthlyTarget:goal.monthlyTarget==null?null:decimal(goal.monthlyTarget)},updated);
- }else if(p.section==='goals')normalizeAssetGoalInput({schemaVersion:3,...d},state);
+  const goal=getAssetGoal(state);if([3,4].includes(goal.schemaVersion))normalizeAssetGoalInput({...goal,targets:goal.targets.map(t=>({...t,target:decimal(t.target)})),monthlyTarget:goal.monthlyTarget==null?null:decimal(goal.monthlyTarget)},updated);
+ }else if(p.section==='goals')normalizeAssetGoalInput({schemaVersion:d.targets.some(t=>Object.hasOwn(t,'assetTypeIds'))?4:3,...d},state);
  else{
   if(d.start<today)throw Error('新周期规则开始日期须为今天或将来，历史请单独核对');
   const account=id=>{const a=(state.accounts??[]).find(a=>a.id===id&&!a.archived);if(!a)throw Error('账户不存在或已归档');return a;};

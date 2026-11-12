@@ -265,3 +265,6 @@ consumptionType为可兼容的JSON字段（travel/shopping/dining/general/unknow
 日期筛选为包含端点的区间重叠，严格验证日期与先后，缺失日期仅在没有日期范围时保留。研究按真实评估/保存时间（北京时间），原币和钱数不因筛选改变。预算筛选连带限制年度预算统计；现金流水沿用最近300条并提示上限。当前成员筛选不影响旧账户归属。审批组件接受planId，只在对应详情展示，服务器逐人投票规则未变。
 
 recurringConfiguredPlan用于已启用规则的月金额合计，包含首期尚未到的规则，排除暂停及已结束项，明确不是月份预测。recurringActivePlan保留当前有效期查询；recurringMonthPlan及annualForecast仍按发生日期处理，不改变执行或账目。
+# 2026-11-12 目标组合扩展
+
+新增savings_goal schemaVersion=4，targets保存{id,name,assetTypeIds,target}，目标与资产类型为显式集合关系；不依赖固定goalBucket分组。读取v2/v3不写入迁移，编辑建议须本人核对保存后切换。名称、类型ID、启用/性质、跨组合唯一性和金额上限由领域模型与命令统一校验；引用目标的类型不能停用。MCP setup有限配置支持新格式，旧scope格式继续兼容，不允许混合。onboarding输出可用类型，财务上下文返回组合类型集合；不增加工具数量、不改变家庭权限或金融分录。

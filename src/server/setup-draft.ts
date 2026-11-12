@@ -10,7 +10,7 @@ type State={book:{active_dataset:string};financeMembers?:Member[];householdRevis
 type SetupDraft=(
  | {section:'members';data:{members:{name:string}[]}}
  | {section:'asset_types';data:{additions:Addition[]}}
- | {section:'goals';data:{name:string;targets:{scope:string;target:string}[];monthlyTarget:string|null;deadline:string|null}}
+ | {section:'goals';data:{name:string;targets:({scope:string;target:string}|{name:string;assetTypeIds:string[];target:string})[];monthlyTarget:string|null;deadline:string|null}}
  | {section:'recurring';data:{name:string;type:'income'|'expense'|'loan'|'investment';accountId:string;cashMemberId:string;amount:string;day:number;start:string;end:string|null;loanId?:string;assetId?:string}}
 )&{analysis:string};
 type Context={state:State;writeDoc:(id:string,kind:string,payload:unknown)=>unknown};
@@ -41,7 +41,7 @@ export function adoptSetupDraft(c:Context,p:SetupDraft,draftId:string,now:string
   const d=p.data;id='asset-types';destinationKind='asset_type_catalog';const current=assetTypeCatalogue(state),types=normalizeAssetTypes([...getAssetTypes(state),...d.additions.map((t:Addition)=>({...t,enabled:true}))],state);
   writeDoc(id,destinationKind,{types,version:current.version+1,updatedAt:now,mcpDraftId:draftId});
  }else if(p.section==='goals'){
-  const d=p.data,current=getAssetGoal(state);id=current.id??crypto.randomUUID();destinationKind='savings_goal';writeDoc(id,destinationKind,{...normalizeAssetGoalInput({schemaVersion:3,...d},state),updatedAt:now,mcpDraftId:draftId});
+  const d=p.data,current=getAssetGoal(state);id=current.id??crypto.randomUUID();destinationKind='savings_goal';writeDoc(id,destinationKind,{...normalizeAssetGoalInput({schemaVersion:d.targets.some(t=>'assetTypeIds' in t)?4:3,...d},state),updatedAt:now,mcpDraftId:draftId});
  }else{
   const d=p.data;id=crypto.randomUUID();destinationKind='recurring_rule';writeDoc(id,destinationKind,{...d,loanId:d.loanId??null,assetId:d.assetId??null,amount:minor(d.amount),autoPost:false,paused:false,version:1,principal:null,confirmedAt:now,analysis:p.analysis,mcpDraftId:draftId,source:'本人明确提供的周期规则，未经历史推定，不等于实际已到账或扣款'});
  }

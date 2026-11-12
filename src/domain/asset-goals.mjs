@@ -1,7 +1,7 @@
 import {MAX_MINOR,minor} from './finance.mjs';
 import {buildMonthlyReport} from './monthly-report.mjs';
 
-import {ASSET_GOAL_GROUPS,getAssetTypes,accountAssetType,legacyGoalBucket,assetTypeGoalGroups} from './asset-types.mjs';
+import {ASSET_GOAL_GROUPS,getAssetTypes,accountAssetType,legacyGoalBucket,assetTypeGoalGroups,goalEligibleType} from './asset-types.mjs';
 export const ASSET_GOAL_BUCKETS=ASSET_GOAL_GROUPS;
 const ids=ASSET_GOAL_BUCKETS.map(x=>x.id),excluded=['property','prepayment','system'];
 const add=(a,b)=>{const n=a+b;if(!Number.isSafeInteger(n)||Math.abs(n)>MAX_MINOR)throw Error('目标合计超出金额上限');return n;};
@@ -10,6 +10,7 @@ const amount=value=>{const n=minor(String(value));if(n<=0)throw Error('目标金
 
 // API amounts are decimal yuan strings; persisted goals use integer CNY minor units.
 export function normalizeAssetGoalInput(body,state={}){
+ if(body?.schemaVersion===4)return normalizeCombinationGoal(body,state);
  if(body?.schemaVersion===3)return normalizeSelectableGoal(body,state);
  if(body?.schemaVersion!==2)throw Error('目标版本无效');
  const targets=body.bucketTargets;
@@ -23,6 +24,7 @@ export function normalizeAssetGoalInput(body,state={}){
 }
 
 function readGoal(doc,state){
+ if(doc?.payload?.schemaVersion===4){try{const p=doc.payload,n=normalizeCombinationGoal({...p,targets:p.targets.map(t=>({...t,target:minorToInput(t.target)})),monthlyTarget:p.monthlyTarget==null?null:minorToInput(p.monthlyTarget)},state);return {...p,...n,id:doc.id,totalTarget:n.targets.map(t=>t.target).reduce(add,0),bucketTargets:Object.fromEntries(n.targets.map(t=>['selection:'+t.id,t.target])),isDefault:false};}catch{return null;}}
  const p=doc?.payload;if(p?.schemaVersion===3){try{const n=normalizeSelectableGoal({...p,targets:p.targets.map(t=>({...t,target:minorToInput(t.target)})),monthlyTarget:p.monthlyTarget==null?null:minorToInput(p.monthlyTarget)},state);return {...p,...n,id:doc.id,totalTarget:n.targets.map(t=>t.target).reduce(add,0),bucketTargets:Object.fromEntries(n.targets.map(t=>[t.scope,t.target])),isDefault:false};}catch{return null;}}
  if(p?.schemaVersion!==2)return null;
  try{
@@ -77,18 +79,41 @@ export function getAssetGoal(state){
 export function buildAssetGoalOverview(state,valueCNY,month=currentGoalMonth()){
  const documents=(state?.documents??[]).filter(doc=>doc.kind==='savings_goal');
  const goal=getAssetGoal(state);
- const buckets=goal.schemaVersion===3?goal.targets.map(row=>({...goalScopeOptions(state).find(o=>o.scope===row.scope),id:row.scope,target:row.target,current:0,complete:true,accountNames:[]})):ASSET_GOAL_BUCKETS.map(bucket=>({...bucket,target:goal.bucketTargets[bucket.id],current:0,complete:true,accountNames:[]}));
+ const buckets=goal.schemaVersion===4?goal.targets.map((row,i)=>({...row,scope:'selection:'+row.id,label:row.name,color:ASSET_GOAL_BUCKETS[i%ASSET_GOAL_BUCKETS.length].color,hint:row.assetTypeIds.map(id=>getAssetTypes(state).find(t=>t.id===id)?.name??id).join('、'),current:0,complete:true,accountNames:[]})):goal.schemaVersion===3?goal.targets.map(row=>({...goalScopeOptions(state).find(o=>o.scope===row.scope),id:row.scope,target:row.target,current:0,complete:true,accountNames:[]})):ASSET_GOAL_BUCKETS.map(bucket=>({...bucket,target:goal.bucketTargets[bucket.id],current:0,complete:true,accountNames:[]}));
  let current=0,unassigned=0,complete=true,unassignedComplete=true;const unassignedNames=[],unknownNames=[];
  for(const account of (state?.accounts??[]).filter(eligible)){
-  const bucket=goal.schemaVersion===3?buckets.find(bucket=>goalScopeMatches(bucket.scope,account,state)):buckets.find(bucket=>bucket.id===assetGoalBucket(account,state));
+  const bucket=goal.schemaVersion===4?buckets.find(bucket=>bucket.assetTypeIds.includes(accountAssetType(account,state)?.id)):goal.schemaVersion===3?buckets.find(bucket=>goalScopeMatches(bucket.scope,account,state)):buckets.find(bucket=>bucket.id===assetGoalBucket(account,state));
   if(bucket)bucket.accountNames.push(account.name);else unassignedNames.push(account.name);
   const value=valueCNY(account);
-  if(goal.schemaVersion===3&&!bucket){if(Number.isSafeInteger(value)&&value>=0&&value<=MAX_MINOR)unassigned=add(unassigned,value);else unassignedComplete=false;continue;}
+  if(goal.schemaVersion>=3&&!bucket){if(Number.isSafeInteger(value)&&value>=0&&value<=MAX_MINOR)unassigned=add(unassigned,value);else unassignedComplete=false;continue;}
   if(!Number.isSafeInteger(value)||value<0||value>MAX_MINOR){complete=false;unknownNames.push(account.name);if(bucket)bucket.complete=false;continue;}
   current=add(current,value);if(bucket)bucket.current=add(bucket.current,value);else unassigned=add(unassigned,value);
  }
  for(const bucket of buckets){bucket.progress=bucket.complete?Math.min(100,Math.max(0,bucket.current/bucket.target*100)):null;bucket.gap=bucket.complete?Math.max(0,bucket.target-bucket.current):null;}
- return {goal,buckets,current,unassigned,unassignedComplete,unassignedNames,unknownNames,complete,progress:complete?Math.min(100,current/goal.totalTarget*100):null,gap:complete?Math.max(0,goal.totalTarget-current):null,legacyGoals:documents.filter(doc=>![2,3].includes(doc.payload?.schemaVersion)),monthly:monthlyProgress(state,month,goal.monthlyTarget)};
+ return {goal,buckets,current,unassigned,unassignedComplete,unassignedNames,unknownNames,complete,progress:complete?Math.min(100,current/goal.totalTarget*100):null,gap:complete?Math.max(0,goal.totalTarget-current):null,legacyGoals:documents.filter(doc=>![2,3,4].includes(doc.payload?.schemaVersion)),monthly:monthlyProgress(state,month,goal.monthlyTarget)};
+}
+
+function normalizeCombinationGoal(body,state){
+ if(!Array.isArray(body.targets)||!body.targets.length||body.targets.length>20)throw Error('请设置1至20项目标组合');
+ const available=getAssetTypes(state).filter(goalEligibleType),used=new Set(),names=new Set(),targetIds=new Set();
+ const targets=body.targets.map((row,index)=>{
+  if(!row||Object.keys(row).some(k=>!['id','name','assetTypeIds','target'].includes(k)))throw Error('目标组合字段无效');
+  const id=row.id??'target_'+(index+1),name=typeof row.name==='string'?row.name.trim():'';
+  if(typeof id!=='string'||!/^[a-z][a-z0-9_-]{0,63}$/.test(id)||targetIds.has(id))throw Error('目标组合标识无效或重复');targetIds.add(id);
+  const nameKey=name.normalize('NFKC').toLocaleLowerCase();if(!name||name.length>100||/[\u0000-\u001f\u007f]/.test(name)||names.has(nameKey))throw Error('目标组合名称为空、重复或过长');names.add(nameKey);
+  if(!Array.isArray(row.assetTypeIds)||!row.assetTypeIds.length||row.assetTypeIds.length>50)throw Error('每项目标至少勾选一个资产类型');
+  for(const typeId of row.assetTypeIds){if(typeof typeId!=='string'||!available.some(t=>t.id===typeId))throw Error('目标资产类型不存在、已停用或不适用');if(used.has(typeId))throw Error('目标范围重复，同一资产类型只能计入一个目标');used.add(typeId);}
+  return {id,name,assetTypeIds:[...row.assetTypeIds],target:amount(row.target)};
+ });
+ targets.map(t=>t.target).reduce(add,0);const monthlyTarget=body.monthlyTarget==null||body.monthlyTarget===''?null:amount(body.monthlyTarget),deadline=body.deadline==null||body.deadline===''?null:body.deadline;
+ if(deadline!==null&&!validDate(deadline))throw Error('目标日期无效');const name=String(body.name??'资产目标').trim();if(!name||name.length>100)throw Error('目标名称无效');return {schemaVersion:4,name,targets,monthlyTarget,deadline};
+}
+
+/** Editor suggestions only: existing stored goals retain their original scope until explicitly saved. */
+export function editableGoalCombinations(goal,state){
+ if(goal.schemaVersion===4)return goal.targets.map(t=>({...t,assetTypeIds:[...t.assetTypeIds],target:minorToInput(t.target)}));
+ const types=getAssetTypes(state).filter(goalEligibleType),rows=goal.schemaVersion===3?goal.targets:ASSET_GOAL_BUCKETS.map(g=>({scope:'group:'+g.id,target:goal.bucketTargets[g.id]}));
+ return rows.map((row,index)=>{const option=goalScopeOptions(state).find(o=>o.scope===row.scope),group=row.scope.startsWith('group:')?row.scope.slice(6):null;const typeIds=group?types.filter(t=>t.goalBucket===group||(state.accounts??[]).some(a=>eligible(a)&&goalScopeMatches(row.scope,a,state)&&accountAssetType(a,state)?.id===t.id)).map(t=>t.id):[row.scope.slice(5)];return {id:'target_'+(index+1),name:option?.label.replace('（组合）','')??'目标 '+(index+1),assetTypeIds:typeIds,target:minorToInput(row.target)};});
 }
 
 const minorToInput=n=>{if(!Number.isSafeInteger(n)||n<=0||n>MAX_MINOR)throw Error('目标金额无效');return String(Math.floor(n/100))+'.'+String(n%100).padStart(2,'0');};

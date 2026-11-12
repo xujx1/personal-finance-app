@@ -20,8 +20,8 @@ description: "Use when 用户首次整理家庭财务，或家庭财务中心的
 | 要保存的内容 | 草稿契约与边界 |
 | --- | --- |
 | 财务成员昵称 | kind=setup，payload={section:'members',data:{members:[{name}]},analysis}。只新增未关联登录的财务档案，不改变已有成员或给昵称授予访问权限。已有同名成员先澄清归属。 |
-| 新增资产类型 | kind=setup，payload={section:'asset_types',data:{additions:[{id,name,baseCategory,goalBucket}]},analysis}。baseCategory为cash/term_deposit/fund/stock/property/loan/other；goalBucket为null/stock/deposits/broadIndex/preciousMetals。用户确认后为新增项提供独特id，采用后重新读取真实类型ID；不重命名或修改已有类型，不按资产名称猜目标分组；房产和贷款的goalBucket必须为null。 |
-| 用户自己的目标 | kind=setup，payload={section:'goals',data:{name,targets:[{scope,target}],monthlyTarget,deadline},analysis}。scope取返回的可用goalScopes，例如group:stock或type:真实类型ID；范围不可重叠，target与monthlyTarget用大于零的人民币元十进制字符串。这是替换当前家庭目标，不能作为第二份目标再加到旧总额。提交前列出当前目标（默认值须标参考）与拟采用的完整目标、范围和总额、月目标、期限，请用户确认前后变化和被移除范围。目标口径、金额需用户确认，不能把“攒钱”直接解释成净资产或把负债当储蓄；“都算存款”先确认是“银行存款＋国债”组合还是某个真实类型范围，不改变已有资产性质或把基金一律归为现金。月目标或期限未知可用null。 |
+| 新增资产类型 | kind=setup，payload={section:'asset_types',data:{additions:[{id,name,baseCategory}]},analysis}。baseCategory为cash/term_deposit/fund/stock/property/loan/other。用户确认后提供独特id，采用后重新读取真实类型ID；不重命名或修改已有类型。新类型不指定固定目标组，在目标中自由勾选；goalBucket只兼容旧资料，新输入可省略。房产、贷款和预付款不能纳入此储蓄目标。 |
+| 用户自己的目标 | kind=setup，payload={section:'goals',data:{name,targets:[{name,assetTypeIds,target}],monthlyTarget,deadline},analysis}。每个组合有用户自定名称，assetTypeIds勾选本次返回onboarding.goalCombinationTypes中的一个或多个真实类型ID，不是固定四种组合。同一类型不能跨组合重复；未选类型不计进度，新类型不自动加入。旧scope格式仅兼容旧草稿，不与新格式混用。target与monthlyTarget用大于零的人民币元十进制字符串。这是替换当前家庭目标，不能作为第二份目标叠加。提交前列出当前目标（默认值须标参考）与拟采用的完整组合名称、类型、金额、总额、月目标、期限，请用户确认前后变化和被移除范围。不能把“攒钱”直接解释成净资产或把负债当储蓄；“都算存款”先确认具体勾选哪些真实类型，如活期、定期和国债，不改变资产性质或把基金一律归为现金。月目标或期限未知可用null。 |
 | 明确固定的收支 | kind=setup，payload={section:'recurring',data:{name,type,accountId,cashMemberId,amount,day,start,end},analysis}。type为income/expense/loan/investment，amount为人民币元十进制字符串，day为每月日期整数，start为今天或未来日期，end为null或日期；loan必须补真实loanId，investment必须补真实assetId，其他类型不传这两个字段；accountId为人民币现金账户，cashMemberId须与其归属一致。只用用户明确陈述的固定规则与已采用账户/成员ID，不能用一笔到账推断周期；没有历史也可登记明确固定规则。autoPost始终关闭，规则不创造过去流水或当期到账，未来每期仍需确认实际发生。 |
 
 ## 现有资产与历史的不同路线

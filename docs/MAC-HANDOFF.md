@@ -393,3 +393,9 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'
 周期顶部汇总未暂停、未结束规则的每月金额，包含首期尚未到的安排；这是规则合计而非某月预测。到期执行、现金预测和历史账本不变。新回归入口 npm run test:e2e:records。详见 requirements-record-filters-2026-11-12.md 的F001–F007。
 
 正式版v41已发布，环境修订16、MCP连接及访问策略保持。606项测试和85项E2E通过；最终周期展示补正后重跑606项及专项10项。线上只读核对收入26360、流出9528；发布前后账本修订48及18个账户、4条规则等财务数据一致。
+
+## 2026-11-12 自由组合目标
+
+目标设置改为名称、金额及基础类型多选，v4 targets={id,name,assetTypeIds,target}。保存时类型ID不能跨组合重叠；启用类型来自本家庭字典，排除房产、贷款、预付款。资产类型维护不再展示固定组合归属，旧goalBucket字段只兼容旧规则。v2/v3目标及旧scope建档草稿继续读取，网页切换旧目标须先核对类型建议。MCP新建档用targets:[{name,assetTypeIds,target}]，get_financial_context返回goalCombinationTypes及目标真实类型集合。详见G001–G006。
+
+正式v42上线，612项测试、类型检查、25项E2E及45项独立定向审查通过。发布前后账本修订48、18个账户及目标/周期/现金等保持一致。用户的旧目标继续生效，只有本人保存后才切换新版范围；不需要调整环境配置或重新安装npm入口。
