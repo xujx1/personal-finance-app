@@ -1,0 +1,111 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import {openTestDatabase} from '../tests/helpers/d1.mjs';
+import {executeCommand,snapshot} from '../src/server/finance-store.ts';
+import {familyContext} from '../src/server/family-service.ts';
+import {scopeDb} from '../src/server/ledger-scope.ts';
+import {prepareVendor} from './prepare-vendor.mjs';
+
+// Isolated historical fixtures plus real HTTP/MCP/SQLite/Chrome verification.
+// ChatGPT structured outputs are explicit simulations; no provider or production writes.
+const root=fileURLToPath(new URL('../',import.meta.url));
+const modules=path.resolve(process.env.LOCAL_TEST_MODULES??process.argv[2]??path.join(root,'work/calendar-qa/node_modules'));
+const {chromium}=createRequire(path.join(modules,'../package.json'))(path.join(modules,'playwright'));
+const out=path.join(root,'work/record-experience/e2e');fs.mkdirSync(out,{recursive:true});
+const env={...process.env,LOCAL_TEST_MODULES:path.join(root,'node_modules'),LOCAL_FAMILY_QA:'1',LOCAL_API_PORT:'6064',LOCAL_UI_PORT:'6063',LOCAL_QA_DATABASE:`qa-record-experience-${Date.now()}.sqlite`};
+for(const key of Object.keys(env))if(key.startsWith('NEW_API_')||key==='TAVILY_API_KEY')delete env[key];
+const owner='local-simulated-owner',viewer='local-simulated-member',ownerId='user:'+owner;
+const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const day=offset=>new Date(Date.parse(today+'T00:00:00Z')+offset*86400000).toISOString().slice(0,10);
+const directory=path.join(root,'.sites-runtime/local-qa');fs.mkdirSync(directory,{recursive:true});
+const fixture=openTestDatabase(path.join(directory,env.LOCAL_QA_DATABASE));
+const scope=await familyContext(fixture.db,{userId:owner,displayName:'模拟管理员',email:owner+'@example.test'},{ownerSubject:owner});
+const db=scopeDb(fixture.db,scope),seed=async(action,body)=>executeCommand(db,{key:crypto.randomUUID(),revision:(await snapshot(db)).book.revision,action,body},owner);
+const person=(await seed('member.save',{name:'模拟有效家人'})).id,archived=(await seed('member.save',{name:'模拟离开成员'})).id;
+const bank=(await seed('account.save',{name:'模拟本人银行',category:'cash',currency:'CNY',amount:'100000.00',ownerMemberId:ownerId,date:day(-10)})).id;
+const shared=(await seed('account.save',{name:'模拟家庭共用银行',category:'cash',currency:'CNY',amount:'2000.00',ownerMemberId:'family',date:day(-10)})).id;
+const historical=(await seed('account.save',{name:'模拟离开成员历史银行',category:'cash',currency:'CNY',amount:'3000.00',ownerMemberId:archived,date:day(-10)})).id;
+const unknown=(await seed('account.save',{name:'模拟未知归属银行',category:'cash',currency:'CNY',amount:'4000.00',ownerMemberId:person,date:day(-10)})).id;
+const loan=(await seed('account.save',{name:'模拟房贷',category:'loan',currency:'CNY',amount:'200000.00',ownerMemberId:ownerId,date:day(-10)})).id;
+await seed('transaction.add',{type:'expense',accountId:historical,cashMemberId:archived,amount:'3.00',date:day(-3),note:'模拟离开成员历史支出'});
+const seeded=await snapshot(db),dataset=seeded.book.active_dataset;
+const insert=(id,kind,payload)=>fixture.sqlite.prepare('INSERT INTO documents VALUES(?,?,?,?)').run(dataset,id,kind,JSON.stringify(payload));
+const profile=seeded.documents.find(d=>d.id===archived).payload;fixture.sqlite.prepare('UPDATE documents SET payload=? WHERE dataset_id=? AND id=?').run(JSON.stringify({...profile,archived:true}),dataset,archived);
+const account=seeded.accounts.find(a=>a.id===unknown);fixture.sqlite.prepare('UPDATE accounts SET metadata=? WHERE dataset_id=? AND id=?').run(JSON.stringify({...account.metadata,ownerMemberId:'unknown',ownerSubject:null,ownerLabel:'归属待确认'}),dataset,unknown);
+// Preserve actual legacy shapes: no canonical type and no invented timestamp.
+for(let i=1;i<=6;i++)insert('legacy-travel-'+i,'advice',{title:'模拟历史旅游记录 '+i,summary:'旧研究存档，不改历史',kind:'travel',generatedAt:'2026-01-15T04:00:00Z',content:'隔离旧记录',status:'READY'});
+insert('legacy-unknown','advice',{title:'模拟旅游餐饮购物标题不能猜分类',summary:'没有明确结构化类别或保存日期',status:'READY'});
+insert('legacy-unknown-plan','plan',{name:'模拟旧旅游标题未分类预算',category:'宝宝教育及托育',ownerMemberId:archived,ownerLabel:'模拟离开成员',ownerSubject:null,date:day(-2),end:day(2),budget:50000,reserved:0,status:'PLANNED',budgetStatus:'DRAFT',version:0,note:'旧记录保留原样'});
+const rules=[['模拟当前工资','income',2300000,10,day(28),null,false],['模拟当前公积金','income',336000,15,day(3),null,false],['模拟当前房贷','loan',750000,1,day(19),null,false],['模拟当前公积金贷款','loan',202800,20,day(8),null,false],['模拟已结束收入','income',888800,1,day(-20),day(-1),false],['模拟暂停收入','income',777700,1,day(-10),null,true]];
+for(const [name,type,amount,d,start,end,paused]of rules)insert('record-rule-'+name,'recurring_rule',{name,type,amount,day:d,start,end,paused,accountId:bank,cashMemberId:ownerId,loanId:type==='loan'?loan:null,assetId:null,principal:null,autoPost:false,confirmedAt:new Date().toISOString(),version:1});
+fixture.sqlite.close();
+await prepareVendor(env.LOCAL_TEST_MODULES);
+const children=['local/server.mjs','local/vite-server.mjs'].map((script,i)=>{const log=fs.openSync(path.join(out,i?'ui.log':'api.log'),'w');return spawn(process.execPath,[script],{cwd:root,env,stdio:['ignore',log,log]})});
+const url='http://127.0.0.1:6063',api='http://127.0.0.1:6064';
+const results=[],pageErrors=[],unexpected=[],screenshots=[];let browser,page;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitServer(){for(let i=0;i<120;i++){try{if((await fetch(url)).ok&&(await fetch(api+'/api/finance')).ok)return}catch{}await sleep(200)}throw Error('record experience preview did not start')}
+async function json(route,{user=owner,body,allowError=false}={}){const r=await fetch(api+route,{method:body?'POST':'GET',headers:{'x-local-qa-user':user,...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const value=await r.json();if(!allowError)assert.ok(r.ok,JSON.stringify(value));return {status:r.status,value}}
+const state=async()=> (await json('/api/finance')).value;
+async function command(action,body,user=owner){return (await json('/api/finance',{user,body:{key:crypto.randomUUID(),revision:(await state()).book.revision,action,body}})).value}
+async function call(name,args={}){const r=await json('/mcp',{body:{jsonrpc:'2.0',id:crypto.randomUUID(),method:'tools/call',params:{name,arguments:args}}});assert.ok(!r.value.result?.isError,JSON.stringify(r.value));return r.value.result.structuredContent}
+async function stage(kind,payload){return call('submit_finance_draft',{kind,payload,request_id:crypto.randomUUID(),expected_revision:(await state()).book.revision})}
+async function nav(name,p=page){const toggle=p.getByRole('button',{name:'切换菜单'});if(await toggle.isVisible())await toggle.click();await p.getByRole('navigation').getByRole('button',{name,exact:true}).click();await p.locator('.sidebar').evaluate(node=>Promise.all(node.getAnimations().map(a=>a.finished.catch(()=>{}))))}
+async function reload(name){await page.reload({waitUntil:'networkidle'});await nav(name)}
+async function check(name,fn){await fn();results.push({name,status:'PASS'});console.log('PASS '+name)}
+async function screenshot(name){const p=path.join(out,name+'.png');await page.screenshot({path:p,fullPage:true});screenshots.push(p)}
+const research=kind=>({kind,title:'模拟'+({travel:'旅游',shopping:'购物',dining:'餐饮'})[kind]+'研究',summary:'明确结构化消费类型，标题不作为分类证据',content:'隔离模拟ChatGPT输出，没有实际报价或预订。',date:day(1),end:day(2),budget:'100.00',sources:[]});
+const budget=(kind,name,memberId,from,to)=>({name,category:'其他',date:from,end:to,budget:'100.00',ownerMemberId:memberId,analysis:'模拟已核对消费研究。隔离资料，不是真实模型建议。',expenseDraft:{kind,items:[{id:'one',name:'模拟费用',quantity:'1',unitPrice:'100.00',sourceType:'scenario_estimate'}],itinerary:[]}});
+const planCard=(name,p=page)=>p.locator('.plan-card').filter({has:p.getByRole('heading',{name,exact:true})});
+const flowRows=()=>page.getByRole('table',{name:'现金流水',exact:true}).locator('tbody tr');
+async function setDates(prefix,from='',to=''){await page.getByLabel(prefix+'开始日期',{exact:true}).fill(from);await page.getByLabel(prefix+'结束日期',{exact:true}).fill(to)}
+try{
+ await waitServer();browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.route('**/*',route=>{const u=new URL(route.request().url());if(['127.0.0.1','localhost'].includes(u.hostname))return route.continue();unexpected.push(u.origin);return route.abort()});page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>pageErrors.push(e.message));await page.goto(url,{waitUntil:'networkidle'});const showAmounts=page.getByRole('button',{name:'显示金额',exact:true});if(await showAmounts.isVisible())await showAmounts.click();
+ let travelPlan,diningPlan,shoppingPlan;
+ await check('新MCP旅游、购物、餐饮研究保存稳定种类，预算采用同步保存研究投影',async()=>{
+  for(const kind of ['travel','shopping','dining']){const r=await call('submit_research_proposal',{...research(kind),request_id:crypto.randomUUID(),expected_revision:(await state()).book.revision});assert.equal((await state()).documents.find(d=>d.id===r.id).payload.consumptionType,kind)}
+  const f=(await json('/api/family')).value,invite=(await json('/api/family',{body:{action:'invite',revision:f.family.revision}})).value;await json('/api/family',{user:viewer,body:{action:'accept',token:invite.token}});
+  for(const [kind,name,memberId,from,to]of [['travel','模拟跨日旅游预算',ownerId,day(-3),day(3)],['shopping','模拟未来购物预算',ownerId,day(10),day(12)],['dining','模拟共用餐饮预算','family',day(-1),day(1)]]){const p=budget(kind,name,memberId,from,to),d=await stage('budget',p),adopted=await command('mcp.draft.accept',{draftId:d.id,confirmed:true,reviewedPayload:p});assert.equal((await state()).documents.find(d=>d.id===adopted.id).payload.consumptionType,kind);if(kind==='travel')travelPlan=adopted.id;else if(kind==='shopping')shoppingPlan=adopted.id;else diningPlan=adopted.id}
+ });
+ await check('研究记录移除顶部ChatGPT引导，仍有5条分页、搜索、种类和保存日期组合筛选',async()=>{
+  await reload('研究记录');assert.equal(await page.getByRole('region',{name:'ChatGPT处理入口'}).count(),0);assert.equal(await page.getByRole('region',{name:'ChatGPT外部分析草稿'}).count(),0);assert.doesNotMatch(await page.locator('main').innerText(),/在ChatGPT中选择家庭财务中心，分析后保存/);assert.equal(await page.locator('.review-record').count(),5);await page.getByRole('button',{name:'下一页',exact:true}).click();assert.match(await page.locator('[aria-label="研究分页"]').innerText(),/第 2/);
+  await page.getByLabel('消费种类',{exact:true}).selectOption('travel');assert.match(await page.locator('[aria-label="研究分页"]').innerText(),/第 1/);await page.getByLabel('搜索研究记录',{exact:true}).fill('模拟跨日旅游预算');assert.equal(await page.locator('.review-record').count(),1);assert.match(await page.locator('.review-record').innerText(),/已采用预算 · 研究存档/);await setDates('研究',today,today);assert.equal(await page.locator('.review-record').count(),1);
+  await setDates('研究','2026-01-15','2026-01-15');assert.equal(await page.locator('.review-record').count(),0);await page.getByLabel('搜索研究记录',{exact:true}).fill('');assert.equal(await page.locator('.review-record').count(),5);await page.getByRole('button',{name:'下一页',exact:true}).click();assert.equal(await page.locator('.review-record').count(),1);
+  await setDates('研究');await page.getByLabel('消费种类',{exact:true}).selectOption('unknown');assert.equal(await page.locator('.review-record').count(),1);assert.match(await page.locator('.review-record').innerText(),/旅游餐饮购物标题不能猜分类/);assert.match(await page.locator('.review-record').innerText(),/未分类.*时间未记录/);await setDates('研究',today,today);assert.equal(await page.locator('.review-record').count(),0);await setDates('研究',day(1),today);await page.getByRole('status').filter({hasText:'开始日期不能晚于结束日期'}).waitFor();await setDates('研究');await page.getByLabel('消费种类',{exact:true}).selectOption('all');await screenshot('01-research-desktop');
+ });
+ await check('预算种类、成员和日期按包含端点的区间交集筛选，旧标题未分类不猜测',async()=>{
+  await nav('预算与大型支出');assert.equal(await page.getByRole('region',{name:'家庭预算审批'}).count(),0);await page.getByLabel('预算消费种类',{exact:true}).selectOption('travel');await setDates('预算',today,today);await page.getByLabel('预算归属成员',{exact:true}).selectOption(ownerId);assert.equal(await page.locator('.plan-card').count(),1);await planCard('模拟跨日旅游预算').waitFor();
+  await page.getByLabel('预算归属成员',{exact:true}).selectOption('family');assert.equal(await page.locator('.plan-card').count(),0);await page.getByLabel('预算消费种类',{exact:true}).selectOption('dining');await planCard('模拟共用餐饮预算').waitFor();assert.equal(await page.locator('.plan-card').count(),1);
+  await page.getByLabel('预算归属成员',{exact:true}).selectOption('all');await page.getByLabel('预算消费种类',{exact:true}).selectOption('unknown');await planCard('模拟旧旅游标题未分类预算').waitFor();assert.equal(await page.locator('.plan-card').count(),1);await setDates('预算',day(5),day(6));assert.equal(await page.locator('.plan-card').count(),0);await setDates('预算');await page.getByLabel('预算消费种类',{exact:true}).selectOption('all');assert.equal(await page.locator('.plan-card').count(),4);await screenshot('02-budgets-desktop');
+ });
+ await check('全家汇总包含有效、离开和未知历史，家庭共用只显示共用；当前成员下拉不含无效归属',async()=>{
+  await nav('资产与贷款');const select=page.getByLabel('资产归属成员',{exact:true}),options=await select.locator('option').evaluateAll(nodes=>nodes.map(n=>({value:n.value,label:n.textContent})));assert.equal(options.find(o=>o.value==='all').label,'全家汇总');assert.equal(options.find(o=>o.value==='family').label,'家庭共用');assert.ok(options.some(o=>o.value===person));assert.equal(options.some(o=>[archived,'unknown'].includes(o.value)),false);
+  const table=page.getByRole('table',{name:'资产与贷款账户'});await table.getByRole('button',{name:'调整：模拟离开成员历史银行',exact:true}).waitFor();await table.getByRole('button',{name:'调整：模拟未知归属银行',exact:true}).waitFor();await select.selectOption('family');assert.equal(await table.locator('tbody tr').count(),1);await table.getByRole('button',{name:'调整：模拟家庭共用银行',exact:true}).waitFor();assert.match(await page.locator('.asset-tabs').innerText(),/2,000.00/);await select.selectOption('all');assert.ok(await table.locator('tbody tr').count()>1);await screenshot('03-assets-desktop');
+ });
+ await check('资产分类金额卡片始终单行横向滚动，紧凑下拉与分类卡片显示相同账户',async()=>{
+  const tabs=page.locator('.asset-tabs');const boxes=await tabs.locator('button').evaluateAll(nodes=>nodes.map(n=>({top:n.getBoundingClientRect().top,height:n.getBoundingClientRect().height})));assert.ok(boxes.length>=15);assert.ok(Math.max(...boxes.map(b=>b.top))-Math.min(...boxes.map(b=>b.top))<2);assert.equal(await tabs.evaluate(n=>n.scrollWidth>n.clientWidth),true);await page.getByLabel('资产分类',{exact:true}).selectOption('cash');assert.equal(await page.getByRole('table',{name:'资产与贷款账户'}).getByRole('button',{name:'调整：模拟房贷',exact:true}).count(),0);await page.getByLabel('资产分类',{exact:true}).selectOption('all');
+ });
+ await check('指定预算详情保留家人本人审批，列表无全局审批墙且不能替其他家人投票',async()=>{
+  const mc=await browser.newContext({extraHTTPHeaders:{'x-local-qa-user':viewer}}),mp=await mc.newPage();await mp.goto(url,{waitUntil:'networkidle'});await nav('预算与大型支出',mp);assert.equal(await mp.getByRole('region',{name:'家庭预算审批'}).count(),0);await planCard('模拟跨日旅游预算',mp).getByRole('button',{name:'详情与审批',exact:true}).click();const approval=mp.getByRole('region',{name:'家庭预算审批'});await approval.waitFor();assert.match(await approval.innerText(),/模拟跨日旅游预算/);assert.doesNotMatch(await approval.innerText(),/模拟共用餐饮预算|模拟未来购物预算/);await approval.getByRole('button',{name:'我同意此预算',exact:true}).click();for(let i=0;i<40;i++){if((await state()).documents.find(d=>d.id===travelPlan).payload.budgetStatus==='APPROVED')break;await sleep(100)}assert.equal((await state()).documents.find(d=>d.id===travelPlan).payload.budgetStatus,'APPROVED');assert.equal((await state()).documents.find(d=>d.id===diningPlan).payload.budgetStatus,'PENDING_APPROVAL');assert.equal((await state()).documents.find(d=>d.id===shoppingPlan).payload.budgetStatus,'PENDING_APPROVAL');await mc.close();
+ });
+ await check('MCP实际支出存稳定消费种类，流水种类、日期与成员组合筛选，未分类历史仍保留',async()=>{
+  for(const [type,accountId,memberId,amount,date,note]of [['travel',bank,ownerId,'12.34',day(-2),'模拟本人旅游支出'],['shopping',bank,ownerId,'23.45',day(-1),'模拟本人购物支出'],['dining',shared,'family','34.56',today,'模拟家庭餐饮支出']]){const p={type:'expense',consumptionType:type,accountId,cashMemberId:memberId,amount,date,note,balanceIncluded:false},d=await stage('cashflow',p),saved=await command('mcp.draft.accept',{draftId:d.id,confirmed:true,actualConfirmed:true,reviewedPayload:p});assert.equal((await state()).transactions.find(t=>t.id===saved.id).metadata.consumptionType,type)}
+  await reload('现金流水');await page.getByLabel('流水消费种类',{exact:true}).selectOption('travel');await page.getByLabel('流水收付款成员',{exact:true}).selectOption(ownerId);await setDates('流水',day(-2),day(-2));assert.equal(await flowRows().count(),1);assert.match(await flowRows().innerText(),/模拟本人旅游支出.*12.34/s);await page.getByLabel('流水收付款成员',{exact:true}).selectOption('family');assert.equal(await flowRows().count(),0);await page.getByLabel('流水消费种类',{exact:true}).selectOption('dining');await setDates('流水',today,today);assert.equal(await flowRows().count(),1);assert.match(await flowRows().innerText(),/模拟家庭餐饮支出.*34.56/s);
+  await page.getByLabel('流水收付款成员',{exact:true}).selectOption('all');await page.getByLabel('流水消费种类',{exact:true}).selectOption('all');await setDates('流水');assert.match(await flowRows().allTextContents().then(v=>v.join('\n')),/模拟离开成员历史支出/);const opts=await page.getByLabel('流水收付款成员',{exact:true}).locator('option').evaluateAll(ns=>ns.map(n=>n.value));assert.equal(opts.includes(archived),false);assert.equal(opts.includes('unknown'),false);await screenshot('04-flows-desktop');
+ });
+ await check('网页手记实际支出可明确选择购物种类，金额只从所选本人现金扣一次',async()=>{
+  const before=await state();await page.getByRole('button',{name:'记实际收支',exact:true}).click();const d=page.getByRole('dialog');await d.getByLabel('流水类型',{exact:true}).selectOption('expense');await d.getByLabel('收付款成员',{exact:true}).selectOption(ownerId);await d.getByLabel('人民币现金账户',{exact:true}).selectOption(bank);await d.getByLabel('支出消费种类',{exact:true}).selectOption('shopping');await d.getByLabel('金额 CNY',{exact:true}).fill('45.67');await d.getByLabel('发生日期',{exact:true}).fill(today);await d.getByLabel('说明',{exact:true}).fill('模拟网页明确购物');await d.getByRole('checkbox',{name:/我已核对这笔收入/}).check();await d.getByRole('button',{name:'确认保存',exact:true}).click();await d.waitFor({state:'hidden'});const after=await state();assert.equal(after.accounts.find(a=>a.id===bank).balance,before.accounts.find(a=>a.id===bank).balance-4567);assert.equal(after.transactions.find(t=>t.metadata.note==='模拟网页明确购物').metadata.consumptionType,'shopping');await page.getByLabel('流水消费种类',{exact:true}).selectOption('shopping');await setDates('流水',today,today);assert.equal(await flowRows().count(),1);assert.match(await flowRows().innerText(),/模拟网页明确购物/);
+ });
+ await check('首期尚未到的四条启用规则合计26360元收入和9528元流出，不补历史',async()=>{
+  const before=await state();await nav('周期收支');const metrics=page.locator('.recurring-metrics');await metrics.waitFor();const metric=label=>metrics.locator('.recurring-metric').filter({hasText:label});assert.match(await metric('规则月收入合计').innerText(),/26360.00/);assert.match(await metric('规则月流出合计').innerText(),/9528.00/);assert.equal((await metrics.locator('.recurring-metric').nth(2).locator('strong').innerText()).trim(),'4');assert.match(await page.locator('.recurring-table').innerText(),/模拟当前工资.*首期未到/s);assert.match(await page.locator('.recurring-table').innerText(),/模拟已结束收入.*已结束/s);assert.match(await page.locator('.recurring-table').innerText(),/模拟暂停收入.*已暂停/s);await page.getByRole('button',{name:'检查到期',exact:true}).click();await page.getByRole('button',{name:'检查到期',exact:true}).waitFor();const after=await state();assert.deepEqual(after.transactions,before.transactions);assert.deepEqual(after.accounts,before.accounts);assert.equal(after.documents.filter(d=>d.kind==='recurring_occurrence'&&d.payload.name.startsWith('模拟当前')&&d.payload.date<today).length,0);await screenshot('05-recurring-desktop');
+ });
+ await check('手机研究、预算、流水筛选和资产分类条无页面横向溢出，分类条本身可左右滚动',async()=>{
+  await page.setViewportSize({width:390,height:844});for(const name of ['研究记录','预算与大型支出','现金流水','资产与贷款']){await nav(name);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),name);if(name==='资产与贷款'){const tabs=page.locator('.asset-tabs');assert.equal(await tabs.evaluate(n=>n.scrollWidth>n.clientWidth),true);await tabs.evaluate(n=>{n.scrollLeft=n.scrollWidth});assert.ok(await tabs.evaluate(n=>n.scrollLeft>0));const tops=await tabs.locator('button').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().top));assert.ok(Math.max(...tops)-Math.min(...tops)<2)}await screenshot('mobile-'+name)}assert.deepEqual(pageErrors,[]);assert.deepEqual(unexpected,[]);
+ });
+ const finalState=await state();assert.equal(Object.hasOwn(finalState.documents.find(d=>d.id==='legacy-unknown').payload,'consumptionType'),false);assert.equal(Object.hasOwn(finalState.documents.find(d=>d.id==='legacy-unknown-plan').payload,'consumptionType'),false);fs.writeFileSync(path.join(out,'final-state.json'),JSON.stringify(finalState,null,2));
+}catch(error){results.push({name:'执行中断',status:'FAIL',error:error.stack});console.error(error);if(page){fs.writeFileSync(path.join(out,'failure.txt'),await page.locator('body').innerText().catch(()=>''));await page.screenshot({path:path.join(out,'failure.png'),fullPage:true}).catch(()=>{})}process.exitCode=1}
+finally{fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({date:new Date().toISOString(),scope:'隔离历史SQLite样本与真实HTTP/MCP/Chrome：研究/预算/流水筛选、当前成员、分类布局、局部审批、周期口径',productionWrites:false,database:env.LOCAL_QA_DATABASE,passed:results.filter(r=>r.status==='PASS').length,failed:results.filter(r=>r.status==='FAIL').length,pageErrors,unexpected,screenshots,results},null,2));await browser?.close();for(const child of children)child.kill('SIGTERM')}

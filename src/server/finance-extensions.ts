@@ -1,3 +1,4 @@
+import {consumptionTypeOf,consumptionTypeForWrite} from '../domain/consumption.mjs';
 import {normalizeAssetTypes,assetTypeCatalogue} from '../domain/asset-types.mjs';
 import {extendAssetTrade} from './asset-trade.ts';
 import {extendMcpDraft} from './mcp-draft.ts';
@@ -32,7 +33,7 @@ export async function extendFinance(c:any){
   const duplicate=await db.prepare("SELECT id FROM transactions WHERE dataset_id=? AND status='POSTED' AND business_date=? AND total_minor=? AND kind IN('EXPENSE','INCOME','PAYMENT') LIMIT 1").bind(ds,date,n).first();
   if(duplicate&&!body.duplicateReason)throw Error('同日同金额存在疑似重复记录，请核对并填写不同交易的理由');
   const income=r.kind==='income',basis=included?system('equity'):bank;
-  journal(income?'INCOME':'EXPENSE',n,[entry(basis,income?n:-n),entry(system(income?'income':'expense'),income?-n:n)],{businessDate:date,accountId:bank.id,note:txt(body.name??r.name,300),balanceIncluded:included,snapshotDate:included?body.snapshotDate:null,imageImport:d.id,rowIndex:i,duplicateReason:body.duplicateReason?txt(body.duplicateReason):null});
+  journal(income?'INCOME':'EXPENSE',n,[entry(basis,income?n:-n),entry(system(income?'income':'expense'),income?-n:n)],{consumptionType:consumptionTypeForWrite({...r,type:r.kind,...(body.consumptionType!==undefined?{consumptionType:body.consumptionType}:{})}),businessDate:date,accountId:bank.id,note:txt(body.name??r.name,300),balanceIncluded:included,snapshotDate:included?body.snapshotDate:null,imageImport:d.id,rowIndex:i,duplicateReason:body.duplicateReason?txt(body.duplicateReason):null});
   if(included)metadata(bank,{...bank.metadata,asOf:body.snapshotDate});
   writeDoc(d.id,'image_import',{...d.payload,rows:d.payload.rows.map((x:any,j:number)=>j===i?{...x,confirmed:true,confirmedAt:new Date().toISOString()}:x)});result.id=d.id;return true;
  }
@@ -50,7 +51,7 @@ export async function extendFinance(c:any){
   const p=doc(body.planId),bank=cash(body.accountId),n=positive(body.amount);if(p.kind!=='plan'||p.payload.budgetStatus!=='APPROVED'||['COMPLETED','CANCELLED'].includes(p.payload.status))throw Error('计划未批准或已结束');
   if(p.payload.loanId)throw Error('贷款计划不能使用消费预付款，请记录实际贷款还款');
   const id='prepaid:'+p.id,a={id,currency:'CNY'},existing=state.accounts.find((x:any)=>x.id===id),payer=accountMember(bank,state);if(existing&&accountMember(existing,state).id!==payer.id)throw Error('预付款归属与付款账户不同，请按个人归属分别安排计划');const owner=ownerFields(state,payer.id);stagedAccounts.push({...a,name:'预付款：'+p.payload.name,kind:'ASSET',category:'prepayment',metadata:{planId:p.id,...owner}});rows.push(db.prepare('INSERT OR IGNORE INTO accounts VALUES(?,?,?,?,?,?,0,?)').bind(ds,id,'预付款：'+p.payload.name,'ASSET','prepayment','CNY',JSON.stringify({planId:p.id,...owner})));
-  journal('PREPAYMENT',n,[entry(bank,-n),entry(a,n)],{accountId:bank.id,planId:p.id,note:txt(body.note??'预订预付款，尚未确认消费')});writeDoc(p.id,'plan',{...p.payload,reserved:Math.max(0,(p.payload.reserved??0)-n),status:'BOOKED'});return true;
+  journal('PREPAYMENT',n,[entry(bank,-n),entry(a,n)],{consumptionType:consumptionTypeOf(p),accountId:bank.id,planId:p.id,note:txt(body.note??'预订预付款，尚未确认消费')});writeDoc(p.id,'plan',{...p.payload,reserved:Math.max(0,(p.payload.reserved??0)-n),status:'BOOKED'});return true;
  }
  if(action==='plan.consume'||action==='plan.prepay.refund'){
   const refund=action==='plan.prepay.refund';let original:any;
@@ -59,7 +60,7 @@ export async function extendFinance(c:any){
   if(!original)throw Error('未找到原始预付款');const m=JSON.parse(original.metadata);if(!refund&&m.planId!==body.planId)throw Error('预付款不属于本计划');const a=account('prepaid:'+m.planId),bank=cash(m.accountId),n=positive(body.amount);
   const used:any=await db.prepare("SELECT COALESCE(SUM(total_minor),0) AS n FROM transactions WHERE dataset_id=? AND status='POSTED' AND (kind='PREPAYMENT_REFUND' AND original_id=? OR kind='PAYMENT' AND json_extract(metadata,'$.prepaymentId')=?)").bind(ds,original.id,original.id).first();
   if(n>a.balance||n+used.n>original.total_minor)throw Error('超过原预付款尚未消费或退款的金额');
-  journal(refund?'PREPAYMENT_REFUND':'PAYMENT',n,[entry(a,-n),entry(refund?bank:system('expense'),n)],{planId:m.planId,accountId:bank.id,prepaymentId:original.id,fromPrepayment:!refund,note:refund?'原预付款退款到账':'确认预付款已消费，不再扣现金'},refund?original.id:null);return true;
+  journal(refund?'PREPAYMENT_REFUND':'PAYMENT',n,[entry(a,-n),entry(refund?bank:system('expense'),n)],{consumptionType:m.consumptionType!==undefined?consumptionTypeOf({metadata:m}):consumptionTypeOf(state.documents.find((d:any)=>d.id===m.planId&&d.kind==='plan')),planId:m.planId,accountId:bank.id,prepaymentId:original.id,fromPrepayment:!refund,note:refund?'原预付款退款到账':'确认预付款已消费，不再扣现金'},refund?original.id:null);return true;
  }
 
  if(action==='reminder.save'){

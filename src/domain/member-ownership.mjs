@@ -31,3 +31,8 @@ export function transactionParties(transaction,state){let rows=Array.isArray(tra
 }
 export function memberMatchesTransaction(transaction,memberId,state){if(!memberId||memberId==='all')return true;const selected=resolveFinanceMember(state,memberId).id;const parties=transactionParties(transaction,state);return selected==='unknown'&&!parties.length||parties.some(x=>x.memberId===selected||x.memberId===memberId);}
 export function normalizeMemberProfile(body,state){const name=string(body.name).trim();if(!name||name.length>60||['家庭共用','归属待确认'].includes(name))throw Error('请填写有效的成员称呼（最多60字）');const linkedUserId=body.linkedUserId==null||body.linkedUserId===''?null:body.linkedUserId;if(linkedUserId!==null){if(typeof linkedUserId!=='string'||!(state?.householdMembers??[]).some(m=>m.userId===linkedUserId&&m.active!==0&&m.active!==false))throw Error('只能关联本家庭已加入的有效成员');if((state?.documents??[]).some(d=>d.kind==='financial_member'&&d.id!==body.id&&d.payload.linkedUserId===linkedUserId))throw Error('该家庭成员已经关联其他记账档案，请勿重复关联');}return {name,linkedUserId};}
+
+export function activeMemberFilterOptions(state){
+ const members=directory(state).filter(m=>m.id!=='unknown'&&m.active!==false&&m.selectable!==false);
+ return members.some(m=>m.id==='family')?members:[{...FAMILY},...members];
+}

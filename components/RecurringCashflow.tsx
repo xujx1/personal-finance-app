@@ -5,7 +5,7 @@ import {Plus,History,RefreshCw,ArrowDownLeft,ArrowUpRight,CalendarClock,ListChec
 import AccessibleDialog from './AccessibleDialog';
 import {MemberAccountFields,accountDisplay} from './MemberControls';
 import {decimal} from '../src/domain/finance.mjs';
-import {recurringSetupSuggestions,recurringMonthPlan} from '../src/domain/recurring.mjs';
+import {recurringSetupSuggestions,recurringConfiguredPlan} from '../src/domain/recurring.mjs';
 import {recurringCandidateBody} from '../src/domain/finance-ui.mjs';
 import './RecurringCashflow.css';
 
@@ -23,7 +23,7 @@ export default function RecurringCashflow({state,onSave}:{state:any;onSave:(acti
  const rules=state.documents.filter((document:any)=>document.kind==='recurring_rule');
  const due=state.documents.filter((document:any)=>document.kind==='recurring_occurrence'&&document.payload.status==='DUE');
  const suggestions=recurringSetupSuggestions(state,today());
- const {active,income,outflow}=recurringMonthPlan(rules,today().slice(0,7));
+ const {enabled,income,outflow}=recurringConfiguredPlan(rules,today());
  const accountName=(id:string)=>{const account=state.accounts.find((item:any)=>item.id===id);return account?accountDisplay(state,account):'现金账户待确认'};
  async function save(action:string,body:any){
   if(!canWrite||busy)return;
@@ -38,17 +38,17 @@ export default function RecurringCashflow({state,onSave}:{state:any;onSave:(acti
  return <div className="recurring-workspace">
   <div className="page-title"><div><div className="eyebrow">RECURRING CASH FLOW</div><h1>周期收支</h1><p className="subtitle">管理每月收支计划，到期核实实际到账后记账。</p></div><button type="button" className="btn primary" disabled={!canWrite||busy} onClick={()=>openRule()}><Plus/>新增规则</button></div>
   <div className="recurring-metrics" aria-label="周期规则计划概览">
-   <Metric label="每月收入计划" value={money(income)} note="本月生效的收入规则 · CNY" icon={<ArrowDownLeft/>}/>
-   <Metric label="每月现金流出计划" value={money(outflow)} note="含固定支出、贷款与定投 · CNY" icon={<ArrowUpRight/>}/>
-   <Metric label="本月生效规则" value={String(active.length)} note={`${rules.length-active.length} 项未生效、已结束或暂停`} icon={<ListChecks/>}/>
+   <Metric label="规则月收入合计" value={money(income)} note="已启用规则，含首期未到 · CNY" icon={<ArrowDownLeft/>}/>
+   <Metric label="规则月流出合计" value={money(outflow)} note="含固定支出、贷款与定投 · CNY" icon={<ArrowUpRight/>}/>
+   <Metric label="已启用规则" value={String(enabled.length)} note={`${rules.length-enabled.length} 项已结束或暂停`} icon={<ListChecks/>}/>
    <Metric label="到期待核实" value={String(due.length)} note="核实实际发生后进入流水" icon={<CalendarClock/>}/>
   </div>
-  <p className="recurring-plan-note">以上为规则的每月计划金额，未扣现金，也不代表已实现收入或费用。</p>
+  <p className="recurring-plan-note">汇总未暂停、未结束规则的每月金额，包含首期尚未到的安排。这是规则合计，不是指定月份预测；实际按各自开始日期执行，不补记历史。</p>
   <section className="card recurring-list-card" aria-label="周期规则与待核实记录">
    <div className="recurring-toolbar"><div className="recurring-switch" aria-label="查看周期收支"><button type="button" aria-pressed={panel==='rules'} onClick={()=>setPanel('rules')}>规则列表 <span>{rules.length}</span></button><button type="button" aria-pressed={panel==='due'} onClick={()=>setPanel('due')}>待核实 <span>{due.length}</span></button></div><div className="recurring-toolbar-actions"><button type="button" className="btn" onClick={()=>{setHistoryOpen(true);void loadCandidates()}}><History/>历史候选</button><button type="button" className="btn" disabled={!canWrite||busy} onClick={()=>save('recurring.run',{through:today()})}><RefreshCw/>{busy?'正在检查…':'检查到期'}</button></div></div>
    {saveError&&!edit&&!actual&&<p className="notice" role="alert">{saveError}</p>}
    {panel==='rules'?<>
-    <div className="table-wrap"><table className="recurring-table"><thead><tr><th>规则名称 / 类型</th><th>收付款账户</th><th>金额 / 日期</th><th>记账方式</th><th>操作</th></tr></thead><tbody>{rules.map((rule:any)=><tr key={rule.id}><td><strong>{rule.payload.name}</strong><small>{typeNames[rule.payload.type]??rule.payload.type}</small></td><td>{accountName(rule.payload.accountId)}</td><td><strong className="money">{money(rule.payload.amount)}</strong><small>每月 {rule.payload.day} 日</small></td><td><span className={'recurring-status'+(rule.payload.paused?' paused':'')}>{rule.payload.paused?'已暂停':rule.payload.autoPost&&rule.payload.confirmedAt&&!['loan','investment'].includes(rule.payload.type)?'本站自动记账':'待核实后记账'}</span></td><td><button type="button" className="btn" disabled={!canWrite||busy} onClick={()=>openRule(rule)}>调整</button></td></tr>)}</tbody></table></div>
+    <div className="table-wrap"><table className="recurring-table"><thead><tr><th>规则名称 / 类型</th><th>收付款账户</th><th>金额 / 日期</th><th>记账方式</th><th>操作</th></tr></thead><tbody>{rules.map((rule:any)=><tr key={rule.id}><td><strong>{rule.payload.name}</strong><small>{typeNames[rule.payload.type]??rule.payload.type}</small></td><td>{accountName(rule.payload.accountId)}</td><td><strong className="money">{money(rule.payload.amount)}</strong><small>每月 {rule.payload.day} 日</small></td><td><span className={'recurring-status'+(rule.payload.paused?' paused':'')}>{rule.payload.paused?'已暂停':rule.payload.start>today()?'首期未到 · '+rule.payload.start:rule.payload.end&&rule.payload.end<today()?'已结束 · '+rule.payload.end:rule.payload.autoPost&&rule.payload.confirmedAt&&!['loan','investment'].includes(rule.payload.type)?'本站自动记账':'待核实后记账'}</span></td><td><button type="button" className="btn" disabled={!canWrite||busy} onClick={()=>openRule(rule)}>调整</button></td></tr>)}</tbody></table></div>
     {!rules.length&&<div className="recurring-empty"><ListChecks/><h3>还没有周期规则</h3><p>新增每月固定安排，或从历史候选中核对导入。</p><button type="button" className="btn" disabled={!canWrite} onClick={()=>openRule()}>新增第一条规则</button></div>}
     {suggestions.length>0&&<details className="recurring-suggestions"><summary>贷款资料待设置 <span>{suggestions.length} 项</span></summary><p className="help-text">已带入已登记的月供与扣款日。请补充现金账户和生效日期；不追补历史，每期实际本金仍需核实。</p>{suggestions.map((suggestion:any)=><div className="recurring-suggestion-row" key={suggestion.id}><div><strong>{suggestion.payload.name}</strong><small>{suggestion.payload.day?`每月 ${suggestion.payload.day} 日`:'扣款日待核对'} · {suggestion.missing.join('、')}</small></div><span className="money">{suggestion.payload.amount==null?'月供待核对':money(suggestion.payload.amount)}</span><button type="button" className="btn" disabled={!canWrite||busy} onClick={()=>openRule({...suggestion,suggestion:true})}>核对并设置</button></div>)}</details>}
    </>:<>

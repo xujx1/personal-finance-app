@@ -1,3 +1,4 @@
+import {consumptionTypeForWrite} from './consumption.mjs';
 import {minor,decimal} from './finance.mjs';
 import {normalizeExpenseDraft} from './expense-plan.mjs';
 import {normalizeDepositMetadata} from './deposit.mjs';
@@ -18,20 +19,20 @@ export function normalizeFinanceDraft(kind,p){
  if(['investment','monthly_review','recurring'].includes(kind))return normalizeWorkflowDraft(kind,p);
  const common=['analysis','note'];
  if(kind==='budget'){
-  only(p,[...common,'name','category','date','end','budget','ownerMemberId','expenseDraft','planId']);
+  only(p,[...common,'name','category','date','end','budget','ownerMemberId','expenseDraft','planId','consumptionType']);
   const start=date(p.date),end=date(p.end??p.date);if(end<start)throw Error('结束日期不能早于开始日期');
   if(!Array.isArray(p.expenseDraft?.items)||p.expenseDraft.items.some(x=>typeof x.unitPrice!=='string'||typeof x.quantity!=='string'||(x.alternatives??[]).some(a=>typeof a.unitPrice!=='string')))throw Error('清单价格和数量须使用十进制字符串');
   const expenseDraft=downgradeExternalExpenseDraft(normalizeExpenseDraft({...p.expenseDraft,reviewed:false},{requireReview:false}));
   if(expenseDraft.itinerary.some(x=>x.date<start||x.date>end))throw Error('行程日期必须在预算起止日期内');
   const total=amount(p.budget);if(minor(total)!==expenseDraft.totalMinor)throw Error('预算与消费清单合计不一致');
-  return {name:txt(p.name,100),category:txt(p.category??'其他',30),date:start,end,budget:total,ownerMemberId:txt(p.ownerMemberId??'family',120),...(p.planId?{planId:txt(p.planId,120)}:{}),expenseDraft,note:String(p.note??'').slice(0,3000),analysis:txt(p.analysis,6000)};
+  return {consumptionType:consumptionTypeForWrite({...p,expenseDraft}),name:txt(p.name,100),category:txt(p.category??'其他',30),date:start,end,budget:total,ownerMemberId:txt(p.ownerMemberId??'family',120),...(p.planId?{planId:txt(p.planId,120)}:{}),expenseDraft,note:String(p.note??'').slice(0,3000),analysis:txt(p.analysis,6000)};
  }
  if(kind==='cashflow'){
-  only(p,[...common,'type','accountId','cashMemberId','amount','date','balanceIncluded','snapshotDate']);
+  only(p,[...common,'type','accountId','cashMemberId','amount','date','balanceIncluded','snapshotDate','consumptionType']);
   if(!['income','expense'].includes(p.type))throw Error('仅支持实际收入或支出，预计收支请保存预算');
   if(typeof p.balanceIncluded!=='boolean')throw Error('请明确核对这笔收支是否包含在银行余额中');
   if(p.balanceIncluded&&(!p.snapshotDate||date(p.date)>date(p.snapshotDate)))throw Error('已含余额的历史须提供覆盖该笔的余额核实日期');
-  return {type:p.type,accountId:txt(p.accountId,120),cashMemberId:txt(p.cashMemberId,120),amount:amount(p.amount),date:date(p.date),balanceIncluded:p.balanceIncluded,...(p.balanceIncluded?{snapshotDate:date(p.snapshotDate)}:{}),note:txt(p.note,300),analysis:String(p.analysis??'').slice(0,6000)};
+  return {consumptionType:consumptionTypeForWrite(p),type:p.type,accountId:txt(p.accountId,120),cashMemberId:txt(p.cashMemberId,120),amount:amount(p.amount),date:date(p.date),balanceIncluded:p.balanceIncluded,...(p.balanceIncluded?{snapshotDate:date(p.snapshotDate)}:{}),note:txt(p.note,300),analysis:String(p.analysis??'').slice(0,6000)};
  }
  if(kind==='asset'){
   const fields=['assetTypeId','name','category','currency','amount','ownerMemberId','asOf','owned','market','code','quantity','price','cost','bank','startDate','annualRate','maturityDate','rate','monthly','day'];

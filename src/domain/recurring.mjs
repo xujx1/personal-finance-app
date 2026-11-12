@@ -18,3 +18,17 @@ export function recurringMonthPlan(rules,month){
  const active=rules.filter(rule=>{const r=rule.payload,day=month+'-'+String(Math.min(r.day,last)).padStart(2,'0');return !r.paused&&day>=r.start&&(!r.end||day<=r.end)});
  return {active,income:active.filter(r=>r.payload.type==='income').reduce((n,r)=>n+r.payload.amount,0),outflow:active.filter(r=>r.payload.type!=='income').reduce((n,r)=>n+r.payload.amount,0)};
 }
+
+// Regular one-month amounts for rules that are in force on the observation day.
+// This is distinct from an occurrence forecast for the remainder of a month.
+export function recurringActivePlan(rules,today){
+ const active=rules.filter(({payload:r})=>!r.paused&&r.start<=today&&(!r.end||r.end>=today));
+ return {active,income:active.filter(r=>r.payload.type==='income').reduce((n,r)=>n+r.payload.amount,0),outflow:active.filter(r=>r.payload.type!=='income').reduce((n,r)=>n+r.payload.amount,0)};
+}
+
+// Configuration totals deliberately include a rule whose first occurrence is
+// still ahead. These are monthly template amounts, never a period forecast.
+export function recurringConfiguredPlan(rules,today){
+ const enabled=rules.filter(({payload:r})=>!r.paused&&(!r.end||r.end>=today));
+ return {enabled,income:enabled.filter(r=>r.payload.type==='income').reduce((n,r)=>n+r.payload.amount,0),outflow:enabled.filter(r=>r.payload.type!=='income').reduce((n,r)=>n+r.payload.amount,0)};
+}

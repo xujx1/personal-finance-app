@@ -16,5 +16,5 @@ description: "在家庭财务中心规划旅行、餐饮或购物，读取家庭
 3. 先给关键结论与资金影响，再给可调整攻略和费用小票。必要费用不得为凑预算删改。每项quantity和unitPrice都是十进制字符串；总额为选中项目数量乘单价之和，精确到分。
 4. expenseDraft使用kind=travel/shopping/dining/general、costContract=flat_items_v2、items、itinerary、comparisons。item至少id/name/quantity/unitPrice，另可含category/merchant/version/note/sourceType/sourceUrl；sourceType使用scenario_estimate或user_quote。activity费用的itineraryId必须对应真实活动id；全程油费/高速等scope=whole_plan且itineraryId=null，不能随删一餐一起删除。候选替代不重复纳入主清单，移除活动时只移除其关联费用。
 5. 用户调整后只复核当前清单，不恢复已删除候选、不重新生成无关选型。检查票数按参加该活动的人数，早饭/停车是否含在房价，退房后午睡地点，以及全程费用不重复。
-6. 用户要求保存后调用submit_finance_draft：kind=budget，payload={name,category,date,end,budget,ownerMemberId,analysis,note,expenseDraft}。更新原预算时加入planId并保留原归属（除非用户明确调整）；重新读取data_revision后提交expected_revision。budget与小票合计一致。
+6. 用户要求保存后调用submit_finance_draft：kind=budget，payload={name,category,date,end,budget,ownerMemberId,analysis,note,expenseDraft}。更新原预算时加入planId并保留原归属（除非用户明确调整）；重新读取data_revision后提交expected_revision。budget与小票合计一致。消费类别以expenseDraft.kind保存为稳定的consumptionType（travel/shopping/dining/general），不要靠标题猜分类；可显式传同值，历史未知保持未分类。
 7. 返回草稿ID和“预算与大型支出/生活日历”核对入口。提交不扣钱；网站编辑后需要重新确认并发起家庭审批。

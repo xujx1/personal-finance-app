@@ -1,6 +1,6 @@
 "use client";
-import {useState} from 'react';
-import {accountMember,resolveFinanceMember} from '../src/domain/member-ownership.mjs';
+import {useEffect,useState} from 'react';
+import {accountMember,resolveFinanceMember,activeMemberFilterOptions} from '../src/domain/member-ownership.mjs';
 import './MemberControls.css';
 
 export function memberDisplay(state:any,id:string){return (state?.financeMembers??[]).find((member:any)=>member.id===id||member.aliases?.includes(id))?.name??(id==='family'?'家庭共用':'待确认');}
@@ -10,7 +10,7 @@ export function MemberSelect({state,name='ownerMemberId',label='归属成员',va
  const selected=value??defaultValue;
  return <label className="field">{label}<select aria-label={label} name={name} {...(value!==undefined?{value}:{defaultValue})} required={required} disabled={disabled} onChange={event=>onChange?.(event.target.value)}><option value="">请选择成员</option>{selected&&!members.some((member:any)=>member.id===selected)&&<option value={selected}>{memberDisplay(state,selected)}（当前归属）</option>}{members.map((member:any)=><option key={member.id} value={member.id}>{member.name}{member.active===false?'（已停用）':''}</option>)}</select></label>;
 }
-export function MemberFilter({state,value,onChange,label='按成员筛选'}:any){return <div className="member-filter"><label className="field">{label}<select aria-label={label} value={value} onChange={event=>onChange(event.target.value)}><option value="all">全部成员</option>{(state?.financeMembers??[]).map((member:any)=><option value={member.id} key={member.id}>{member.name}{member.active===false?'（已停用）':''}</option>)}{!(state?.financeMembers??[]).some((member:any)=>member.id==='unknown')&&<option value="unknown">待确认</option>}</select></label></div>}
+export function MemberFilter({state,value,onChange,label='按成员筛选'}:any){const members=activeMemberFilterOptions(state);useEffect(()=>{if(value!=='all'&&!members.some((m:any)=>m.id===value))onChange('all')},[value,state?.financeMembers,onChange]);return <div className="member-filter"><label className="field">{label}<select aria-label={label} value={value} onChange={event=>onChange(event.target.value)}><option value="all">全家汇总</option>{members.map((member:any)=><option value={member.id} key={member.id}>{member.name}</option>)}</select></label></div>}
 export function MemberAccountFields({state,name='accountId',label='人民币现金账户',memberName='cashMemberId',memberLabel='收付款成员',currency='CNY',defaultAccountId='',defaultMemberId='',excludeAccountId,disabled=false,onAccountChange}:any){
  const existing=(state?.accounts??[]).find((account:any)=>account.id===defaultAccountId);
  const [memberId,setMemberId]=useState(()=>defaultMemberId?resolveFinanceMember(state,defaultMemberId).id:(existing?accountMember(existing,state).id:''));

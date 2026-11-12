@@ -257,3 +257,11 @@ Sites身份与服务访问结论另外依据本次使用的Sites官方身份文�
 normalizeSetupDraft约束四类section，stageValidation校验真实目录、账户及目标口径，setupBasis记录相关配置指纹。mcp.draft.accept在本家庭管理员写权限和账本版本检查后重新验证指纹与网页修改内容；adoptSetupDraft只生成配置文档，不生成财务分录。成员昵称不关联登录；类型只追加；目标更新同一当前目标；固定规则autoPost=false、从今天或未来起算。相互依赖的阶段须采用后重新读取实际ID。
 
 已有余额走asset开账；零现金余额不生成零分录。实际历史仍使用cashflow及账户metadata.asOf覆盖校验。MCP工具数仍10，submit_finance_draft新增setup类型；客户端缓存旧工具描述时重新建会话刷新。未扩张家庭创建或邀请权限。
+
+## 2026-11-12 消费分类与只读筛选
+
+consumptionType为可兼容的JSON字段（travel/shopping/dining/general/unknown），预算与expenseDraft.kind一致，实际收入不作为消费；关联付款退款复制已核对类别。getMonthly/list_transactions完整记录可读取类别；不修改旧分录，仅对明确旧字段做只读投影。已采用预算研究从financial_draft.reviewedPayload逐版本读取，保留当时分析和日期。
+
+日期筛选为包含端点的区间重叠，严格验证日期与先后，缺失日期仅在没有日期范围时保留。研究按真实评估/保存时间（北京时间），原币和钱数不因筛选改变。预算筛选连带限制年度预算统计；现金流水沿用最近300条并提示上限。当前成员筛选不影响旧账户归属。审批组件接受planId，只在对应详情展示，服务器逐人投票规则未变。
+
+recurringConfiguredPlan用于已启用规则的月金额合计，包含首期尚未到的规则，排除暂停及已结束项，明确不是月份预测。recurringActivePlan保留当前有效期查询；recurringMonthPlan及annualForecast仍按发生日期处理，不改变执行或账目。

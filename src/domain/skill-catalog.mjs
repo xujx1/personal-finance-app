@@ -41,7 +41,7 @@ ${shared}
 3. 先给关键结论与资金影响，再给可调整攻略和费用小票。必要费用不得为凑预算删改。每项quantity和unitPrice都是十进制字符串；总额为选中项目数量乘单价之和，精确到分。
 4. expenseDraft使用kind=travel/shopping/dining/general、costContract=flat_items_v2、items、itinerary、comparisons。item至少id/name/quantity/unitPrice，另可含category/merchant/version/note/sourceType/sourceUrl；sourceType使用scenario_estimate或user_quote。activity费用的itineraryId必须对应真实活动id；全程油费/高速等scope=whole_plan且itineraryId=null，不能随删一餐一起删除。候选替代不重复纳入主清单，移除活动时只移除其关联费用。
 5. 用户调整后只复核当前清单，不恢复已删除候选、不重新生成无关选型。检查票数按参加该活动的人数，早饭/停车是否含在房价，退房后午睡地点，以及全程费用不重复。
-6. 用户要求保存后调用submit_finance_draft：kind=budget，payload={name,category,date,end,budget,ownerMemberId,analysis,note,expenseDraft}。更新原预算时加入planId并保留原归属（除非用户明确调整）；重新读取data_revision后提交expected_revision。budget与小票合计一致。
+6. 用户要求保存后调用submit_finance_draft：kind=budget，payload={name,category,date,end,budget,ownerMemberId,analysis,note,expenseDraft}。更新原预算时加入planId并保留原归属（除非用户明确调整）；重新读取data_revision后提交expected_revision。budget与小票合计一致。消费类别以expenseDraft.kind保存为稳定的consumptionType（travel/shopping/dining/general），不要靠标题猜分类；可显式传同值，历史未知保持未分类。
 7. 返回草稿ID和“预算与大型支出/生活日历”核对入口。提交不扣钱；网站编辑后需要重新确认并发起家庭审批。`
  },
  {id:'family-finance-investment',title:'投资研究',description:'结合家庭财务、贷款、预算、资产目标与持仓做投资或理财研究并保存只读研究草稿时使用；不执行交易或把买入意向登记成已有资产。',body:`# 家庭投资研究
@@ -60,7 +60,7 @@ ${shared}
 ## 工作流
 1. 在ChatGPT侧理解用户提供图片。只提取必要日期、金额、币种、收支方向、商户/资产名称与明细，遮罩账户号等非必要标识。模糊字段或截断金额必须向用户核对，不补造。
 2. 读取真实家庭账户/成员，确认每笔已到账或已支付、资金归属、是否已包含在当前登记余额。用list_transactions检索可能重复记录，多个截图重叠同笔只能提交一笔。无法确认余额覆盖就保留讨论，不提交实际流水。
-3. 新实际人民币收支：submit_finance_draft kind=cashflow，payload={type:income或expense,accountId,cashMemberId,amount,date,note,analysis,balanceIncluded:false}。时间不能在未来，也不能早于该银行余额核实日期；采用后只扣对应成员的银行账户一次。
+3. 新实际人民币收支：submit_finance_draft kind=cashflow，payload={type:income或expense,accountId,cashMemberId,amount,date,note,analysis,balanceIncluded:false}。时间不能在未来，也不能早于该银行余额核实日期；采用后只扣对应成员的银行账户一次。实际消费可加consumptionType=travel/shopping/dining/general；类别不明省略或unknown，收入不归入消费类别。
 4. 已包含在余额中的历史：balanceIncluded=true，同时snapshotDate须等于该账户已登记asOf，交易日期不晚于snapshotDate；网站会核对覆盖范围并只补历史分录，不重复改变银行现金。无登记asOf时先在网站核对余额日期，不能猜。
 5. 现有但未登记资产：kind=asset，payload={name,category,currency,amount,ownerMemberId,asOf,owned:true,...}。category支持cash/term_deposit/fund/stock/property/loan/other。股票基金可加market/code/quantity/price/cost；定期需bank/startDate/annualRate/maturityDate。开账登记不是新买入，不扣现金；已经发生且需要同步现金的买入/清仓请到资产页相应交易入口核对，不用开账代替。同名同币种同归属已存在时不再新增。
 6. 一张图多笔逐条说明是否重复，用户授权后分别提交，每次读最新revision；网站仍须逐笔确认事实、成员和账户。图片识别完成不等于已经记账。`
