@@ -1,3 +1,4 @@
+import {assetTypeForWrite} from '../domain/asset-types.mjs';
 import {minor} from '../domain/finance.mjs';
 import {normalizeFinanceDraft} from '../domain/mcp-draft.mjs';
 import {ownerFields,resolveFinanceMember,accountMember} from '../domain/member-ownership.mjs';
@@ -13,7 +14,7 @@ export async function extendMcpDraft(c:any){
   // Validate family ownership and account references before saving any external draft.
   if(body.kind==='cashflow'){const a=account(payload.accountId);if(a.kind!=='ASSET'||a.category!=='cash'||a.currency!=='CNY'||resolveFinanceMember(state,payload.cashMemberId,{write:true}).id!==accountMember(a,state).id)throw Error('现金账户或资金成员不一致');}
   else if(body.kind==='recurring'){candidateEvidence=(await suggestRecurring(db)).candidates.find((x:any)=>x.id===payload.candidateId);if(!candidateEvidence)throw Error('周期候选不存在或证据已变化，请重新读取');}
-  else ownerFields(state,payload.ownerMemberId);
+  else {ownerFields(state,payload.ownerMemberId);if(body.kind==='asset')assetTypeForWrite(state,payload.assetTypeId,payload);}
   if(body.kind==='monthly_review'&&(await getMonthlyContext(db,state,payload.month)).basisFingerprint!==payload.basisFingerprint)throw Error('月报依据已变化，请重新读取并总结');
   if(body.kind==='budget'&&payload.planId){const plan=doc(payload.planId);if(plan.kind!=='plan'||['COMPLETED','CANCELLED'].includes(plan.payload.status)||plan.payload.scheduleOnly)throw Error('原预算不存在、已结束或属于须单独核对本息的还款预约');if(body.payload.ownerMemberId==null)payload.ownerMemberId=plan.payload.ownerMemberId;targetVersion=plan.payload.version??0;targetFingerprint=await evidenceHash(plan.payload);}
   writeDoc(id,'financial_draft',{kind:body.kind,payload,...(targetVersion!==undefined?{targetVersion,targetFingerprint}:{}),...(candidateEvidence?{candidateEvidence}:{}),status:'PENDING',source:'ChatGPT/MCP，外部分析待本人核对',submittedBy:actor,createdAt:new Date().toISOString()});result.id=id;return true;
@@ -59,7 +60,7 @@ export async function extendMcpDraft(c:any){
   }else{
    if(p.asOf>localDate())throw Error('已有资产核对日期不能在未来');id=crypto.randomUUID();destinationKind='account';const kind=p.category==='loan'?'LIABILITY':'ASSET',n=minor(p.amount),signed=kind==='LIABILITY'?-n:n,owner=ownerFields(state,p.ownerMemberId);
    if(state.accounts.some((a:any)=>a.category===p.category&&a.currency===p.currency&&String(a.name).trim().toLocaleLowerCase()===p.name.toLocaleLowerCase()&&accountMember(a,state).id===owner.ownerMemberId))throw Error('同名同币种同归属资产已经登记，请在资产列表核对修改，避免重复新增');
-   const {name,category,currency}=p;const details=Object.fromEntries(Object.entries(p).filter(([key])=>!['amount','name','category','currency','ownerMemberId','owned'].includes(key)));const metadata={...details,...owner,mcpDraftId:d.id,source:'本人确认ChatGPT分析的已有资产登记'};stagedAccounts.push({id,name,kind,category,currency,metadata});
+   const {name,category,currency}=p;const details=Object.fromEntries(Object.entries(p).filter(([key])=>!['amount','name','category','currency','ownerMemberId','owned'].includes(key)));const assetTypeId=assetTypeForWrite(state,p.assetTypeId,{category:p.category,name:p.name,metadata:p});const metadata={...details,...owner,...(p.assetTypeId?{assetTypeId}:{}),mcpDraftId:d.id,source:'本人确认ChatGPT分析的已有资产登记'};stagedAccounts.push({id,name,kind,category,currency,metadata});
    rows.push(db.prepare('INSERT INTO accounts VALUES(?,?,?,?,?,?,0,?)').bind(ds,id,name,kind,category,currency,JSON.stringify(metadata)));
    journal('OPENING',n,[{account_id:id,currency,amount:signed},entry(system('equity',currency),-signed)],{businessDate:p.asOf,accountId:id,reason:'本人确认已有资产，不是新买入或银行交易',mcpDraftId:d.id});
   }

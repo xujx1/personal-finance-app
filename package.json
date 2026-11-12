@@ -19,7 +19,8 @@
     "skills:sync": "node scripts/sync-skill-assets.mjs",
     "test:e2e:trades": "node local/security-trades-e2e.mjs",
     "skills:pack": "node scripts/package-skill-cli.mjs",
-    "test:e2e:npm-calendar": "node local/npm-calendar-e2e.mjs"
+    "test:e2e:npm-calendar": "node local/npm-calendar-e2e.mjs",
+    "test:e2e:asset-types": "node local/asset-types-e2e.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

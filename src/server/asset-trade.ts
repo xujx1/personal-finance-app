@@ -1,3 +1,4 @@
+import {assetTypeForWrite} from '../domain/asset-types.mjs';
 import {minor,MAX_MINOR} from '../domain/finance.mjs';
 import {accountMember,ownerFields} from '../domain/member-ownership.mjs';
 const SCALE=100000000n, CENTS_SCALE=SCALE*SCALE/100n;
@@ -26,13 +27,13 @@ export function extendAssetTrade(c:any){
  let a:any;
  if(body.newAsset!==undefined){
   if(mode!=='buy'||sell||body.assetId)throw Error('首次买入不能同时选择原资产或清仓');
-  const p=body.newAsset;if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).some(k=>!['name','category','currency','ownerMemberId','market','code'].includes(k)))throw Error('新持仓字段无效');
+  const p=body.newAsset;if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).some(k=>!['assetTypeId','name','category','currency','ownerMemberId','market','code'].includes(k)))throw Error('新持仓字段无效');
   if(!['fund','stock'].includes(p.category)||!['CNY','USD'].includes(p.currency)||p.category==='fund'&&p.currency!=='CNY'||!['CN','US','HK','OTHER'].includes(p.market))throw Error('基金股票类型、市场或币种无效');
   if(p.market==='US'&&p.currency!=='USD'||p.market==='CN'&&p.currency!=='CNY')throw Error('市场与币种不符');
-  const name=text(p.name,100),code=text(p.code,30).toUpperCase(),owner=ownerFields(state,p.ownerMemberId);
+  const name=text(p.name,100),code=text(p.code,30).toUpperCase(),owner=ownerFields(state,p.ownerMemberId),assetTypeId=assetTypeForWrite(state,p.assetTypeId,{category:p.category,name,metadata:{}});
   if(state.accounts.some((x:any)=>x.category===p.category&&x.currency===p.currency&&accountMember(x,state).id===owner.ownerMemberId&&(x.name.trim().toLocaleLowerCase()===name.toLocaleLowerCase()||String(x.metadata.code??'').toUpperCase()===code&&x.metadata.market===p.market)))throw Error('该成员已有同名或同代码持仓，请选择已有持仓买入');
   const q=units(body.quantity);if(q<=0n)throw Error('首次买入必须填写实际成交数量');
-  a={id:crypto.randomUUID(),name,category:p.category,currency:p.currency,kind:'ASSET',balance:0,metadata:{...owner,code,market:p.market,quantity:'0',cost:'0',asOf:businessDate,source:'本人确认实际买入，现金同步扣除'}};
+  a={id:crypto.randomUUID(),name,category:p.category,currency:p.currency,kind:'ASSET',balance:0,metadata:{...owner,...(p.assetTypeId?{assetTypeId}:{}),code,market:p.market,quantity:'0',cost:'0',asOf:businessDate,source:'本人确认实际买入，现金同步扣除'}};
  }else a=account(body.assetId);
  if(a.kind!=='ASSET'||['cash','system','prepayment','term_deposit'].includes(a.category)||a.currency!==bank.currency)throw Error('请选择已登记资产及同币种银行现金账户');
  if(mode!==undefined&&!['fund','stock'].includes(a.category))throw Error('此买入清仓入口仅用于基金或股票');

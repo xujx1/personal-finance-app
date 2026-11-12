@@ -1,3 +1,5 @@
+> **最新B001–B005**：[家庭资产类型与目标选择](requirements-asset-types-2026-11-12.md)、[验收报告](VERIFICATION-ASSET-TYPES-2026-11-12.md)及[ChatGPT新会话测试](CHATGPT-NEW-CHAT-TEST.md)。
+
 > **最新增量**：请同时读取 [npm安装、日历取消与周期MCP](requirements-npm-calendar-2026-11-12.md) 和 [本轮验证](VERIFICATION-NPM-CALENDAR-2026-11-12.md)。公开npx包仅通用入口，家庭正文仍通过认证MCP读取。
 
 <!-- current-chatgpt-migration -->

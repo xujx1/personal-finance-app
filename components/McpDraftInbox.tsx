@@ -1,5 +1,7 @@
 "use client";
 import {useState} from 'react';
+import {AssetTypeSelect} from './AssetTypeControls';
+import {getAssetTypes,accountAssetType} from '../src/domain/asset-types.mjs';
 import {mcpDraftAcceptBody} from '../src/domain/mcp-draft-ui.mjs';
 import {decimal} from '../src/domain/finance.mjs';
 import {normalizeExpenseDraft} from '../src/domain/expense-plan.mjs';
@@ -59,7 +61,7 @@ function DraftReview({document,state,onSave}:{document:any;state:any;onSave:Prop
      </>}
      {kind==='asset'&&<>
       <p className="notice neutral">这里只登记本人已经持有、尚未登记的资产。投资建议和未来购买计划不能计入已有资产；已登记资产请在资产列表核对，勿重复新增。</p>
-      <div className="form-grid">{field('name','外部已有资产名称')}<MemberSelect state={state} label="外部资产归属成员" value={payload.ownerMemberId??''} onChange={(id:string)=>update({ownerMemberId:id})}/><label className="field">已有资产类型<select aria-label="外部已有资产类型" value={payload.category??''} onChange={e=>update({category:e.target.value})} required><option value="">请选择</option>{Object.entries(assetCategories).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label className="field">原币<select aria-label="外部资产原币" value={payload.currency??''} onChange={e=>update({currency:e.target.value})} required><option value="">请选择</option><option>CNY</option><option>USD</option></select></label>{field('amount',payload.category==='loan'?'外部贷款剩余本金（原币）':'外部资产当前余额或市值（原币）')}{field('asOf','外部资产余额核实日期','date')}</div>
+      <div className="form-grid">{field('name','外部已有资产名称')}<MemberSelect state={state} label="外部资产归属成员" value={payload.ownerMemberId??''} onChange={(id:string)=>update({ownerMemberId:id})}/><AssetTypeSelect state={state} value={payload.assetTypeId??accountAssetType({...payload,kind:payload.category==='loan'?'LIABILITY':'ASSET'},state)?.id} label="外部已有资产类型" onChange={id=>{const type=getAssetTypes(state).find((t:any)=>t.id===id);update({assetTypeId:id,category:type?.baseCategory??''})}}/><label className="field">原币<select aria-label="外部资产原币" value={payload.currency??''} onChange={e=>update({currency:e.target.value})} required><option value="">请选择</option><option>CNY</option><option>USD</option></select></label>{field('amount',payload.category==='loan'?'外部贷款剩余本金（原币）':'外部资产当前余额或市值（原币）')}{field('asOf','外部资产余额核实日期','date')}</div>
       {['stock','fund'].includes(payload.category)&&<div className="form-grid">{field('code','外部资产代码','text',false)}{field('market','外部资产市场','text',false)}{field('quantity','外部已有持仓数量','text',false)}{field('price','外部资产核实单价（原币）','text',false)}{field('cost','外部资产单位成本（原币）','text',false)}</div>}
       {['cash','term_deposit'].includes(payload.category)&&<div className="form-grid">{field('bank','外部资产银行','text',payload.category==='term_deposit')}{field('startDate','外部存款起存日期','date',payload.category==='term_deposit')}{field('annualRate','外部存款年利率 %','text',payload.category==='term_deposit')}{payload.category==='term_deposit'&&field('maturityDate','外部定期到期日期','date')}</div>}
       {payload.category==='loan'&&<div className="form-grid">{field('monthly','外部贷款月供（原币）','text',false)}{field('startDate','外部贷款开始日期','date',false)}{field('maturityDate','外部贷款到期日期','date',false)}{field('rate','外部贷款年利率 %','text',false)}{field('day','外部贷款每月扣款日','number',false)}</div>}

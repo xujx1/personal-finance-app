@@ -1,0 +1,8 @@
+"use client";
+import {useEffect,useId,useRef,useState} from 'react';
+import './AccountMenu.css';
+export default function AccountMenu({name,email,state}:{name:string;email?:string;state:any}){
+ const [open,setOpen]=useState(false),root=useRef<HTMLDivElement>(null),button=useRef<HTMLButtonElement>(null),id=useId();
+ useEffect(()=>{if(!open)return;const outside=(e:PointerEvent)=>{if(!root.current?.contains(e.target as Node))setOpen(false)},escape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpen(false);button.current?.focus()}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)}},[open]);
+ return <div className="account-menu" ref={root} onBlur={e=>{if(e.relatedTarget&&!e.currentTarget.contains(e.relatedTarget as Node))setOpen(false)}}><button className="avatar small account-avatar" ref={button} aria-label="账户菜单" aria-expanded={open} aria-haspopup="true" aria-controls={id} onClick={()=>setOpen(v=>!v)}>{name.slice(0,1)}</button>{open&&<section id={id} className="account-popover" aria-label="当前账户"><h2>{name}</h2>{email&&email!==name&&<p>{email}</p>}<p className="help-text">{state?.household?.name??'我的财务空间'} · {state?.viewer?.canWrite===false?'查看与本人审批':'家庭管理员'}</p><a className="btn account-signout" href="/signout-with-chatgpt?return_to=%2F">退出登录</a></section>}</div>;
+}

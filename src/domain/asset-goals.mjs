@@ -1,19 +1,16 @@
 import {MAX_MINOR,minor} from './finance.mjs';
 import {buildMonthlyReport} from './monthly-report.mjs';
 
-export const ASSET_GOAL_BUCKETS=[
- {id:'stock',label:'股票',hint:'个股与已明确的股票资产',color:'#356d58'},
- {id:'deposits',label:'银行存款＋国债',hint:'活期、定期存款及明确的国债',color:'#8d9d65'},
- {id:'broadIndex',label:'宽基指数',hint:'纳斯达克等已明确的宽基指数',color:'#789caa'},
- {id:'preciousMetals',label:'黄金与贵金属',hint:'实物贵金属及对应基金',color:'#c9a65f'}
-];
+import {ASSET_GOAL_GROUPS,getAssetTypes,accountAssetType,legacyGoalBucket,assetTypeGoalGroups} from './asset-types.mjs';
+export const ASSET_GOAL_BUCKETS=ASSET_GOAL_GROUPS;
 const ids=ASSET_GOAL_BUCKETS.map(x=>x.id),excluded=['property','prepayment','system'];
 const add=(a,b)=>{const n=a+b;if(!Number.isSafeInteger(n)||Math.abs(n)>MAX_MINOR)throw Error('目标合计超出金额上限');return n;};
 const validDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T00:00:00Z').valueOf())&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
 const amount=value=>{const n=minor(String(value));if(n<=0)throw Error('目标金额必须大于0');return n;};
 
 // API amounts are decimal yuan strings; persisted goals use integer CNY minor units.
-export function normalizeAssetGoalInput(body){
+export function normalizeAssetGoalInput(body,state={}){
+ if(body?.schemaVersion===3)return normalizeSelectableGoal(body,state);
  if(body?.schemaVersion!==2)throw Error('目标版本无效');
  const targets=body.bucketTargets;
  if(!targets||Array.isArray(targets)||Object.keys(targets).length!==ids.length||ids.some(id=>!Object.hasOwn(targets,id)))throw Error('请完整填写四类资产目标');
@@ -25,8 +22,9 @@ export function normalizeAssetGoalInput(body){
  return {schemaVersion:2,name,bucketTargets,monthlyTarget,deadline};
 }
 
-function readGoal(doc){
- const p=doc?.payload;if(p?.schemaVersion!==2)return null;
+function readGoal(doc,state){
+ const p=doc?.payload;if(p?.schemaVersion===3){try{const n=normalizeSelectableGoal({...p,targets:p.targets.map(t=>({...t,target:minorToInput(t.target)})),monthlyTarget:p.monthlyTarget==null?null:minorToInput(p.monthlyTarget)},state);return {...p,...n,id:doc.id,totalTarget:n.targets.map(t=>t.target).reduce(add,0),bucketTargets:Object.fromEntries(n.targets.map(t=>[t.scope,t.target])),isDefault:false};}catch{return null;}}
+ if(p?.schemaVersion!==2)return null;
  try{
   if(!p.bucketTargets||Object.keys(p.bucketTargets).length!==ids.length||ids.some(id=>!Number.isSafeInteger(p.bucketTargets[id])||p.bucketTargets[id]<=0||p.bucketTargets[id]>MAX_MINOR))return null;
   const totalTarget=Object.values(p.bucketTargets).reduce(add,0);
@@ -36,19 +34,9 @@ function readGoal(doc){
  }catch{return null;}
 }
 
-export function assetGoalBucket(account){
- const category=account.category,metadata=account.metadata??{},name=String(account.name??'');
- if(excluded.includes(category)||account.kind!=='ASSET')return null;
- if(category==='cash'||category==='term_deposit'||category==='treasury')return 'deposits';
- // Individual mining shares remain stocks; only clearly named ETFs can use a special bucket.
- if(category==='stock'&&!/ETF|指数基金/i.test(name))return 'stock';
- if(/生物科技|生物医药|矿业|采矿|金矿|黄金股|贵金属股|gold miners|gold mining/i.test(name))return null;
- if(/黄金|白银|铂金|钯金|贵金属|\b(gold|silver|platinum|palladium)\b/i.test(name))return 'preciousMetals';
- if(/纳斯达克(?:100|一百)?|纳指|nasdaq[ -]?100|标普[ -]?500|s\s*&\s*p[ -]?500|沪深[ -]?300|中证(?:[ -]?(?:500|1000|2000)|全指)|上证[ -]?50|全市场指数|全球股票指数/i.test(name))return 'broadIndex';
- if(/(?:储蓄|记账式)?国债|\btreasury\b/i.test(name))return 'deposits';
- if(category==='stock')return 'stock';
- if(ids.includes(metadata.goalBucket))return metadata.goalBucket;
- return null;
+export function assetGoalBucket(account,state){
+ if(account.metadata?.assetTypeId&&state)return accountAssetType(account,state)?.goalBucket??null;
+ return legacyGoalBucket(account);
 }
 
 function eligible(account){
@@ -82,22 +70,35 @@ export function currentGoalMonth(){
 
 export function getAssetGoal(state){
  const documents=(state?.documents??[]).filter(doc=>doc.kind==='savings_goal');
- const stored=documents.map(readGoal).filter(Boolean).sort((a,b)=>String(b.updatedAt??'').localeCompare(String(a.updatedAt??'')));
+ const stored=documents.map(doc=>readGoal(doc,state)).filter(Boolean).sort((a,b)=>String(b.updatedAt??'').localeCompare(String(a.updatedAt??'')));
  return stored[0]??{schemaVersion:2,id:null,name:'四类资产目标',bucketTargets:Object.fromEntries(ids.map(id=>[id,100000000])),totalTarget:400000000,monthlyTarget:null,deadline:null,isDefault:true};
 }
 
 export function buildAssetGoalOverview(state,valueCNY,month=currentGoalMonth()){
  const documents=(state?.documents??[]).filter(doc=>doc.kind==='savings_goal');
  const goal=getAssetGoal(state);
- const buckets=ASSET_GOAL_BUCKETS.map(bucket=>({...bucket,target:goal.bucketTargets[bucket.id],current:0,complete:true,accountNames:[]}));
- let current=0,unassigned=0,complete=true;const unassignedNames=[],unknownNames=[];
+ const buckets=goal.schemaVersion===3?goal.targets.map(row=>({...goalScopeOptions(state).find(o=>o.scope===row.scope),id:row.scope,target:row.target,current:0,complete:true,accountNames:[]})):ASSET_GOAL_BUCKETS.map(bucket=>({...bucket,target:goal.bucketTargets[bucket.id],current:0,complete:true,accountNames:[]}));
+ let current=0,unassigned=0,complete=true,unassignedComplete=true;const unassignedNames=[],unknownNames=[];
  for(const account of (state?.accounts??[]).filter(eligible)){
-  const bucket=buckets.find(bucket=>bucket.id===assetGoalBucket(account));
+  const bucket=goal.schemaVersion===3?buckets.find(bucket=>goalScopeMatches(bucket.scope,account,state)):buckets.find(bucket=>bucket.id===assetGoalBucket(account,state));
   if(bucket)bucket.accountNames.push(account.name);else unassignedNames.push(account.name);
   const value=valueCNY(account);
+  if(goal.schemaVersion===3&&!bucket){if(Number.isSafeInteger(value)&&value>=0&&value<=MAX_MINOR)unassigned=add(unassigned,value);else unassignedComplete=false;continue;}
   if(!Number.isSafeInteger(value)||value<0||value>MAX_MINOR){complete=false;unknownNames.push(account.name);if(bucket)bucket.complete=false;continue;}
   current=add(current,value);if(bucket)bucket.current=add(bucket.current,value);else unassigned=add(unassigned,value);
  }
  for(const bucket of buckets){bucket.progress=bucket.complete?Math.min(100,Math.max(0,bucket.current/bucket.target*100)):null;bucket.gap=bucket.complete?Math.max(0,bucket.target-bucket.current):null;}
- return {goal,buckets,current,unassigned,unassignedNames,unknownNames,complete,progress:complete?Math.min(100,current/goal.totalTarget*100):null,gap:complete?Math.max(0,goal.totalTarget-current):null,legacyGoals:documents.filter(doc=>doc.payload?.schemaVersion!==2),monthly:monthlyProgress(state,month,goal.monthlyTarget)};
+ return {goal,buckets,current,unassigned,unassignedComplete,unassignedNames,unknownNames,complete,progress:complete?Math.min(100,current/goal.totalTarget*100):null,gap:complete?Math.max(0,goal.totalTarget-current):null,legacyGoals:documents.filter(doc=>![2,3].includes(doc.payload?.schemaVersion)),monthly:monthlyProgress(state,month,goal.monthlyTarget)};
+}
+
+const minorToInput=n=>{if(!Number.isSafeInteger(n)||n<=0||n>MAX_MINOR)throw Error('目标金额无效');return String(Math.floor(n/100))+'.'+String(n%100).padStart(2,'0');};
+export function goalScopeOptions(state){return [...ASSET_GOAL_BUCKETS.map(g=>({...g,scope:'group:'+g.id,label:g.label+'（组合）'})),...getAssetTypes(state).filter(t=>t.enabled&&!excluded.includes(t.baseCategory)&&t.baseCategory!=='loan').map(t=>({scope:'type:'+t.id,id:t.id,label:t.name,color:ASSET_GOAL_BUCKETS.find(g=>g.id===t.goalBucket)?.color??'#8b9d96'}))];}
+function goalScopeMatches(scope,account,state){if(scope.startsWith('type:'))return accountAssetType(account,state)?.id===scope.slice(5);return assetGoalBucket(account,state)===scope.slice(6);}
+function normalizeSelectableGoal(body,state){
+ const options=goalScopeOptions(state);if(!Array.isArray(body.targets)||!body.targets.length||body.targets.length>20)throw Error('请选择1至20项目标');
+ const scopes=new Set(),types=getAssetTypes(state);const targets=body.targets.map(row=>{if(!row||Object.keys(row).some(k=>!['scope','target'].includes(k))||!options.some(o=>o.scope===row.scope)||scopes.has(row.scope))throw Error('目标类型无效或重复');scopes.add(row.scope);return {scope:row.scope,target:amount(row.target)};});
+ for(const row of targets.filter(r=>r.scope.startsWith('type:'))){const type=types.find(t=>t.id===row.scope.slice(5));if(type&&assetTypeGoalGroups(type).some(group=>scopes.has('group:'+group)))throw Error('资产类型与组合目标重复，请选择其中一种');}
+ for(const a of (state.accounts??[]).filter(eligible))if(targets.filter(r=>goalScopeMatches(r.scope,a,state)).length>1)throw Error('目标范围重复，不能重复计算同一资产');
+ targets.map(t=>t.target).reduce(add,0);const monthlyTarget=body.monthlyTarget==null||body.monthlyTarget===''?null:amount(body.monthlyTarget),deadline=body.deadline==null||body.deadline===''?null:body.deadline;
+ if(deadline!==null&&!validDate(deadline))throw Error('目标日期无效');const name=String(body.name??'资产目标').trim();if(!name||name.length>100)throw Error('目标名称无效');return {schemaVersion:3,name,targets,monthlyTarget,deadline};
 }

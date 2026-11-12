@@ -67,3 +67,9 @@ npm test验证领域、权限与接口；test:e2e:local使用真实HTTP处理器
 已开通get_recurring_candidates和list_transactions。让ChatGPT使用周期收支工作流，先完整读取真实流水，再说明按成员、账户归并出的多月候选。用户同意保存时只提交recurring草稿，网站采用后为每期待核实规则，autoPost=false。原人工工资、公积金和贷款规则不覆盖，不追补历史扣款。
 
 2026-11-12生产只读核验：17条全量已过账历史中没有INCOME/EXPENSE/PAYMENT，故候选为0；已有四条人工规则仍在。至少两个不同月份的相似真实到账或消费记录出现后，才有足够证据生成候选。
+
+## 家庭资产类型与真实会话验收
+
+资产类型在资产与贷款的管理入口维护；服务端默认14类，首次维护保存家庭版本。get_financial_context.assetTypes给出当前家庭的真实ID与baseCategory，已有资产草稿可传assetTypeId。设置页可下拉选择类型或组合、增删目标；头像查看当前账户和退出。新自选目标只按所选范围计算，MCP返回目标分项与准确进度，不把全部非房产资产当作该目标完成额。
+
+完整ChatGPT客户端验收请按CHATGPT-NEW-CHAT-TEST.md新开会话，区分真实模型/搜索与隔离结构化测试。

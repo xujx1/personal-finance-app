@@ -32,7 +32,7 @@ export function normalizeFinanceDraft(kind,p){
   return {type:p.type,accountId:txt(p.accountId,120),cashMemberId:txt(p.cashMemberId,120),amount:amount(p.amount),date:date(p.date),balanceIncluded:p.balanceIncluded,...(p.balanceIncluded?{snapshotDate:date(p.snapshotDate)}:{}),note:txt(p.note,300),analysis:String(p.analysis??'').slice(0,6000)};
  }
  if(kind==='asset'){
-  const fields=['name','category','currency','amount','ownerMemberId','asOf','owned','market','code','quantity','price','cost','bank','startDate','annualRate','maturityDate','rate','monthly','day'];
+  const fields=['assetTypeId','name','category','currency','amount','ownerMemberId','asOf','owned','market','code','quantity','price','cost','bank','startDate','annualRate','maturityDate','rate','monthly','day'];
   only(p,[...common,...fields]);if(p.owned!==true)throw Error('只可登记已经实际持有的资产，未来投资想法请保存预算');
   if(!['cash','term_deposit','fund','stock','property','loan','other'].includes(p.category)||!['CNY','USD'].includes(p.currency))throw Error('资产类型或币种无效');
   if(p.market!=null&&!['US','CN','HK','OTHER'].includes(p.market))throw Error('市场无效');
@@ -41,7 +41,7 @@ export function normalizeFinanceDraft(kind,p){
   const details=Object.fromEntries(['code','quantity','price','cost','monthly'].filter(k=>p[k]!=null).map(k=>[k,String(p[k]).slice(0,100)]));
   for(const k of ['quantity','price','cost'])if(details[k]&&!/^\d+(\.\d{1,6})?$/.test(details[k]))throw Error('资产数量或金额无效');
   if(details.monthly)minor(details.monthly);
-  return {name:txt(p.name,100),category:p.category,currency:p.currency,amount:amount(p.amount),ownerMemberId:txt(p.ownerMemberId,120),asOf:date(p.asOf),owned:true,market:p.market??null,...details,...terms,...(p.day!=null?{day:p.day===''?null:Number(p.day)}:{}),note:String(p.note??'').slice(0,2000),analysis:String(p.analysis??'').slice(0,6000)};
+  return {name:txt(p.name,100),...(p.assetTypeId?{assetTypeId:txt(p.assetTypeId,64)}:{}),category:p.category,currency:p.currency,amount:amount(p.amount),ownerMemberId:txt(p.ownerMemberId,120),asOf:date(p.asOf),owned:true,market:p.market??null,...details,...terms,...(p.day!=null?{day:p.day===''?null:Number(p.day)}:{}),note:String(p.note??'').slice(0,2000),analysis:String(p.analysis??'').slice(0,6000)};
  }
  throw Error('草稿类型无效');
 }
