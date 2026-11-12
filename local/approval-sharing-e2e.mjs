@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict';
+import {spawn,spawnSync} from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import {prepareVendor} from './prepare-vendor.mjs';
+import {openTestDatabase} from '../tests/helpers/d1.mjs';
+import {familyCommand} from '../src/server/family-service.ts';
+
+// Real HTTP handlers, family guards and SQLite; ChatGPT output is an explicit
+// structured fixture. No model, search, production book or payment is contacted.
+const root=fileURLToPath(new URL('../',import.meta.url));
+const modules=path.resolve(process.env.LOCAL_TEST_MODULES??process.argv[2]??path.join(root,'work/calendar-qa/node_modules'));
+const {chromium}=createRequire(path.join(modules,'../package.json'))(path.join(modules,'playwright'));
+const out=path.join(root,'work/approval-sharing/e2e');fs.mkdirSync(out,{recursive:true});
+const env={...process.env,LOCAL_TEST_MODULES:path.join(root,'node_modules'),LOCAL_FAMILY_QA:'1',LOCAL_API_PORT:'5614',LOCAL_UI_PORT:'5613',LOCAL_QA_DATABASE:`qa-approval-sharing-${Date.now()}.sqlite`};
+for(const k of Object.keys(env))if(k.startsWith('NEW_API_')||k==='TAVILY_API_KEY')delete env[k];
+await prepareVendor(env.LOCAL_TEST_MODULES);
+const qaDirectory=path.join(root,'.sites-runtime/local-qa');fs.mkdirSync(qaDirectory,{recursive:true});const outsiderFixture=openTestDatabase(path.join(qaDirectory,env.LOCAL_QA_DATABASE));await familyCommand(outsiderFixture.db,{userId:'local-simulated-outsider',displayName:'模拟外部用户'},{action:'create',name:'模拟外部家庭'});outsiderFixture.sqlite.close();
+const children=['local/server.mjs','local/vite-server.mjs'].map((script,i)=>{const log=fs.openSync(path.join(out,i?'ui.log':'api.log'),'w');return spawn(process.execPath,[script],{cwd:root,env,stdio:['ignore',log,log]})});
+const url='http://127.0.0.1:5613',api='http://127.0.0.1:5614';
+const owner='local-simulated-owner',member='local-simulated-member',results=[],pageErrors=[],unexpected=[],requests=[];
+let browser,page;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitServer(){for(let i=0;i<100;i++){try{if((await fetch(url)).ok&&(await fetch(api+'/api/finance')).ok)return}catch{}await sleep(200)}throw Error('isolated preview did not start')}
+async function json(route,{user=owner,body,headers={},allowError=false}={}){const r=await fetch(api+route,{method:body?'POST':'GET',headers:{'x-local-qa-user':user,...headers,...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const value=await r.json();if(!allowError)assert.ok(r.ok,JSON.stringify(value));return {status:r.status,value}}
+const state=async()=> (await json('/api/finance')).value;
+async function call(name,args={},user=owner){const {value}=await json('/mcp',{user,body:{jsonrpc:'2.0',id:crypto.randomUUID(),method:'tools/call',params:{name,arguments:args}}});assert.ok(!value.result?.isError,JSON.stringify(value));return value.result.structuredContent}
+async function stage(kind,payload){return call('submit_finance_draft',{kind,payload,request_id:crypto.randomUUID(),expected_revision:(await state()).book.revision})}
+async function command(action,body,user=owner,key=crypto.randomUUID()){return (await json('/api/finance',{user,body:{key,revision:(await state()).book.revision,action,body}})).value}
+async function nav(name,p=page){
+ if(['家庭管理','目标设置','工作流集成','会员权益'].includes(name)){await p.getByRole('button',{name:'账户菜单',exact:true}).click();await p.getByRole('region',{name:'当前账户',exact:true}).getByRole('button',{name,exact:true}).click();return}
+ const toggle=p.getByRole('button',{name:'切换菜单'});if(await toggle.isVisible())await toggle.click();await p.getByRole('navigation').getByRole('button',{name,exact:true}).click();await p.locator('.sidebar').evaluate(node=>Promise.all(node.getAnimations().map(a=>a.finished.catch(()=>{}))))
+}
+async function check(name,fn){await fn();results.push({name,status:'PASS'});console.log('PASS '+name)}
+const dialog=()=>page.getByRole('dialog');
+const card=id=>page.locator(`[data-draft-id="${id}"]`);
+const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+let planId,sharedLink,memberPage,outsiderPage;
+const payload={name:'模拟家庭待审批出游',category:'国内旅行',date:today,end:today,budget:'300.00',ownerMemberId:'family',analysis:'仅隔离测试，未预订未付款',expenseDraft:{kind:'travel',items:[{id:'cost',name:'模拟费用',quantity:'1',unitPrice:'300.00'}],itinerary:[{id:'visit',date:today,time:'09:00',title:'模拟公园游览'}]}};
+try{
+ await waitServer();browser=await chromium.launch({channel:'chrome',headless:true});
+ const contexts=await Promise.all([owner,member,'local-simulated-outsider'].map(user=>browser.newContext({viewport:{width:1440,height:1000},extraHTTPHeaders:{'x-local-qa-user':user}})));
+ [page,memberPage,outsiderPage]=await Promise.all(contexts.map(async c=>{const p=await c.newPage();p.setDefaultTimeout(12000);p.on('pageerror',e=>pageErrors.push(e.message));return p}));
+ await check('建立两成员家庭与待审批旅行，采用不会扣款或成为正式预算',async()=>{
+  const asset={name:'模拟银行',category:'cash',currency:'CNY',amount:'1000',asOf:today,ownerMemberId:'user:'+owner,owned:true};const assetDraft=await stage('asset',asset);await command('mcp.draft.accept',{draftId:assetDraft.id,confirmed:true,actualConfirmed:true,reviewedPayload:asset});const family=(await json('/api/family')).value,invite=(await json('/api/family',{body:{action:'invite',revision:family.family.revision}})).value;await json('/api/family',{user:member,body:{action:'accept',token:invite.token}});const before=await state(),draft=await stage('budget',payload);planId=(await command('mcp.draft.accept',{draftId:draft.id,confirmed:true,reviewedPayload:payload})).id;const after=await state();assert.equal(after.documents.find(d=>d.id===planId).payload.budgetStatus,'PENDING_APPROVAL');assert.deepEqual(after.accounts,before.accounts);assert.deepEqual(after.transactions,before.transactions);
+ });
+ await check('预算卡片可分享审批链接，只含计划ID且不会自动批准',async()=>{
+  await page.goto(url,{waitUntil:'networkidle'});await nav('预算与大型支出');const before=await state();await page.getByRole('region',{name:'待审批预算'}).getByText('待家庭审批 1 项',{exact:true}).waitFor();const plan=page.locator('.plan-card').filter({has:page.getByRole('heading',{name:payload.name,exact:true})});await plan.getByText('待家庭审批',{exact:true}).waitFor();await plan.getByRole('button',{name:'分享审批',exact:true}).click();sharedLink=await dialog().getByLabel('审批链接',{exact:true}).inputValue();assert.equal(sharedLink,url+'/?plan='+planId);assert.equal(new URL(sharedLink).searchParams.size,1);await dialog().getByRole('button',{name:'复制审批链接'}).click();await dialog().getByRole('status').filter({hasText:/已复制|请长按/}).waitFor();await page.keyboard.press('Escape');await dialog().waitFor({state:'detached'});assert.deepEqual(await state(),before);
+ });
+ await check('家人打开分享链接直达审批，审批区在行程上方且可见待本人数量',async()=>{
+  await memberPage.goto(sharedLink,{waitUntil:'networkidle'});await memberPage.getByRole('heading',{name:payload.name,exact:true}).waitFor();const approval=memberPage.getByRole('region',{name:'家庭预算审批',exact:true});await approval.getByRole('button',{name:'我同意此预算',exact:true}).waitFor();assert.ok(await memberPage.locator('.nav-tag[aria-label="待你审批 1 项"]').isVisible());assert.ok(await memberPage.evaluate(()=>{const a=document.querySelector('.family-approvals'),b=document.querySelector('.execution-steps');return Boolean(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING)}));await memberPage.reload({waitUntil:'networkidle'});await approval.getByRole('button',{name:'我同意此预算',exact:true}).waitFor();
+ });
+ await check('待审批日历突出候选状态、只看待审批与直达审批，且不能付款',async()=>{
+  const before=await state();await nav('生活日历',memberPage);await memberPage.getByLabel('日历安排类型').selectOption('pending');await memberPage.getByRole('button',{name:today+'，1项安排',exact:true}).click();const agenda=memberPage.getByRole('region',{name:'当天安排'});await agenda.getByText('待家庭审批',{exact:true}).first().waitFor();await agenda.getByText('候选安排，待全家确认，尚未纳入正式预算。',{exact:true}).waitFor();await agenda.getByRole('button',{name:'查看并审批 →',exact:true}).click();await memberPage.getByRole('region',{name:'家庭预算审批'}).waitFor();assert.deepEqual(await state(),before);const bank=before.accounts.find(a=>a.category==='cash');const blocked=await json('/api/finance',{allowError:true,body:{key:crypto.randomUUID(),revision:before.book.revision,action:'plan.pay',body:{planId,accountId:bank.id,amount:'1',date:today}}});assert.ok(blocked.status>=400);assert.deepEqual(await state(),before);
+ });
+ await check('外部家庭打开同一链接无法读到名称金额，也无法提交审批',async()=>{
+  const outsider='local-simulated-outsider';await outsiderPage.goto(sharedLink,{waitUntil:'networkidle'});await outsiderPage.getByRole('status').filter({hasText:'此计划不存在或当前账户无权查看'}).waitFor();assert.equal(await outsiderPage.getByRole('heading',{name:payload.name,exact:true}).count(),0);assert.equal(await outsiderPage.getByRole('button',{name:'我同意此预算',exact:true}).count(),0);const foreign=(await json('/api/finance',{user:outsider})).value;assert.equal(foreign.documents.some(d=>d.id===planId),false);const before=await state(),version=before.documents.find(d=>d.id===planId).payload.familyApproval.version;const r=await json('/api/finance',{user:outsider,allowError:true,body:{key:crypto.randomUUID(),revision:foreign.book.revision,action:'plan.approve',body:{planId,version,confirmed:true}}});assert.ok(r.status>=400);assert.deepEqual(await state(),before);
+ });
+ await check('手机分享框与审批区无横向溢出，家人本人确认后转正式且待批提醒消失',async()=>{
+  await memberPage.setViewportSize({width:390,height:844});const approval=memberPage.getByRole('region',{name:'家庭预算审批'});await approval.getByRole('button',{name:'分享审批',exact:true}).click();const d=memberPage.getByRole('dialog');await d.getByLabel('审批链接').waitFor();assert.ok(await memberPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await memberPage.screenshot({path:path.join(out,'share-mobile.png'),fullPage:true});await memberPage.keyboard.press('Escape');const before=await state();await approval.getByRole('button',{name:'我同意此预算',exact:true}).click();await approval.getByText(/家庭已通过/).waitFor();const after=await state();assert.equal(after.documents.find(d=>d.id===planId).payload.budgetStatus,'APPROVED');assert.deepEqual(after.accounts,before.accounts);assert.deepEqual(after.transactions,before.transactions);assert.equal(await memberPage.locator('.nav-tag[aria-label="待你审批 1 项"]').count(),0);await nav('生活日历',memberPage);await memberPage.getByLabel('日历安排类型').selectOption('pending');await memberPage.getByRole('button',{name:today+'，0项安排',exact:true}).waitFor();await memberPage.getByLabel('日历安排类型').selectOption('all');await memberPage.getByRole('button',{name:today+'，1项安排',exact:true}).click();await memberPage.getByRole('region',{name:'当天安排'}).getByText('预算已确认',{exact:true}).waitFor();
+ });
+ await check('旧分享链接读取变更后方案，旧版本同意被拒绝；取消后不再提示待批',async()=>{
+  const before=await state(),old=before.documents.find(d=>d.id===planId).payload;await command('plan.save',{id:planId,name:old.name,category:old.category,date:old.date,end:old.end,budget:'300.00',status:old.status,note:'模拟补充安全说明，须重新审批'});await memberPage.goto(sharedLink,{waitUntil:'networkidle'});const approval=memberPage.getByRole('region',{name:'家庭预算审批'});await approval.getByRole('button',{name:'我同意此预算',exact:true}).waitFor();const current=await state();assert.ok(current.documents.find(d=>d.id===planId).payload.familyApproval.version>old.familyApproval.version);const stale=await json('/api/finance',{user:member,allowError:true,body:{key:crypto.randomUUID(),revision:current.book.revision,action:'plan.approve',body:{planId,version:old.familyApproval.version,confirmed:true}}});assert.ok(stale.status>=400);assert.deepEqual(await state(),current);await command('plan.cancel',{planId,version:current.documents.find(d=>d.id===planId).payload.version,confirmed:true});await memberPage.reload({waitUntil:'networkidle'});await memberPage.getByRole('heading',{name:payload.name,exact:true}).waitFor();assert.equal(await memberPage.getByRole('region',{name:'家庭预算审批'}).count(),0);assert.equal(await memberPage.locator('.nav-tag').count(),0);await nav('预算与大型支出',memberPage);assert.equal(await memberPage.locator('.plan-card').count(),0);const after=await state();assert.deepEqual(after.accounts,before.accounts);assert.deepEqual(after.transactions,before.transactions);
+ });
+ assert.deepEqual(pageErrors,[]);
+}catch(e){results.push({name:'执行中断',status:'FAIL',error:e.stack});console.error(e);for(const [label,p]of [['owner',page],['member',memberPage],['outsider',outsiderPage]])if(p){fs.writeFileSync(path.join(out,label+'-failure.txt'),await p.locator('body').innerText().catch(()=>''));await p.screenshot({path:path.join(out,label+'-failure.png'),fullPage:true}).catch(()=>{})}process.exitCode=1}
+finally{fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({date:new Date().toISOString(),scope:'家庭审批分享、直达链接、待批日历、两成员本人审批与外部家庭隔离',productionWrites:false,passed:results.filter(r=>r.status==='PASS').length,failed:results.filter(r=>r.status==='FAIL').length,pageErrors,results},null,2));await browser?.close();for(const child of children)child.kill('SIGTERM')}
