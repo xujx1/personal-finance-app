@@ -30,11 +30,13 @@ export function normalizeFinanceDraft(kind,p){
   return {consumptionType:consumptionTypeForWrite({...p,expenseDraft}),name:txt(p.name,100),category:txt(p.category??'其他',30),date:start,end,budget:total,ownerMemberId:txt(p.ownerMemberId??'family',120),...(p.planId?{planId:txt(p.planId,120)}:{}),expenseDraft,note:String(p.note??'').slice(0,3000),analysis:txt(p.analysis,6000)};
  }
  if(kind==='cashflow'){
-  only(p,[...common,'type','accountId','cashMemberId','amount','date','balanceIncluded','snapshotDate','consumptionType']);
+  only(p,[...common,'type','accountId','cashMemberId','amount','date','balanceIncluded','snapshotDate','consumptionType','planId','prepaymentId']);
+  for(const key of ['planId','prepaymentId'])if(p[key]!==undefined)txt(p[key],120);
+  if(p.prepaymentId&&!p.planId||p.planId&&p.type!=='expense')throw Error('关联计划或原预付款仅用于实际消费支出');
   if(!['income','expense'].includes(p.type))throw Error('仅支持实际收入或支出，预计收支请保存预算');
   if(typeof p.balanceIncluded!=='boolean')throw Error('请明确核对这笔收支是否包含在银行余额中');
   if(p.balanceIncluded&&(!p.snapshotDate||date(p.date)>date(p.snapshotDate)))throw Error('已含余额的历史须提供覆盖该笔的余额核实日期');
-  return {consumptionType:consumptionTypeForWrite(p),type:p.type,accountId:txt(p.accountId,120),cashMemberId:txt(p.cashMemberId,120),amount:amount(p.amount),date:date(p.date),balanceIncluded:p.balanceIncluded,...(p.balanceIncluded?{snapshotDate:date(p.snapshotDate)}:{}),note:txt(p.note,300),analysis:String(p.analysis??'').slice(0,6000)};
+  return {consumptionType:consumptionTypeForWrite(p),...(p.planId?{planId:txt(p.planId,120)}:{}),...(p.prepaymentId?{prepaymentId:txt(p.prepaymentId,120)}:{}),type:p.type,accountId:txt(p.accountId,120),cashMemberId:txt(p.cashMemberId,120),amount:amount(p.amount),date:date(p.date),balanceIncluded:p.balanceIncluded,...(p.balanceIncluded?{snapshotDate:date(p.snapshotDate)}:{}),note:txt(p.note,300),analysis:String(p.analysis??'').slice(0,6000)};
  }
  if(kind==='asset'){
   const fields=['pension','assetTypeId','name','category','currency','amount','ownerMemberId','asOf','owned','market','code','quantity','price','cost','bank','startDate','annualRate','maturityDate','rate','monthly','day'];

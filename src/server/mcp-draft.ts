@@ -1,3 +1,4 @@
+import {validatePlanExpense} from './plan-expense-draft.ts';
 import {clearReusedQuoteEvidence} from '../domain/stale-quote.mjs';
 import {validateStagedDraft} from './mcp-draft-stage.ts';
 import {isPensionAccount,validatePensionProductTypes} from '../domain/pension.mjs';
@@ -20,6 +21,7 @@ export async function extendMcpDraft(c:any){
   if(updating&&(!Number.isInteger(body.expectedDraftVersion)||body.expectedDraftVersion!==previousVersion))throw Error('CONFLICT:草稿版本已变化，请读取最新草稿再修改');
   if(body.changeNote!==undefined&&(typeof body.changeNote!=='string'||body.changeNote.length>1000))throw Error('修改说明无效或过长');
   const kind=old?.payload.kind??body.kind;
+  if(old&&kind==='cashflow'&&((old.payload.payload.planId??null)!==(body.payload?.planId??null)||(old.payload.payload.prepaymentId??null)!==(body.payload?.prepaymentId??null)))throw Error('不能在续改时更换关联计划或原预付款');
   if(old&&(kind==='budget'&&(old.payload.payload.planId??null)!==(body.payload?.planId??null)||kind==='setup'&&old.payload.payload.section!==body.payload?.section||kind==='recurring'&&old.payload.payload.candidateId!==body.payload?.candidateId))throw Error('不能在续改时更换原计划、建档阶段或周期候选；请为新目标另建草稿');
   const validated=await validateStagedDraft(c,kind,body.payload),id=old?.id??crypto.randomUUID(),now=new Date().toISOString(),draftVersion=old?previousVersion+1:1;
   if(old&&kind==='budget'){const cleaned=clearReusedQuoteEvidence(old.payload.payload.expenseDraft,validated.payload.expenseDraft);validated.payload.expenseDraft=cleaned.draft;if(cleaned.reset)result.warnings=[cleaned.reset+'项报价条件已更改，旧证据失效，已改为估算/预留，请重新核价'];}
@@ -62,12 +64,15 @@ export async function extendMcpDraft(c:any){
  }else{
   if(body.actualConfirmed!==true)throw Error('请确认已经实际到账、支付或实际持有，不能将预计事项记为实际');
   if(d.payload.kind==='cashflow'){
+   if((p.planId??null)!==(d.payload.payload.planId??null)||(p.prepaymentId??null)!==(d.payload.payload.prepaymentId??null))throw Error('不能在核对时更换原预算或预付款关联');const linked=await validatePlanExpense(c,p,d.payload);
    const a=account(p.accountId),n=minor(p.amount);if(a.kind!=='ASSET'||a.category!=='cash'||a.currency!=='CNY')throw Error('请选择人民币现金账户');
    if(resolveFinanceMember(state,p.cashMemberId,{write:true}).id!==accountMember(a,state).id)throw Error('资金成员与现金账户归属不一致');
-   if(p.date>localDate())throw Error('不能提前记未来实际收支');if(!p.balanceIncluded&&a.metadata.asOf&&p.date<=a.metadata.asOf)throw Error('该日期已被银行余额快照覆盖，请核对历史已含余额');
+   if(p.date>localDate())throw Error('不能提前记未来实际收支');if(!p.prepaymentId&&!p.balanceIncluded&&a.metadata.asOf&&p.date<=a.metadata.asOf)throw Error('该日期已被银行余额快照覆盖，请核对历史已含余额');
    if(p.balanceIncluded&&(!a.metadata.asOf||p.snapshotDate!==a.metadata.asOf||p.date>p.snapshotDate||p.snapshotDate>localDate()))throw Error('历史覆盖日期须匹配此银行账户已登记的余额核实日期');
-   const duplicates:any=await db.prepare("SELECT metadata FROM transactions WHERE dataset_id=? AND status='POSTED' AND business_date=? AND total_minor=? AND kind=?").bind(ds,p.date,n,p.type==='income'?'INCOME':'EXPENSE').all();if(duplicates.results.some((r:any)=>{const m=JSON.parse(r.metadata);return m.accountId===a.id&&m.note===p.note}))throw Error('已存在相同账户、日期、金额和说明的记录，请核对重复图片或草稿');
-   const income=p.type==='income',basis=p.balanceIncluded?system('equity'):a;id=journal(income?'INCOME':'EXPENSE',n,[entry(basis,income?n:-n),entry(system(income?'income':'expense'),income?-n:n)],{businessDate:p.date,accountId:a.id,note:p.note,consumptionType:p.consumptionType,balanceIncluded:p.balanceIncluded,snapshotDate:p.snapshotDate??null,mcpDraftId:d.id,externalAnalysis:true});destinationKind='transaction';
+   const duplicates:any=await db.prepare("SELECT kind,metadata FROM transactions WHERE dataset_id=? AND status='POSTED' AND business_date=? AND total_minor=? AND kind IN('INCOME','EXPENSE','PAYMENT')").bind(ds,p.date,n).all();if(duplicates.results.some((r:any)=>{const m=JSON.parse(r.metadata);return (p.type==='income'?r.kind==='INCOME':r.kind!=='INCOME')&&m.accountId===a.id&&m.note===p.note}))throw Error('已存在相同账户、日期、金额和说明的记录，请核对重复图片或草稿');
+   if(linked?.prepayment){const used:any=await db.prepare("SELECT COALESCE(SUM(total_minor),0) AS n FROM transactions WHERE dataset_id=? AND status='POSTED' AND (kind='PREPAYMENT_REFUND' AND original_id=? OR kind='PAYMENT' AND json_extract(metadata,'$.prepaymentId')=?)").bind(ds,p.prepaymentId,p.prepaymentId).first();if(n>linked.prepaid.balance||n+used.n>linked.prepayment.total_minor)throw Error('超过原预付款尚未消费或退款的金额');}
+   const income=p.type==='income',basis=linked?.prepaid??(p.balanceIncluded?system('equity'):a),kind=linked?'PAYMENT':income?'INCOME':'EXPENSE';id=journal(kind,n,[entry(basis,income?n:-n),entry(system(income?'income':'expense'),income?-n:n)],{businessDate:p.date,accountId:a.id,note:p.note,consumptionType:linked?.plan.payload.consumptionType??p.consumptionType,balanceIncluded:p.balanceIncluded,snapshotDate:p.snapshotDate??null,...(linked?{planId:p.planId}:{}),...(p.prepaymentId?{prepaymentId:p.prepaymentId,fromPrepayment:true}:{}),mcpDraftId:d.id,externalAnalysis:true});destinationKind='transaction';
+   if(linked&&!p.prepaymentId)writeDoc(p.planId,'plan',{...linked.plan.payload,reserved:Math.max(0,(linked.plan.payload.reserved??0)-n),status:'IN_PROGRESS'});
   }else{
    if(p.asOf>localDate())throw Error('已有资产核对日期不能在未来');id=crypto.randomUUID();destinationKind='account';const kind=p.category==='loan'?'LIABILITY':'ASSET',n=minor(p.amount),signed=kind==='LIABILITY'?-n:n,owner=ownerFields(state,p.ownerMemberId);
    if(state.accounts.some((a:any)=>a.category===p.category&&a.currency===p.currency&&String(a.name).trim().toLocaleLowerCase()===p.name.toLocaleLowerCase()&&accountMember(a,state).id===owner.ownerMemberId))throw Error('同名同币种同归属资产已经登记，请在资产列表核对修改，避免重复新增');

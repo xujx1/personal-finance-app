@@ -13,6 +13,7 @@ import {familyContext,familyCommand} from '../src/server/family-service.ts';
 import {scopeDb} from '../src/server/ledger-scope.ts';
 const owner={userId:'skill-owner',email:'skills@example.test',displayName:'本人'},member={userId:'skill-reader',email:'reader@example.test',displayName:'家人'},config={bootstrapOwnerEmail:owner.email};
 test('checked-in installer and default Skill backups match generated download contents',async()=>{assert.equal(INSTALLER_SOURCE,fs.readFileSync(new URL('../scripts/install-finance-skills.py',import.meta.url),'utf8'));const bundle=await buildSkillPackage({documents:[]});for(const s of DEFAULT_SKILLS){const backup=fs.readFileSync(new URL('../docs/skills/'+s.id+'/SKILL.md',import.meta.url),'utf8');assert.ok(backup.includes(s.body));assert.ok(bundle.files['skills/'+s.id+'/SKILL.md'].includes(s.body))}});
+test('six-workflow archives remain intact while latest adds approval query without overwriting custom instructions',async()=>{const old=DEFAULT_SKILLS.filter(s=>s.id!=='family-finance-approvals').map(s=>({...s,body:s.body+'\n家庭自定义条款'})),state={documents:[{kind:'skill_version',payload:{version:4,skills:old}}]};const latest=await buildSkillPackage(state),historic=await buildSkillPackage(state,4);assert.equal(latest.skills.length,7);assert.equal(historic.skills.length,6);for(const s of old)assert.equal(latest.skills.find(x=>x.id===s.id).body,s.body);assert.ok(latest.skills.find(s=>s.id==='family-finance-approvals').body.includes('list_my_approvals'))});
 async function fixture(t){const x=openTestDatabase();t.after(()=>x.sqlite.close());const scope=await familyContext(x.db,owner,config),db=scopeDb(x.db,scope);const send=async(action,body)=>executeCommand(db,{key:crypto.randomUUID(),revision:(await snapshot(db)).book.revision,action,body},owner.userId);return {...x,db,scope,send};}
 test('skill maintenance versions and restore are audited without financial writes',async t=>{const x=await fixture(t),before=await snapshot(x.db),skills=structuredClone(DEFAULT_SKILLS);skills[0].body+='\n本家庭的新说明。';const first=await x.send('skills.save',{skills,note:'修改消费说明'});let s=await snapshot(x.db);assert.equal((await buildSkillPackage(s)).version,1);assert.equal(s.documents.filter(d=>d.kind==='skill_version').length,1);await x.send('skills.restore',{version:0,note:'恢复内置版为新版本'});s=await snapshot(x.db);const bundle=await buildSkillPackage(s);assert.equal(bundle.version,2);assert.equal(bundle.skills[0].body,DEFAULT_SKILLS[0].body);assert.deepEqual(s.accounts,before.accounts);assert.deepEqual(s.transactions,before.transactions);assert.ok(s.audit.some(a=>a.action==='skills.restore'));});
 test('invalid skill paths, scripts and permission changes cannot enter the fixed content catalogue',async t=>{const x=await fixture(t);for(const skills of [[{...DEFAULT_SKILLS[0],id:'../../bad'}],[{...DEFAULT_SKILLS[0],script:'rm'}],DEFAULT_SKILLS.map((s,i)=>i? s:{...s,body:''})])await assert.rejects(x.send('skills.save',{skills}));assert.equal((await snapshot(x.db)).documents.filter(d=>d.kind==='skill_version').length,0);});
@@ -21,16 +22,16 @@ test('download package genuinely installs into an isolated Codex skills director
 
 const onboardingId='family-finance-onboarding';
 test('latest bundle includes onboarding while a saved five-workflow version retains its custom bodies',async()=>{
- const legacy=DEFAULT_SKILLS.filter(s=>s.id!==onboardingId).map((s,i)=>({...s,body:s.body+(i===0?'\n家庭自定义规则。':'')}));
+ const legacy=DEFAULT_SKILLS.filter(s=>![onboardingId,'family-finance-approvals'].includes(s.id)).map((s,i)=>({...s,body:s.body+(i===0?'\n家庭自定义规则。':'')}));
  const state={documents:[{kind:'skill_version',payload:{version:7,skills:legacy,note:'旧版',createdAt:null}}]};
- const current=currentSkillVersion(state);assert.equal(current.skills.length,6);assert.equal(current.skills[0].body,legacy[0].body);assert.equal(current.skills.find(s=>s.id===onboardingId)?.title,'家庭财务建档');
- const latest=await buildSkillPackage(state);assert.equal(latest.skills.length,6);assert.equal(latest.skills.find(s=>s.id===legacy[0].id).body,legacy[0].body);
+ const current=currentSkillVersion(state);assert.equal(current.skills.length,7);assert.equal(current.skills[0].body,legacy[0].body);assert.equal(current.skills.find(s=>s.id===onboardingId)?.title,'家庭财务建档');
+ const latest=await buildSkillPackage(state);assert.equal(latest.skills.length,7);assert.equal(latest.skills.find(s=>s.id===legacy[0].id).body,legacy[0].body);
  const historical=await buildSkillPackage(state,7);assert.equal(historical.skills.length,5);assert.deepEqual(historical.skills.map(s=>s.body),legacy.map(s=>s.body));
- assert.throws(()=>normalizeSkillCatalogue(legacy),/六个/);
+ assert.throws(()=>normalizeSkillCatalogue(legacy),/七个/);
 });
 test('legacy backup installer accepts the exact five-workflow manifest and rejects unknown or missing paths',async t=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'finance-skills-legacy-'));t.after(()=>fs.rmSync(temp,{recursive:true,force:true}));
- const legacy=DEFAULT_SKILLS.filter(s=>s.id!==onboardingId);const bundle=await buildSkillPackage({documents:[{kind:'skill_version',payload:{version:1,skills:legacy}}]},1);
+ const legacy=DEFAULT_SKILLS.filter(s=>![onboardingId,'family-finance-approvals'].includes(s.id));const bundle=await buildSkillPackage({documents:[{kind:'skill_version',payload:{version:1,skills:legacy}}]},1);
  for(const [name,body] of Object.entries(bundle.files)){const file=path.join(temp,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,body);}
  fs.writeFileSync(path.join(temp,'install.py'),INSTALLER_SOURCE);const manifest=path.join(temp,'SKILLS-MANIFEST.json');fs.writeFileSync(manifest,JSON.stringify(bundle.manifest));
  const run=target=>spawnSync('python3',[path.join(temp,'install.py'),'--target',path.join(temp,target)],{encoding:'utf8'});

@@ -1,6 +1,6 @@
 ---
 name: family-finance-consumption
-description: "在家庭财务中心规划旅行、餐饮或购物，读取家庭财务、研究来源、生成可调整费用与行程并保存预算草稿时使用；不用于付款或预订。"
+description: "用户规划旅行、餐饮或购物，调整预算行程，或要把已发生消费关联原预算提交待网站核对记账时使用。支持直接付款记录与预付款抵扣；不执行银行支付或代预订。"
 ---
 
 # 家庭消费规划
@@ -27,3 +27,9 @@ description: "在家庭财务中心规划旅行、餐饮或购物，读取家庭
 5. 用户调整后只复核当前清单，不恢复已删除候选、不重新生成无关选型。检查票数按参加该活动的人数，早饭/停车是否含在房价，退房后午睡地点，以及全程费用不重复。
 6. 首次新增用submit_finance_draft，已有PENDING草稿用update_finance_draft同ID完整替换并回读；新增预算payload使用kind=budget，payload={name,category,date,end,budget,ownerMemberId,analysis,note,expenseDraft}。更新原预算时加入planId并保留原归属（除非用户明确调整）；重新读取data_revision后提交expected_revision。budget与小票合计一致。消费类别以expenseDraft.kind保存为稳定的consumptionType（travel/shopping/dining/general），不要靠标题猜分类；可显式传同值，历史未知保持未分类。
 7. 返回草稿ID和“研究记录 → 同步草稿 → 待处理”核对入口。提交不扣钱；发起人在研究记录确认后进入预算与大型支出的家庭审批，待审批不显示在日历；全家确认后成为正式预算并进入生活日历。实际发生后用户打开计划，核对实际金额、日期和付款成员/账户，确认生成关联流水并更新对应银行余额；预付消费不重复扣现，还贷需区分实际本金和利息，不把研究或审批说成已付款。用户只要求存草稿时不能声称已显示日历。
+
+## 实际消费与原预算关联
+8. 用户说已发生消费时，先get_financial_context读原计划与planSummaries，用list_transactions完整分页查重。确认具体计划、实际金额、日期、付款成员/银行账户及余额覆盖，不用预算或推荐报价代替真实付款。
+9. submit_finance_draft kind=cashflow，payload={type:'expense',planId,accountId,cashMemberId,amount,date,note,balanceIncluded:false,analysis}。原计划必须家庭审批通过且未结束，金额是本次实际金额而非计划总预算；日期不能在未来，新扣现必须晚于银行余额核实日。历史已含余额时balanceIncluded=true且snapshotDate等于该账户asOf，仅补关联历史不再扣现。不推断付款人，不混合多成员账户为一笔。
+10. 如原款已记PREPAYMENT，现在只是实际消费抵扣，同一payload加prepaymentId=原PREPAYMENT交易ID，balanceIncluded=false，成员与accountId用原付款账户；只减预付资产，不再扣银行现金。核对原款尚未消费/退款额，不传预计未发生的酒店费。贷款本金、证券买入及现金转账不能伪装为消费，仍在网站专用入口核对。
+11. 待处理草稿用update_finance_draft同ID续改，不能更换planId/prepaymentId。提交后回读草稿并说明仅保存待核对；用户在研究记录确认实际发生后，才更新关联计划实付、流水与对应成员账户，完成后回读正式流水与planSummaries核对。

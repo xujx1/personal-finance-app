@@ -5,7 +5,7 @@ import os from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {createHash,randomUUID} from 'node:crypto';
 
-const ids=['onboarding','consumption','investment','images','monthly','recurring'].map(s=>'family-finance-'+s);
+const ids=['approvals','onboarding','consumption','investment','images','monthly','recurring'].map(s=>'family-finance-'+s);
 const digest=b=>createHash('sha256').update(b).digest('hex');
 const info=p=>fs.lstatSync(p,{throwIfNoEntry:false});
 function safe(p,kind){const s=info(p);if(s&&(s.isSymbolicLink()||(kind==='dir'?!s.isDirectory():!s.isFile())))throw Error('不安全的安装路径：'+p);return s;}
@@ -27,7 +27,7 @@ function install(args){
  const backupRoot=path.join(target,'.family-finance-backups');safe(backupRoot,'dir');
  const changed=entries.filter(e=>e.changed);
  if(dry){console.log('预检通过；将更新 '+changed.length+' 个入口：'+target);return;}
- if(!changed.length){console.log('六个工作流入口已是当前版本：'+target);return;}
+ if(!changed.length){console.log('七个工作流入口已是当前版本：'+target);return;}
  fs.mkdirSync(target,{recursive:true});
  const backup=path.join(backupRoot,new Date().toISOString().replaceAll(':','-')+'-'+randomUUID());
  for(const e of changed.filter(e=>e.previous)){const d=path.join(backup,e.id);fs.mkdirSync(d,{recursive:true});fs.writeFileSync(path.join(d,'SKILL.md'),e.previous,{flag:'wx',mode:0o600});}
@@ -38,4 +38,4 @@ function install(args){
  if(changed.some(e=>e.previous))console.log('原版本备份：'+backup);
  console.log('请重新打开 Codex 会话，并使用已连接的“家庭财务中心”MCP。工作流正文在使用时从站点读取最新版。');
 }
-try{const [command,...args]=process.argv.slice(2);if(!command||['--help','-h','help'].includes(command))console.log('用法：family-finance-skills install [--target 目录] [--dry-run]\n安装六个通用工作流入口，不含家庭资料，不修改 MCP 认证。');else if(command==='install')install(args);else throw Error('未知命令：'+command);}catch(error){console.error('安装未完成：'+error.message);process.exitCode=1;}
+try{const [command,...args]=process.argv.slice(2);if(!command||['--help','-h','help'].includes(command))console.log('用法：family-finance-skills install [--target 目录] [--dry-run]\n安装七个通用工作流入口，不含家庭资料，不修改 MCP 认证。');else if(command==='install')install(args);else throw Error('未知命令：'+command);}catch(error){console.error('安装未完成：'+error.message);process.exitCode=1;}

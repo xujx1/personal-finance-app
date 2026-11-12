@@ -1,4 +1,5 @@
 import {normalizeFinanceDraft} from '../domain/mcp-draft.mjs';
+import {validatePlanExpense} from './plan-expense-draft.ts';
 import {ownerFields,resolveFinanceMember,accountMember} from '../domain/member-ownership.mjs';
 import {assetTypeForWrite,getAssetTypes} from '../domain/asset-types.mjs';
 import {validatePensionProductTypes} from '../domain/pension.mjs';
@@ -8,7 +9,7 @@ import {suggestRecurring} from './recurring-http.ts';
 export async function validateStagedDraft(c:any,kind:string,input:any){
  const {state,account,doc,db}=c,payload:any=normalizeFinanceDraft(kind,input),meta:any={};
  if(kind==='setup'){Object.assign(payload,stageValidation(state,payload));meta.setupBasisFingerprint=await setupBasis(state,payload);}
- else if(kind==='cashflow'){const a=account(payload.accountId);if(a.kind!=='ASSET'||a.category!=='cash'||a.currency!=='CNY'||resolveFinanceMember(state,payload.cashMemberId,{write:true}).id!==accountMember(a,state).id)throw Error('现金账户或资金成员不一致');}
+ else if(kind==='cashflow'){const a=account(payload.accountId);if(a.kind!=='ASSET'||a.category!=='cash'||a.currency!=='CNY'||resolveFinanceMember(state,payload.cashMemberId,{write:true}).id!==accountMember(a,state).id)throw Error('现金账户或资金成员不一致');const linked=await validatePlanExpense(c,payload);if(linked)meta.targetPlanFingerprint=linked.targetPlanFingerprint;}
  else if(kind==='recurring'){meta.candidateEvidence=(await suggestRecurring(db)).candidates.find((x:any)=>x.id===payload.candidateId);if(!meta.candidateEvidence)throw Error('周期候选不存在或证据已变化，请重新读取');}
  else{ownerFields(state,payload.ownerMemberId);if(kind==='asset'){assetTypeForWrite(state,payload.assetTypeId,payload);if(payload.pension)validatePensionProductTypes(payload.pension,getAssetTypes(state));if(payload.pension&&payload.ownerMemberId==='family')throw Error('个人养老金须归属具体成员');}}
  if(kind==='monthly_review'&&(await getMonthlyContext(db,state,payload.month)).basisFingerprint!==payload.basisFingerprint)throw Error('月报依据已变化，请重新读取并总结');

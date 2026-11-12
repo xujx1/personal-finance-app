@@ -11,7 +11,8 @@ import tempfile
 
 LEGACY_IDS={'family-finance-consumption','family-finance-investment','family-finance-images','family-finance-monthly','family-finance-recurring'}
 
-IDS=LEGACY_IDS|{'family-finance-onboarding'}
+SIX_IDS=LEGACY_IDS|{'family-finance-onboarding'}
+IDS=SIX_IDS|{'family-finance-approvals'}
 
 def install(source, target):
     manifest_path=source/'SKILLS-MANIFEST.json'
@@ -19,7 +20,7 @@ def install(source, target):
     manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
     files=manifest.get('files',[])
     paths={f.get('path') for f in files}
-    installed_ids=next((names for names in (IDS,LEGACY_IDS) if paths=={f'skills/{name}/SKILL.md' for name in names}|{'plugin.json'}),None)
+    installed_ids=next((names for names in (IDS,SIX_IDS,LEGACY_IDS) if paths=={f'skills/{name}/SKILL.md' for name in names}|{'plugin.json'}),None)
     if installed_ids is None or len(files)!=len(installed_ids)+1:raise ValueError('校验文件路径不匹配')
     for row in files:
         relative=Path(row['path']);file=source/relative
