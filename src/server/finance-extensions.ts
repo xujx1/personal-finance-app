@@ -128,7 +128,7 @@ export async function extendFinance(c:any){
   for(const d of state.documents.filter((d:any)=>d.kind==='recurring_rule'&&!d.payload.paused)){
    const r=d.payload;let month=r.start.slice(0,7);for(let i=0;month<=through.slice(0,7)&&i<120;i++){
     const [y,m]=month.split('-').map(Number),date=month+'-'+String(Math.min(r.day,new Date(Date.UTC(y,m,0)).getUTCDate())).padStart(2,'0'),id='occurrence:'+d.id+':'+date;
-    if(date>=r.start&&date<=through&&(!r.end||date<=r.end)&&!state.documents.some((x:any)=>x.id===id)){
+    if(date>=r.start&&date<=through&&(!r.end||date<=r.end)&&!state.documents.some((x:any)=>x.id===id||(x.kind==='recurring_occurrence'&&x.payload.ruleId===d.id&&(x.payload.scheduledDate??/:(\d{4}-\d{2}-\d{2})$/.exec(x.id)?.[1]??x.payload.date)?.slice(0,7)===month))){
      if(++count>12)throw Error('单次最多补充12期，请缩小补记截止日期');const data={...r,ruleId:d.id,date};if(r.autoPost===true&&typeof r.confirmedAt==='string'&&r.confirmedAt&&['income','expense'].includes(r.type)&&!(cash(r.accountId).metadata.asOf&&date<=cash(r.accountId).metadata.asOf))post(data,id,date);else writeDoc(id,'recurring_occurrence',{...data,status:'DUE'});
     }month=m===12?String(y+1)+'-01':String(y)+'-'+String(m+1).padStart(2,'0');
    }

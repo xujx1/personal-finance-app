@@ -1,3 +1,4 @@
+import {withRecurringProjection} from './recurring-monthly.mjs';
 import {goalAssetAccounts} from './asset-view.mjs';
 import {MAX_MINOR,minor} from './finance.mjs';
 import {buildMonthlyReport} from './monthly-report.mjs';
@@ -91,7 +92,7 @@ export function buildAssetGoalOverview(state,valueCNY,month=currentGoalMonth()){
   current=add(current,value);if(bucket)bucket.current=add(bucket.current,value);else unassigned=add(unassigned,value);
  }
  for(const bucket of buckets){bucket.progress=bucket.complete?Math.min(100,Math.max(0,bucket.current/bucket.target*100)):null;bucket.gap=bucket.complete?Math.max(0,bucket.target-bucket.current):null;}
- return {goal,buckets,current,unassigned,unassignedComplete,unassignedNames,unknownNames,complete,progress:complete?Math.min(100,current/goal.totalTarget*100):null,gap:complete?Math.max(0,goal.totalTarget-current):null,legacyGoals:documents.filter(doc=>![2,3,4].includes(doc.payload?.schemaVersion)),monthly:monthlyProgress(state,month,goal.monthlyTarget)};
+ return {goal,buckets,current,unassigned,unassignedComplete,unassignedNames,unknownNames,complete,progress:complete?Math.min(100,current/goal.totalTarget*100):null,gap:complete?Math.max(0,goal.totalTarget-current):null,legacyGoals:documents.filter(doc=>![2,3,4].includes(doc.payload?.schemaVersion)),monthly:withRecurringProjection(state,monthlyProgress(state,month,goal.monthlyTarget),goal.monthlyTarget)};
 }
 
 function normalizeCombinationGoal(body,state){

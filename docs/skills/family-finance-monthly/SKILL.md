@@ -16,7 +16,7 @@ description: "用户要家庭财务中心的月度AI总结、收支复盘、月�
 
 ## 工作流
 1. 确定YYYY-MM月份，调用get_monthly_review_context。读取reportDocument的完整当月flows、memberJournalActivity、monthlyAccumulation和nextMonth，并核对report、memberCashflow、plans、goal。按units把分换成元。成员收入/费用用memberJournalActivity，现金变化单列；预付转消费不能重复扣款。需要额外明细时list_transactions完整分页并锁定expected_revision，不能把最近300条当完整账本。
-2. 先写简短关键结论，再按最多六节组织：本月概览；收入来源与成员收支（区分工资、非工资）；大额支出与重要流水（具体日期、成员、账户、用途）；资产负债与月积累目标差值；下月收支、预算与备款；覆盖限制。从真实记录选择重点，不能编造消费类别、用途或酒店报价。开账、校正、转账、资产卖出本金不冒充收益；还贷本金不冒充消费。外币独立列示。
+2. 先写简短关键结论，再按最多六节组织：本月概览；收入来源与成员收支（区分工资、非工资）；大额支出与重要流水（具体日期、成员、账户、用途）；资产负债与月积累目标差值；下月收支、预算与备款；覆盖限制。从真实记录选择重点，不能编造消费类别、用途或酒店报价。开账、校正、转账、资产卖出本金不冒充收益；还贷本金不冒充消费。外币独立列示。本月周期计划读取monthlyAccumulation.recurring，区分incomeMinor/outflowMinor、pendingIncomeMinor/pendingOutflowMinor与逐期状态；实际积累只用change，按周期预计积累用projectedChange，预计差额用projectedGap。未来首期、暂停和结束规则见excluded，不把全部月度模板金额算成本月已发生。已入账部分不再叠加；投资内部转换不减少非房产资产积累，完整还贷现金流出会减少该积累。预计值为null就说明不可推算，不能自行补数；预计不含未知生活费或未付款预算，不等同完整现金预测。
 3. 本站第一笔分录前真实期初未知。reportDocument.nextMonth.available=false时说明没有保存当时预测，不用当前数据重建历史预测。可用预测从asOf和当前现金出发，列出期初、周期收入、周期支出、大额预算、待审批金额和预计结余；缺生活费/应急金时不猜测。
 4. 用户要求保存时再次读取同月get_monthly_review_context。basisFingerprint改变就更新数字和结论；未变再submit_finance_draft kind=monthly_review，payload={month,title,summary,sections:[{heading,body}],limitations:[...],nextActions:[...],basisFingerprint,ownerMemberId}；expected_revision取最新读取。summary不超2000字，最多8节，heading不超100字、body不超1200字。输出结构化内容，由网站统一渲染HTML报告，不提交任意HTML或脚本。
 5. 网站先由用户核对采用总结，再在月度报告点击保存本月报告，归档服务器数字、完整流水、已核对总结及预测快照。同月内容变化另存新版，旧版不覆盖；归档和总结都不改账、不批准支出。旧结论依据变化必须注明并重做。
