@@ -87,7 +87,7 @@ export async function extendFinance(c:any){
  }
  if(action==='savings.goal.save'){
   const id=body.id?txt(body.id):crypto.randomUUID();if(body.id&&doc(id).kind!=='savings_goal')throw Error('目标类型不符');if([2,3,4].includes(body.schemaVersion)){if(body.id&&![2,3,4].includes(doc(id).payload.schemaVersion))throw Error('旧目标保留历史，请新建分类目标');writeDoc(id,'savings_goal',{...normalizeAssetGoalInput(body,state),updatedAt:new Date().toISOString()});result.id=id;return true;}if(!Array.isArray(body.items)||!body.items.length||body.items.length>50)throw Error('请选择目标资产');
-  const ids=new Set();const items=body.items.map((x:any)=>{const a=account(x.accountId);if(a.kind!=='ASSET'||a.category==='prepayment'||ids.has(a.id))throw Error('目标资产无效或重复');ids.add(a.id);return {accountId:a.id,target:positive(x.amount),date:day(x.date)}});writeDoc(id,'savings_goal',{name:txt(body.name,100),items,updatedAt:new Date().toISOString()});result.id=id;return true;
+  const ids=new Set();const items=body.items.map((x:any)=>{const a=account(x.accountId);if(a.kind!=='ASSET'||a.category==='prepayment'||ids.has(a.id))throw Error('目标资产无效或重复');ids.add(a.id);const target=minor(x.amount);if(target<=0)throw Error('目标金额必须大于0');return {accountId:a.id,target,date:day(x.date)}});writeDoc(id,'savings_goal',{name:txt(body.name,100),items,updatedAt:new Date().toISOString()});result.id=id;return true;
  }
  if(action==='attachment.record'){const id=crypto.randomUUID();writeDoc(id,'attachment',{...body,createdAt:new Date().toISOString(),archived:false});result.id=id;return true}
  if(action==='attachment.archive'){const d=doc(body.id);if(d.kind!=='attachment')throw Error('附件不存在');writeDoc(d.id,'attachment',{...d.payload,archived:true});return true}

@@ -30,3 +30,25 @@ export function filterResearchRecords(records,{query='',kind='all',from='',to=''
   return (kind==='all'||consumptionTypeOf(d)===kind)&&dateInRange(when,null,from,to)&&(!needle||JSON.stringify([d.id,p.title,p.summary,p.inputs?.question,p.content,p.analysis]).toLocaleLowerCase().includes(needle));
  });
 }
+
+/** Presentation facts only: original prose remains untouched and never becomes a money source. */
+export function budgetResearchFacts(payload){
+ if(!payload)return null;
+ let amount=null;
+ if(Array.isArray(payload.expenseDraft?.items)&&payload.expenseDraft.items.length){
+  try{const total=payload.expenseDraft.items.filter(x=>x.selected!==false).reduce((sum,x)=>{const price=x.unitPrice!=null?Number(x.unitPrice):Number(x.amount)/100;return sum+Math.round(price*Number(x.quantity??1)*100);},0);if(Number.isSafeInteger(total))amount=(total/100).toFixed(2);}catch{}
+ }
+ if(amount===null&&payload.budget!=null&&payload.budget!==''){const n=typeof payload.budget==='number'?payload.budget/100:Number(payload.budget);if(Number.isFinite(n))amount=n.toFixed(2);}
+ const itinerary=payload.expenseDraft?.itinerary??payload.itinerary??[];
+ return {amount,name:payload.name??payload.title??'',date:payload.date??'',end:payload.end??payload.tripEnd??payload.date??'',items:payload.expenseDraft?.items?.length??0,itinerary:itinerary.length,signature:JSON.stringify([amount,payload.name??payload.title??'',payload.date??'',payload.end??payload.tripEnd??payload.date??'',(payload.expenseDraft?.items??[]).map(x=>[x.id,x.name,x.quantity,x.unitPrice,x.selected!==false,x.itineraryId,x.merchant]),itinerary.map(x=>[x.id,x.date,x.time,x.title,x.location])])};
+}
+export function historicalAnalysisFacts({original,reviewed,current}={}){
+ const a=budgetResearchFacts(original??reviewed),b=budgetResearchFacts(reviewed??original),c=budgetResearchFacts(current);
+ return {original:a,reviewed:b,current:c,reviewChanged:Boolean(a&&b&&a.signature!==b.signature),currentChanged:Boolean(b&&c&&b.signature!==c.signature)};
+}
+export function researchFactSummary(record,state){
+ const p=record?.payload??{},docs=state?.documents??[];
+ const draft=docs.find(d=>d.kind==='financial_draft'&&d.id===(record.sourceDraftId??p.mcpDraftId));
+ const plan=docs.find(d=>d.kind==='plan'&&(d.id===(record.sourcePlanId??p.planId)||d.payload.adviceId===record.id||d.payload.proposalId===record.id));
+ return historicalAnalysisFacts({original:draft?.payload?.payload??p,reviewed:draft?.payload?.reviewedPayload??p,current:plan?.payload});
+}

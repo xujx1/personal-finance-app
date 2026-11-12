@@ -8,7 +8,7 @@ export const ASSET_GOAL_BUCKETS=ASSET_GOAL_GROUPS;
 const ids=ASSET_GOAL_BUCKETS.map(x=>x.id),excluded=['property','prepayment','system'];
 const add=(a,b)=>{const n=a+b;if(!Number.isSafeInteger(n)||Math.abs(n)>MAX_MINOR)throw Error('目标合计超出金额上限');return n;};
 const validDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T00:00:00Z').valueOf())&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
-const amount=value=>{const n=minor(String(value));if(n<=0)throw Error('目标金额必须大于0');return n;};
+const amount=value=>{const n=minor(value);if(n<=0)throw Error('目标金额必须大于0');return n;};
 
 // API amounts are decimal yuan strings; persisted goals use integer CNY minor units.
 export function normalizeAssetGoalInput(body,state={}){
