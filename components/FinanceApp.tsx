@@ -40,7 +40,7 @@ import {safeQuotedBalance,visibleAssetAccounts,categoryValuation,marketQuoteRequ
 
 const labels:Record<string,string>={cash:'银行现金',term_deposit:'银行定期存款',fund:'基金',stock:'股票证券',property:'房产',loan:'住房贷款',other:'其他资产',prepayment:'预付款资产'};
 const statusNames:Record<string,string>={PLANNED:'计划中',BOOKED:'已预订',IN_PROGRESS:'执行中',COMPLETED:'已完成',CANCELLED:'已取消',DRAFT:'草稿'};
-const transactionNames:Record<string,string>={OPENING:'开账',ADJUSTMENT:'余额校正',EXPENSE:'日常支出',INCOME:'收入',PAYMENT:'计划付款',REFUND:'消费退款',LOAN_PAYMENT:'贷款还款',PREPAYMENT:'预订预付款',PREPAYMENT_REFUND:'预付款退款',TRANSFER:'内部转账',ASSET_BUY:'资产买入',ASSET_SALE:'资产变现'};
+const transactionNames:Record<string,string>={PENSION_BUY:'养老金内买入差额',PENSION_SALE:'养老金内卖出差额',OPENING:'开账',ADJUSTMENT:'余额校正',EXPENSE:'日常支出',INCOME:'收入',PAYMENT:'计划付款',REFUND:'消费退款',LOAN_PAYMENT:'贷款还款',PREPAYMENT:'预订预付款',PREPAYMENT_REFUND:'预付款退款',TRANSFER:'内部转账',ASSET_BUY:'资产买入',ASSET_SALE:'资产变现'};
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const pretty=(n:number)=>new Intl.NumberFormat('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n/100);
 const nav=[['dashboard','财务总览',LayoutDashboard],['calendar','生活日历',CalendarDays],['research','研究记录',TrendingUp],['assets','资产与贷款',Wallet],['plans','预算与大型支出',CalendarDays],['transactions','现金流水',ArrowLeftRight],['monthly-report','月度报告',Receipt],['recurring','周期收支',CalendarDays],['forecast','现金预测',TrendingUp],['family','家庭管理',Users],['workflows','工作流集成',Receipt],['settings','目标设置',Settings]] as const;

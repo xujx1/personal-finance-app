@@ -268,3 +268,6 @@ recurringConfiguredPlan用于已启用规则的月金额合计，包含首期尚
 # 2026-11-12 目标组合扩展
 
 新增savings_goal schemaVersion=4，targets保存{id,name,assetTypeIds,target}，目标与资产类型为显式集合关系；不依赖固定goalBucket分组。读取v2/v3不写入迁移，编辑建议须本人核对保存后切换。名称、类型ID、启用/性质、跨组合唯一性和金额上限由领域模型与命令统一校验；引用目标的类型不能停用。MCP setup有限配置支持新格式，旧scope格式继续兼容，不允许混合。onboarding输出可用类型，财务上下文返回组合类型集合；不增加工具数量、不改变家庭权限或金融分录。
+# 2026-11-12 养老金内投资账目
+
+养老金保持受限容器账户，元字符串的cashBalance加holdings.value必须等于账户资产余额。pension.trade只在该容器内操作，不接受普通银行ID；缴费contributions不变。各产品有稳定id与可选种类/家庭资产类型。无资产差额时写pension_trade审计文档，费用和相对账面变化则记平衡PENSION_BUY/SALE分录；卖出成本收益与账面增减分开。lastInvestmentAt保护快照，realizedProfit由已记录卖出累计，普通快照不可改。MCP/Skill仅提交已有快照，实际内部成交在站点核对。现金预测和预算仍只使用普通银行现金，养老金不作为可提取现金。

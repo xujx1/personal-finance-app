@@ -404,3 +404,10 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'
 新增personal_pension基础类型，baseCategory=other。metadata.pension={annualLimit,withdrawalAge,cashBalance,contributions:[{year,amount}],holdings:[{name,value,cost,yesterdayProfit?}]}金额均为元字符串；pensionSummary数值金额字段为分，年龄与年份非金额。MCP已有资产草稿、网站核对/详情及pension.contribute同步支持。仅具体成员单账户，原身份固定，成员关联也重算防重复；普通变现与改类型禁止。充值按同成员跨账户年度实缴额度核对，分录ASSET_BUY并标pensionContribution，不生成消费。旧快照不能降低已确认实缴或早于最近充值，未来日期禁止。见P001–P007。
 
 正式v43及本次本人养老金快照已登记：价值9298.88元、成本12000元、收益-2701.12元，2026实缴12000元，个人计划70岁不提取。619项测试、类型检查、27项E2E及7项独立专项复查通过。修订52→54，新增1个账户；原18账户、现金、预算和周期未变，无实际充值或银行扣款。
+# 2026-11-12 养老金内投资
+
+PI001–PI008新增pension.trade专用命令，仅取养老金assetId，不接受外部银行字段。内部买入扣cashBalance、增加持仓，卖出款回cashBalance，不影响年度缴费。零差额只写pension_trade文档；费用与估值差额才记PENSION_BUY/SALE分录。全额/部分赎回分别核对，卖出收益与账面变动基准分开。
+
+holdings支持稳定id、kind=fund/insurance/deposit/other、真实assetTypeId和可选code；新行UUID，旧无ID确定性兼容且避免冲突。metadata.pension.realizedProfit为本站记录的卖出收益（元字符串）；lastInvestmentAt限制旧快照，快照不改写该收益。MCP与Skill已同步，外部产品目录不自动持有。总目标仍按养老金账户类别计算，不重复登记底层基金资产。
+
+v44已上线，627项测试、类型检查、29项E2E及15项独立定向审查通过。正式只读核对修订54未变，19个账户、三只养老金产品及资金/实缴/普通银行均未变。新账户内操作仅在模拟家庭执行，未替用户买入或赎回。

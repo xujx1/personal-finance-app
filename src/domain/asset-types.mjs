@@ -58,7 +58,7 @@ export function normalizeAssetTypes(input,state){
   if(!Object.hasOwn(BASE_ASSET_CATEGORIES,t.baseCategory)||!['stock','deposits','broadIndex','preciousMetals',null].includes(t.goalBucket)||typeof t.enabled!=='boolean')throw Error('账户性质或目标组合无效');
   const old=previous.find(p=>p.id===t.id);if(old&&old.baseCategory!==t.baseCategory||!old&&t.baseCategory==='prepayment')throw Error('账户性质创建后不能修改，预付款由系统管理');
   if(['property','loan','prepayment'].includes(t.baseCategory)&&t.goalBucket!==null)throw Error('房产、贷款和预付款不计入非房产目标');
-  if(!t.enabled){if((state?.accounts??[]).some(a=>a.category!=='system'&&accountAssetType(a,state)?.id===t.id))throw Error('该资产类型仍被账户使用，不能停用');if((state?.documents??[]).some(d=>d.kind==='savings_goal'&&(d.payload.schemaVersion===3&&d.payload.targets?.some(row=>row.scope==='type:'+t.id)||d.payload.schemaVersion===4&&d.payload.targets?.some(row=>row.assetTypeIds?.includes(t.id)))))throw Error('该资产类型仍被目标使用，不能停用');}
+  if(!t.enabled){if((state?.accounts??[]).some(a=>a.category!=='system'&&(accountAssetType(a,state)?.id===t.id||a.metadata?.pension?.holdings?.some(h=>h.assetTypeId===t.id))))throw Error('该资产类型仍被账户使用，不能停用');if((state?.documents??[]).some(d=>d.kind==='savings_goal'&&(d.payload.schemaVersion===3&&d.payload.targets?.some(row=>row.scope==='type:'+t.id)||d.payload.schemaVersion===4&&d.payload.targets?.some(row=>row.assetTypeIds?.includes(t.id)))))throw Error('该资产类型仍被目标使用，不能停用');}
   return {id:t.id,name,baseCategory:t.baseCategory,goalBucket:t.goalBucket,enabled:t.enabled,builtin:t.id===PENSION_TYPE.id||defaults.some(d=>d.id===t.id)};
  });
  if(previous.some(t=>!seen.has(t.id)))throw Error('已有类型不可删除，可停用未使用的类型');
