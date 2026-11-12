@@ -1,3 +1,4 @@
+import {PENSION_TYPE} from './pension.mjs';
 export const ASSET_GOAL_GROUPS=[
  {id:'stock',label:'股票',hint:'个股与已明确的股票资产',color:'#356d58'},
  {id:'deposits',label:'银行存款＋国债',hint:'活期、定期存款及明确的国债',color:'#8d9d65'},
@@ -27,7 +28,7 @@ const defaults=[
  ['stock','股票证券','stock','stock'],['stock_index','证券指数ETF','stock','broadIndex'],['fund','基金','fund',null],['broad_index','宽基指数基金','fund','broadIndex'],['treasury_fund','国债基金','fund','deposits'],['metals_fund','贵金属基金','fund','preciousMetals'],['metals','黄金与贵金属','other','preciousMetals'],
  ['property','房产','property',null],['loan','住房贷款','loan',null],['other','其他资产','other',null],['prepayment','预付款资产','prepayment',null]
 ].map(([id,name,baseCategory,goalBucket])=>({id,name,baseCategory,goalBucket,enabled:true,builtin:true}));
-export function assetTypeCatalogue(state){return (state?.documents??[]).find(d=>d.kind==='asset_type_catalog')?.payload??{version:0,types:defaults};}
+export function assetTypeCatalogue(state){const saved=(state?.documents??[]).find(d=>d.kind==='asset_type_catalog')?.payload??{version:0,types:defaults};return {...saved,types:saved.types.some(t=>t.id===PENSION_TYPE.id)?saved.types:[...saved.types,{...PENSION_TYPE}]};}
 export function getAssetTypes(state){return assetTypeCatalogue(state).types.map(t=>({...t}));}
 export const goalEligibleType=type=>type&&type.enabled&&!['property','loan','prepayment'].includes(type.baseCategory);
 // Untyped legacy assets can use an explicit old goal group without having a
@@ -49,6 +50,7 @@ export function assetTypeForWrite(state,id,account,existingTypeId){
 }
 export function normalizeAssetTypes(input,state){
  if(!Array.isArray(input)||input.length<defaults.length||input.length>50)throw Error('资产类型数量无效（最多50项）');
+ if(!input.some(t=>t?.id===PENSION_TYPE.id))input=[...input,{...PENSION_TYPE}];
  const previous=getAssetTypes(state),names=new Set(),seen=new Set();
  const types=input.map(t=>{
   if(!t||typeof t!=='object'||Object.keys(t).some(k=>!['id','name','baseCategory','goalBucket','enabled','builtin'].includes(k))||typeof t.id!=='string'||!/^[a-z][a-z0-9_-]{0,63}$/.test(t.id)||seen.has(t.id))throw Error('资产类型标识重复或无效');seen.add(t.id);
@@ -57,7 +59,7 @@ export function normalizeAssetTypes(input,state){
   const old=previous.find(p=>p.id===t.id);if(old&&old.baseCategory!==t.baseCategory||!old&&t.baseCategory==='prepayment')throw Error('账户性质创建后不能修改，预付款由系统管理');
   if(['property','loan','prepayment'].includes(t.baseCategory)&&t.goalBucket!==null)throw Error('房产、贷款和预付款不计入非房产目标');
   if(!t.enabled){if((state?.accounts??[]).some(a=>a.category!=='system'&&accountAssetType(a,state)?.id===t.id))throw Error('该资产类型仍被账户使用，不能停用');if((state?.documents??[]).some(d=>d.kind==='savings_goal'&&(d.payload.schemaVersion===3&&d.payload.targets?.some(row=>row.scope==='type:'+t.id)||d.payload.schemaVersion===4&&d.payload.targets?.some(row=>row.assetTypeIds?.includes(t.id)))))throw Error('该资产类型仍被目标使用，不能停用');}
-  return {id:t.id,name,baseCategory:t.baseCategory,goalBucket:t.goalBucket,enabled:t.enabled,builtin:defaults.some(d=>d.id===t.id)};
+  return {id:t.id,name,baseCategory:t.baseCategory,goalBucket:t.goalBucket,enabled:t.enabled,builtin:t.id===PENSION_TYPE.id||defaults.some(d=>d.id===t.id)};
  });
  if(previous.some(t=>!seen.has(t.id)))throw Error('已有类型不可删除，可停用未使用的类型');
  return types;

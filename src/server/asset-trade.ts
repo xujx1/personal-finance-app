@@ -1,3 +1,4 @@
+import {isPensionAccount} from '../domain/pension.mjs';
 import {assetTypeForWrite} from '../domain/asset-types.mjs';
 import {minor,MAX_MINOR} from '../domain/finance.mjs';
 import {accountMember,ownerFields} from '../domain/member-ownership.mjs';
@@ -35,6 +36,7 @@ export function extendAssetTrade(c:any){
   const q=units(body.quantity);if(q<=0n)throw Error('首次买入必须填写实际成交数量');
   a={id:crypto.randomUUID(),name,category:p.category,currency:p.currency,kind:'ASSET',balance:0,metadata:{...owner,...(p.assetTypeId?{assetTypeId}:{}),code,market:p.market,quantity:'0',cost:'0',asOf:businessDate,source:'本人确认实际买入，现金同步扣除'}};
  }else a=account(body.assetId);
+ if(isPensionAccount(a))throw Error('个人养老金受限，不能通过普通资产买卖转出银行现金');
  if(a.kind!=='ASSET'||['cash','system','prepayment','term_deposit'].includes(a.category)||a.currency!==bank.currency)throw Error('请选择已登记资产及同币种银行现金账户');
  if(mode!==undefined&&!['fund','stock'].includes(a.category))throw Error('此买入清仓入口仅用于基金或股票');
  if(explicit&&(a.metadata.asOf&&businessDate<a.metadata.asOf||a.metadata.lastTradeAt&&businessDate<a.metadata.lastTradeAt))throw Error('交易日期早于持仓快照或上次交易，请先核对历史');

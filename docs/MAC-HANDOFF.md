@@ -399,3 +399,8 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'
 目标设置改为名称、金额及基础类型多选，v4 targets={id,name,assetTypeIds,target}。保存时类型ID不能跨组合重叠；启用类型来自本家庭字典，排除房产、贷款、预付款。资产类型维护不再展示固定组合归属，旧goalBucket字段只兼容旧规则。v2/v3目标及旧scope建档草稿继续读取，网页切换旧目标须先核对类型建议。MCP新建档用targets:[{name,assetTypeIds,target}]，get_financial_context返回goalCombinationTypes及目标真实类型集合。详见G001–G006。
 
 正式v42上线，612项测试、类型检查、25项E2E及45项独立定向审查通过。发布前后账本修订48、18个账户及目标/周期/现金等保持一致。用户的旧目标继续生效，只有本人保存后才切换新版范围；不需要调整环境配置或重新安装npm入口。
+# 2026-11-12 个人养老金
+
+新增personal_pension基础类型，baseCategory=other。metadata.pension={annualLimit,withdrawalAge,cashBalance,contributions:[{year,amount}],holdings:[{name,value,cost,yesterdayProfit?}]}金额均为元字符串；pensionSummary数值金额字段为分，年龄与年份非金额。MCP已有资产草稿、网站核对/详情及pension.contribute同步支持。仅具体成员单账户，原身份固定，成员关联也重算防重复；普通变现与改类型禁止。充值按同成员跨账户年度实缴额度核对，分录ASSET_BUY并标pensionContribution，不生成消费。旧快照不能降低已确认实缴或早于最近充值，未来日期禁止。见P001–P007。
+
+正式v43及本次本人养老金快照已登记：价值9298.88元、成本12000元、收益-2701.12元，2026实缴12000元，个人计划70岁不提取。619项测试、类型检查、27项E2E及7项独立专项复查通过。修订52→54，新增1个账户；原18账户、现金、预算和周期未变，无实际充值或银行扣款。
