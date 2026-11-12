@@ -16,12 +16,12 @@
 站点显示一条安装命令，可直接让Codex执行：
 
 ```sh
-npx --yes https://xu-family-finance-20261111.shady-gnat-0277.chatgpt.site/downloads/family-finance-skills-1.1.0.tgz install
+npx --yes https://xu-family-finance-20261111.shady-gnat-0277.chatgpt.site/downloads/family-finance-skills-1.2.0.tgz install
 ```
 
-需要Node.js 20或更新版本。默认装入CODEX_HOME/skills，未设置时为~/.codex/skills；可追加`--target 临时目录`或`--dry-run`。安装器先完整校验五个固定入口的大小和SHA256，再安装；更新前备份被替换的SKILL.md，拒绝目标符号链接，不改其他Skill、MCP认证或凭据。重新打开Codex会话后加载入口。备份路径会显示在命令输出中，恢复对应SKILL.md即可回退。
+需要Node.js 20或更新版本。默认装入CODEX_HOME/skills，未设置时为~/.codex/skills；可追加`--target 临时目录`或`--dry-run`。安装器先完整校验六个固定入口的大小和SHA256，再安装；更新前备份被替换的SKILL.md，拒绝目标符号链接，不改其他Skill、MCP认证或凭据。重新打开Codex会话后加载入口。备份路径会显示在命令输出中，恢复对应SKILL.md即可回退。
 
-公开npm包只含五个通用入口。使用入口先调用get_skill_bundle取得对应id的最新家庭正文，故站点维护后下次读取即可使用新说明；入口本身升级才需重新运行安装。正文、历史版本和完整ZIP备份仍需家庭认证。下载完整正文备份后，仍可解压运行`python3 install.py`固定某个历史版本；该方式不会自动读取后续正文，重新运行npm命令可恢复动态入口。网站不会直接修改ChatGPT客户端插件文件。
+公开npm包只含六个通用入口。使用入口先调用get_skill_bundle取得对应id的最新家庭正文，故站点维护后下次读取即可使用新说明；入口本身升级才需重新运行安装。正文、历史版本和完整ZIP备份仍需家庭认证。下载完整正文备份后，仍可解压运行`python3 install.py`固定某个历史版本；该方式不会自动读取后续正文，重新运行npm命令可恢复动态入口。网站不会直接修改ChatGPT客户端插件文件。
 
 网站已移除复制请求和提示词输入框。日历选日、调整原预算、月报选月等场景点击“交给ChatGPT”，会先保存家庭内的任务，再打开ChatGPT；在已连接家庭财务中心的会话中说明“继续网站中准备的任务”。Skill读取list_research_requests并确认对应任务，不自动执行其他旧请求。私人任务不拼接到外链；保存回执丢失时查询原命令结果，不重复新增。
 
@@ -73,3 +73,11 @@ npm test验证领域、权限与接口；test:e2e:local使用真实HTTP处理器
 资产类型在资产与贷款的管理入口维护；服务端默认14类，首次维护保存家庭版本。get_financial_context.assetTypes给出当前家庭的真实ID与baseCategory，已有资产草稿可传assetTypeId。设置页可下拉选择类型或组合、增删目标；头像查看当前账户和退出。新自选目标只按所选范围计算，MCP返回目标分项与准确进度，不把全部非房产资产当作该目标完成额。
 
 完整ChatGPT客户端验收请按CHATGPT-NEW-CHAT-TEST.md新开会话，区分真实模型/搜索与隔离结构化测试。
+
+## 第一次建立家庭财务档案
+
+在ChatGPT选择家庭财务中心，说“帮我建立家庭财务档案，先读取已有数据，按步骤问我”。工作流先了解现有记录，再逐段询问成员昵称、余额和贷款日期、类别、个人目标、固定收支；历史可以稍后补。每段保存为草稿，在网页核对采用后再继续依赖它的下一段。无需先制作JSON或提供完整流水。
+
+配置草稿使用kind=setup，限members/asset_types/goals/recurring；它不创建登录关系、不授予权限、不产生现金分录。固定工资从未来规则开始，不能将约数当已到账；真实零余额银行账户可登记，未知不能填零。已有数据不初始化覆盖。
+
+首次空家庭首页有建档入口；已有家庭从账户菜单的工作流集成继续。npm1.2.0安装六个入口，已安装旧五入口的Codex可重新执行该命令升级。ChatGPT连接读取最新工作流正文；工具列表缓存未刷新时，重新开启已连接应用的会话再使用新增setup草稿类型。

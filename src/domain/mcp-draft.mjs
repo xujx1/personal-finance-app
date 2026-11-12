@@ -3,9 +3,10 @@ import {normalizeExpenseDraft} from './expense-plan.mjs';
 import {normalizeDepositMetadata} from './deposit.mjs';
 import {normalizeLoanMetadata} from './loan.mjs';
 import {normalizeWorkflowDraft} from './workflow-draft.mjs';
+import {normalizeSetupDraft} from './setup-draft.mjs';
 const txt=(x,n=200)=>{if(typeof x!=='string'||!x.trim()||x.length>n)throw Error('草稿文字无效或过长');return x.trim()};
 const date=x=>{if(typeof x!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x)||!Number.isFinite(Date.parse(x))||new Date(x).toISOString().slice(0,10)!==x)throw Error('草稿日期无效');return x};
-const amount=x=>{if(typeof x!=='string')throw Error('金额须使用十进制字符串，单位为元');const n=minor(x);if(!n)throw Error('金额必须大于0');return decimal(n)};
+const amount=(x,allowZero=false)=>{if(typeof x!=='string')throw Error('金额须使用十进制字符串，单位为元');const n=minor(x);if(!n&&!allowZero)throw Error('金额必须大于0');return decimal(n)};
 function only(p,keys){if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).some(k=>!keys.includes(k)))throw Error('草稿包含无效或不允许的字段');}
 export function downgradeExternalExpenseDraft(draft){
  const downgrade=x=>({...x,...(x.sourceType==='retrieved_reference'?{sourceType:'scenario_estimate',checkedAt:null,priceEvidence:null}:{}),...(x.alternatives?{alternatives:x.alternatives.map(downgrade)}:{})});
@@ -13,6 +14,7 @@ export function downgradeExternalExpenseDraft(draft){
 }
 /** External MCP analysis is never an approval or proof of an actual transaction. */
 export function normalizeFinanceDraft(kind,p){
+ if(kind==='setup')return normalizeSetupDraft(p);
  if(['investment','monthly_review','recurring'].includes(kind))return normalizeWorkflowDraft(kind,p);
  const common=['analysis','note'];
  if(kind==='budget'){
@@ -41,7 +43,7 @@ export function normalizeFinanceDraft(kind,p){
   const details=Object.fromEntries(['code','quantity','price','cost','monthly'].filter(k=>p[k]!=null).map(k=>[k,String(p[k]).slice(0,100)]));
   for(const k of ['quantity','price','cost'])if(details[k]&&!/^\d+(\.\d{1,6})?$/.test(details[k]))throw Error('资产数量或金额无效');
   if(details.monthly)minor(details.monthly);
-  return {name:txt(p.name,100),...(p.assetTypeId?{assetTypeId:txt(p.assetTypeId,64)}:{}),category:p.category,currency:p.currency,amount:amount(p.amount),ownerMemberId:txt(p.ownerMemberId,120),asOf:date(p.asOf),owned:true,market:p.market??null,...details,...terms,...(p.day!=null?{day:p.day===''?null:Number(p.day)}:{}),note:String(p.note??'').slice(0,2000),analysis:String(p.analysis??'').slice(0,6000)};
+  return {name:txt(p.name,100),...(p.assetTypeId?{assetTypeId:txt(p.assetTypeId,64)}:{}),category:p.category,currency:p.currency,amount:amount(p.amount,p.category==='cash'),ownerMemberId:txt(p.ownerMemberId,120),asOf:date(p.asOf),owned:true,market:p.market??null,...details,...terms,...(p.day!=null?{day:p.day===''?null:Number(p.day)}:{}),note:String(p.note??'').slice(0,2000),analysis:String(p.analysis??'').slice(0,6000)};
  }
  throw Error('草稿类型无效');
 }

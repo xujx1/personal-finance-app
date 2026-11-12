@@ -377,3 +377,9 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'
 - `monthly_report_archive`为不可覆盖文档；通用账本只返回版本索引，完整报告保留原币、全量月流水、交易归属、已核对总结和预测。保存不改账。
 - MCP `list_reviews`可按 `monthly_report_archive`读取，工具数量仍为10。月度Skill已更新六类章节、历史预测和年度取版规则。
 - 新专项回归入口：`npm run test:e2e:monthly-report`。详细需求见 `requirements-report-navigation-2026-11-12.md`。
+
+## 2026-11-12 家庭财务建档
+
+新增第六Skill family-finance-onboarding，npm1.2.0。空家庭总览与工作流集成支持分段开始；MCP上下文包含onboarding步骤与可用目标范围。setup草稿仅配置昵称/追加类别/目标/明确固定规则，网站采用后生效；资产/历史沿用原草稿，保持成员归属和余额覆盖。
+
+现有五份私有Skill当前读取时补入建档，明确历史下载仍保留原五份。真实零银行余额允许asset草稿但不生成零额分录，其他资产仍须正金额。既有家庭访问与邀请政策不变。新增测试入口 npm run test:e2e:onboarding；详细O001–O010见 requirements-onboarding-2026-11-12.md。

@@ -251,3 +251,9 @@ Sites身份与服务访问结论另外依据本次使用的Sites官方身份文�
 月报按服务器分录派生结构化文档（schemaVersion=1），全量分页读取指定月份，使用交易时冻结的账户归属。收入费用、现金变动、资产负债分开，人民币与美元不历史折算。当前月预测保存当前观测时点的下个月行；历史实时预览不重建当时预测。
 
 `monthly.report.save`校验内容指纹，在现有documents写入不可变 `monthly_report_archive`。相同内容复用版本，变化生成下一版；不创建财务分录。通用文档写入路径拒绝修改归档。私有报告GET按家庭、月份、归档ID检查访问；通用快照仅输出归档索引。MCP沿用list_reviews分页协议扩展归档筛选，供以后年度复盘按月去重取版。网站以React安全HTML渲染；不保存或执行任意模型HTML。
+
+## 2026-11-12 有限建档配置草稿
+
+normalizeSetupDraft约束四类section，stageValidation校验真实目录、账户及目标口径，setupBasis记录相关配置指纹。mcp.draft.accept在本家庭管理员写权限和账本版本检查后重新验证指纹与网页修改内容；adoptSetupDraft只生成配置文档，不生成财务分录。成员昵称不关联登录；类型只追加；目标更新同一当前目标；固定规则autoPost=false、从今天或未来起算。相互依赖的阶段须采用后重新读取实际ID。
+
+已有余额走asset开账；零现金余额不生成零分录。实际历史仍使用cashflow及账户metadata.asOf覆盖校验。MCP工具数仍10，submit_finance_draft新增setup类型；客户端缓存旧工具描述时重新建会话刷新。未扩张家庭创建或邀请权限。

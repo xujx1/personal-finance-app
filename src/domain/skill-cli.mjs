@@ -1,7 +1,8 @@
 // Public bootstrap metadata only. Never import the family's maintained bodies here.
-export const SKILL_CLI_VERSION='1.1.0';
+export const SKILL_CLI_VERSION='1.2.0';
 export const SKILL_CLI_PATH='/downloads/family-finance-skills-'+SKILL_CLI_VERSION+'.tgz';
 export const SKILL_ENTRIES=[
+ ['family-finance-onboarding','家庭财务建档','用户首次整理家庭财务，或成员、资产类型、余额、目标及周期收支尚未完整登记时使用。'],
  ['family-finance-consumption','消费规划','规划旅行、餐饮或购物，调整行程与小票，向家庭财务中心提交预算草稿。'],
  ['family-finance-investment','投资研究','结合家庭账本研究投资、持仓与换仓问题，向家庭财务中心保存研究草稿。'],
  ['family-finance-images','图片识别与记账','识别用户提供的账单或资产截图，核对真实账户、余额覆盖与重复后提交财务草稿。'],

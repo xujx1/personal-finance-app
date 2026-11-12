@@ -1,3 +1,4 @@
+import {setupBasis,stageValidation,adoptSetupDraft} from './setup-draft.ts';
 import {assetTypeForWrite} from '../domain/asset-types.mjs';
 import {minor} from '../domain/finance.mjs';
 import {normalizeFinanceDraft} from '../domain/mcp-draft.mjs';
@@ -10,14 +11,15 @@ const only=(body:any,keys:string[])=>{if(Object.keys(body).some(k=>!keys.include
 export async function extendMcpDraft(c:any){
  const {action,body,state,rows,db,ds,account,doc,writeDoc,journal,entry,system,result,stagedAccounts,actor}=c;
  if(action==='mcp.draft.submit'){
-  only(body,['kind','payload']);const payload:any=normalizeFinanceDraft(body.kind,body.payload),id=crypto.randomUUID();let targetVersion,targetFingerprint,candidateEvidence;
+  only(body,['kind','payload']);const payload:any=normalizeFinanceDraft(body.kind,body.payload),id=crypto.randomUUID();let targetVersion,targetFingerprint,candidateEvidence,setupBasisFingerprint;
   // Validate family ownership and account references before saving any external draft.
-  if(body.kind==='cashflow'){const a=account(payload.accountId);if(a.kind!=='ASSET'||a.category!=='cash'||a.currency!=='CNY'||resolveFinanceMember(state,payload.cashMemberId,{write:true}).id!==accountMember(a,state).id)throw Error('现金账户或资金成员不一致');}
+  if(body.kind==='setup'){Object.assign(payload,stageValidation(state,payload));setupBasisFingerprint=await setupBasis(state,payload);}
+  else if(body.kind==='cashflow'){const a=account(payload.accountId);if(a.kind!=='ASSET'||a.category!=='cash'||a.currency!=='CNY'||resolveFinanceMember(state,payload.cashMemberId,{write:true}).id!==accountMember(a,state).id)throw Error('现金账户或资金成员不一致');}
   else if(body.kind==='recurring'){candidateEvidence=(await suggestRecurring(db)).candidates.find((x:any)=>x.id===payload.candidateId);if(!candidateEvidence)throw Error('周期候选不存在或证据已变化，请重新读取');}
   else {ownerFields(state,payload.ownerMemberId);if(body.kind==='asset')assetTypeForWrite(state,payload.assetTypeId,payload);}
   if(body.kind==='monthly_review'&&(await getMonthlyContext(db,state,payload.month)).basisFingerprint!==payload.basisFingerprint)throw Error('月报依据已变化，请重新读取并总结');
   if(body.kind==='budget'&&payload.planId){const plan=doc(payload.planId);if(plan.kind!=='plan'||['COMPLETED','CANCELLED'].includes(plan.payload.status)||plan.payload.scheduleOnly)throw Error('原预算不存在、已结束或属于须单独核对本息的还款预约');if(body.payload.ownerMemberId==null)payload.ownerMemberId=plan.payload.ownerMemberId;targetVersion=plan.payload.version??0;targetFingerprint=await evidenceHash(plan.payload);}
-  writeDoc(id,'financial_draft',{kind:body.kind,payload,...(targetVersion!==undefined?{targetVersion,targetFingerprint}:{}),...(candidateEvidence?{candidateEvidence}:{}),status:'PENDING',source:'ChatGPT/MCP，外部分析待本人核对',submittedBy:actor,createdAt:new Date().toISOString()});result.id=id;return true;
+  writeDoc(id,'financial_draft',{kind:body.kind,payload,...(setupBasisFingerprint?{setupBasisFingerprint}:{}),...(targetVersion!==undefined?{targetVersion,targetFingerprint}:{}),...(candidateEvidence?{candidateEvidence}:{}),status:'PENDING',source:'ChatGPT/MCP，外部分析待本人核对',submittedBy:actor,createdAt:new Date().toISOString()});result.id=id;return true;
  }
  if(action!=='mcp.draft.accept'&&action!=='mcp.draft.reject')return false;
  only(body,action==='mcp.draft.accept'?['draftId','confirmed','reviewedPayload','actualConfirmed']:['draftId','reason']);
@@ -31,7 +33,11 @@ export async function extendMcpDraft(c:any){
  if(d.payload.status==='ACCEPTED'){result.id=d.payload.destinationId;result.destinationKind=d.payload.destinationKind;return true;}
  if(d.payload.status!=='PENDING')throw Error('草稿已拒绝，不能再次采纳');
  const p:any=normalizeFinanceDraft(d.payload.kind,body.reviewedPayload),now=new Date().toISOString();let id:string,destinationKind:string;
- if(d.payload.kind==='budget'){
+ if(d.payload.kind==='setup'){
+  if(p.section!==d.payload.payload.section)throw Error('不能在核对时更换建档配置阶段，请重新提交');
+  if(await setupBasis(state,d.payload.payload)!==d.payload.setupBasisFingerprint)throw Error('建档配置依据已变化，请重新读取并提交草稿');
+  Object.assign(p,stageValidation(state,p));({id,destinationKind}=adoptSetupDraft(c,p,d.id,now));
+ }else if(d.payload.kind==='budget'){
   if((p.planId??null)!==(d.payload.payload.planId??null))throw Error('不能在核对时更换原预算，请重新提交草稿');
   const old=p.planId?doc(p.planId):null;if(old&&(old.kind!=='plan'||['COMPLETED','CANCELLED'].includes(old.payload.status)||old.payload.version!==d.payload.targetVersion||await evidenceHash(old.payload)!==d.payload.targetFingerprint))throw Error('原预算版本已变化，请重新提交草稿');
   id=old?.id??crypto.randomUUID();destinationKind='plan';const budget=minor(p.budget),expenseDraft={...p.expenseDraft,reviewed:true},version=Math.max(old?.payload.version??0,old?.payload.familyApproval?.version??0)+1;
@@ -62,7 +68,7 @@ export async function extendMcpDraft(c:any){
    if(state.accounts.some((a:any)=>a.category===p.category&&a.currency===p.currency&&String(a.name).trim().toLocaleLowerCase()===p.name.toLocaleLowerCase()&&accountMember(a,state).id===owner.ownerMemberId))throw Error('同名同币种同归属资产已经登记，请在资产列表核对修改，避免重复新增');
    const {name,category,currency}=p;const details=Object.fromEntries(Object.entries(p).filter(([key])=>!['amount','name','category','currency','ownerMemberId','owned'].includes(key)));const assetTypeId=assetTypeForWrite(state,p.assetTypeId,{category:p.category,name:p.name,metadata:p});const metadata={...details,...owner,...(p.assetTypeId?{assetTypeId}:{}),mcpDraftId:d.id,source:'本人确认ChatGPT分析的已有资产登记'};stagedAccounts.push({id,name,kind,category,currency,metadata});
    rows.push(db.prepare('INSERT INTO accounts VALUES(?,?,?,?,?,?,0,?)').bind(ds,id,name,kind,category,currency,JSON.stringify(metadata)));
-   journal('OPENING',n,[{account_id:id,currency,amount:signed},entry(system('equity',currency),-signed)],{businessDate:p.asOf,accountId:id,reason:'本人确认已有资产，不是新买入或银行交易',mcpDraftId:d.id});
+   if(n>0)journal('OPENING',n,[{account_id:id,currency,amount:signed},entry(system('equity',currency),-signed)],{businessDate:p.asOf,accountId:id,reason:'本人确认已有资产，不是新买入或银行交易',mcpDraftId:d.id});
   }
  }
  writeDoc(d.id,'financial_draft',{...d.payload,status:'ACCEPTED',reviewedPayload:p,acceptedAt:now,acceptedBy:actor,destinationId:id,destinationKind});result.id=id;result.destinationKind=destinationKind;return true;

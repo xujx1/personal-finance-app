@@ -9,15 +9,18 @@ import shutil
 import sys
 import tempfile
 
-IDS={'family-finance-consumption','family-finance-investment','family-finance-images','family-finance-monthly','family-finance-recurring'}
+LEGACY_IDS={'family-finance-consumption','family-finance-investment','family-finance-images','family-finance-monthly','family-finance-recurring'}
+
+IDS=LEGACY_IDS|{'family-finance-onboarding'}
 
 def install(source, target):
     manifest_path=source/'SKILLS-MANIFEST.json'
     if manifest_path.is_symlink():raise ValueError('校验清单不能是符号链接')
     manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
     files=manifest.get('files',[])
-    expected={f'skills/{name}/SKILL.md' for name in IDS}|{'plugin.json'}
-    if len(files)!=len(expected) or {f.get('path') for f in files}!=expected:raise ValueError('校验文件路径不匹配')
+    paths={f.get('path') for f in files}
+    installed_ids=next((names for names in (IDS,LEGACY_IDS) if paths=={f'skills/{name}/SKILL.md' for name in names}|{'plugin.json'}),None)
+    if installed_ids is None or len(files)!=len(installed_ids)+1:raise ValueError('校验文件路径不匹配')
     for row in files:
         relative=Path(row['path']);file=source/relative
         if relative.is_absolute() or '..' in relative.parts or any(parent.is_symlink() for parent in [file,*file.parents] if parent!=source.parent):raise ValueError('安装路径不能是符号链接或越界')
@@ -27,12 +30,12 @@ def install(source, target):
     # macOS /tmp and /var are system aliases. Pin their canonical destination,
     # then reject redirected Skill directories beneath that chosen root.
     target=target.resolve()
-    for name in IDS:
+    for name in installed_ids:
         dest=target/name
         if dest.is_symlink() or dest.exists() and not dest.is_dir():raise ValueError('目标Skill目录无效')
         if dest.exists() and any(p.is_symlink() for p in dest.rglob('*')):raise ValueError('目标Skill不能包含符号链接')
     target.mkdir(parents=True,exist_ok=True)
-    changed=[name for name in sorted(IDS) if not (target/name/'SKILL.md').exists() or (target/name/'SKILL.md').read_bytes()!=(source/'skills'/name/'SKILL.md').read_bytes()]
+    changed=[name for name in sorted(installed_ids) if not (target/name/'SKILL.md').exists() or (target/name/'SKILL.md').read_bytes()!=(source/'skills'/name/'SKILL.md').read_bytes()]
     existing=[name for name in changed if (target/name).exists()]
     backup=Path(tempfile.mkdtemp(prefix='.family-finance-backup-',dir=target)) if existing else None
     if backup:

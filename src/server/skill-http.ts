@@ -8,11 +8,11 @@ const sha=async(data:string)=>Array.from(new Uint8Array(await crypto.subtle.dige
 const json=(value:any,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store'}});
 export async function buildSkillPackage(state:any,version?:number){
  const current=currentSkillVersion(state),selected=version===undefined?current:version===0?{version:0,skills:DEFAULT_SKILLS,note:'内置备份',createdAt:null}:state.documents.find((d:any)=>d.kind==='skill_version'&&d.payload.version===version)?.payload;
- if(!selected)throw Error('工作流版本不存在');const skills=normalizeSkillCatalogue(selected.skills),semanticVersion='1.0.'+selected.version;
- const files:Record<string,string>={'plugin.json':JSON.stringify({$schema:'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',name:'family-finance-workflows',version:semanticVersion,description:'家庭财务中心：消费、投资、图片、月度复盘及周期收支工作流。需连接已有家庭财务中心MCP。'},null,2)+'\n'};
+ if(!selected)throw Error('工作流版本不存在');const skills=normalizeSkillCatalogue(selected.skills,{allowLegacy:version!==undefined&&version!==0}),semanticVersion='1.0.'+selected.version;
+ const files:Record<string,string>={'plugin.json':JSON.stringify({$schema:'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',name:'family-finance-workflows',version:semanticVersion,description:'家庭财务中心：建档、消费、投资、图片、月度复盘及周期收支工作流。需连接已有家庭财务中心MCP。'},null,2)+'\n'};
  for(const skill of skills)files['skills/'+skill.id+'/SKILL.md']='---\nname: '+skill.id+'\ndescription: '+JSON.stringify(skill.description)+'\nmetadata:\n  bundle_version: "'+semanticVersion+'"\n---\n\n'+skill.body+'\n';
  const manifest={version:semanticVersion,files:await Promise.all(Object.entries(files).map(async([path,content])=>({path,size:encode.encode(content).length,sha256:await sha(content)})))};
- return {version:selected.version,semanticVersion,skills,note:selected.note,createdAt:selected.createdAt,manifest,manifestSha256:await sha(JSON.stringify(manifest)),files,installation:'优先在站点工作流页运行所示npx命令安装通用入口，使用时get_skill_bundle读取最新家庭正文；固定历史正文备份可在站点工作流页下载并解压备份包，在解压目录运行 python3 install.py。安装器只安装五个Skill，覆盖前备份，不改MCP凭据；使用已连接家庭财务中心插件。新会话加载；网站更新后须重新下载安装。'};
+ return {version:selected.version,semanticVersion,skills,note:selected.note,createdAt:selected.createdAt,manifest,manifestSha256:await sha(JSON.stringify(manifest)),files,installation:'优先在站点账户菜单的工作流集成页运行所示npx命令安装六个通用入口，使用时get_skill_bundle读取最新家庭正文；固定历史正文备份可下载并解压当前或指定历史版本备份包，在解压目录运行 python3 install.py。安装器只安装包中固定的五个或六个Skill，覆盖前备份，不改MCP凭据；使用已连接家庭财务中心插件。新会话加载；通用入口每次读取最新正文，入口升级时重新执行安装命令；固定正文备份保留当时版本。'};
 }
 export function createSkillHandlers(deps:any){return {async GET(req:Request){try{
  const user=await deps.getUser();if(!user)return json({error:'请先登录'},401);const db=deps.getDb();if(!db)return json({error:'数据库尚未绑定'},503);if(db.ledgerScope&&db.ledgerScope.userId!==user.userId)throw Error('家庭身份不匹配');

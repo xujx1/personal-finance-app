@@ -1,4 +1,5 @@
 "use client";
+import HouseholdSetupReview from './HouseholdSetup';
 import {useState} from 'react';
 import {AssetTypeSelect} from './AssetTypeControls';
 import {getAssetTypes,accountAssetType} from '../src/domain/asset-types.mjs';
@@ -10,22 +11,22 @@ import ExternalWorkflowDraftReview from './ExternalWorkflowDraftReview';
 import './McpDraftInbox.css';
 
 type Props={state:any;kinds?:string[];compact?:boolean;onSave:(action:string,body:any)=>Promise<unknown>};
-const kindNames:Record<string,string>={budget:'消费预算与行程',cashflow:'实际现金流水',asset:'已有资产登记',investment:'投资研究',monthly_review:'月度总结',recurring:'周期规则'};
+const kindNames:Record<string,string>={setup:'家庭财务建档',budget:'消费预算与行程',cashflow:'实际现金流水',asset:'已有资产登记',investment:'投资研究',monthly_review:'月度总结',recurring:'周期规则'};
 const statusNames:Record<string,string>={PENDING:'待本人核对',ACCEPTED:'已采用',REJECTED:'已拒绝 · 保留历史'};
 const assetCategories:Record<string,string>={cash:'银行现金',term_deposit:'银行定期存款',fund:'基金',stock:'股票证券',property:'房产',loan:'住房贷款',other:'其他资产'};
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const safeLink=(value:unknown)=>{try{const u=new URL(String(value));return u.protocol==='https:'&&!u.username&&!u.password?u.href:undefined}catch{return undefined}};
 
-export default function McpDraftInbox({state,kinds=['budget','cashflow','asset','investment','monthly_review','recurring'],onSave,compact=false}:Props){
+export default function McpDraftInbox({state,kinds=['budget','cashflow','asset','investment','monthly_review','recurring','setup'],onSave,compact=false}:Props){
  const [history,setHistory]=useState(false);
  const documents=(state?.documents??[]).filter((d:any)=>d.kind==='financial_draft'&&kinds.includes(d.payload?.kind));
  const pending=documents.filter((d:any)=>d.payload.status==='PENDING'),closed=documents.filter((d:any)=>d.payload.status!=='PENDING');
  if(compact&&!pending.length)return null;
  return <section className="card mcp-draft-inbox" aria-label="ChatGPT外部分析草稿">
-  <div className="mcp-inbox-heading"><div>{!compact&&<div className="eyebrow">CHATGPT · MCP</div>}<h2>{compact?(kinds[0]==='recurring'?'待核对周期规则':'待核对月度总结'):'外部分析草稿'} <span className="badge gray">待核对 {pending.length}</span></h2></div>{closed.length>0&&<button className="text-button" type="button" aria-expanded={history} onClick={()=>setHistory(!history)}>{history?'收起处理历史':'处理历史 '+closed.length}</button>}</div>
+  <div className="mcp-inbox-heading"><div>{!compact&&<div className="eyebrow">CHATGPT · MCP</div>}<h2>{compact?(kinds[0]==='setup'?'待核对家庭建档':kinds[0]==='recurring'?'待核对周期规则':'待核对月度总结'):'外部分析草稿'} <span className="badge gray">待核对 {pending.length}</span></h2></div>{closed.length>0&&<button className="text-button" type="button" aria-expanded={history} onClick={()=>setHistory(!history)}>{history?'收起处理历史':'处理历史 '+closed.length}</button>}</div>
   {!compact&&<p className="help-text">在ChatGPT中选择家庭财务中心，分析后保存为相应草稿，再回这里核对。提交草稿不会批准预算或扣款；无需本站再次调用AI。</p>}
   {!pending.length&&<p className="mcp-inbox-empty">当前没有待核对的外部{ kinds.length===1?kindNames[kinds[0]]:'' }草稿。</p>}
-  {pending.map((d:any)=>['investment','monthly_review','recurring'].includes(d.payload.kind)?<ExternalWorkflowDraftReview key={d.id} document={d} state={state} onSave={onSave}/>:<DraftReview key={d.id} document={d} state={state} onSave={onSave}/>)}
+  {pending.map((d:any)=>d.payload.kind==='setup'?<HouseholdSetupReview key={d.id} document={d} state={state} onSave={onSave}/>:['investment','monthly_review','recurring'].includes(d.payload.kind)?<ExternalWorkflowDraftReview key={d.id} document={d} state={state} onSave={onSave}/>:<DraftReview key={d.id} document={d} state={state} onSave={onSave}/>)}
   {history&&<div className="mcp-draft-history">{closed.map((d:any)=><article key={d.id} className="mcp-history-row"><div><strong>{d.payload.payload?.name??d.payload.payload?.title??d.payload.payload?.note??kindNames[d.payload.kind]}</strong><small>{kindNames[d.payload.kind]} · {d.payload.source}</small>{d.payload.destinationKind==='plan'&&<small>已提交家庭审批；全体有效家庭成员确认后才进入正式预算与生活日历。</small>}{d.payload.rejectionReason&&<small>拒绝原因：{d.payload.rejectionReason}</small>}</div><span className="badge gray">{statusNames[d.payload.status]??d.payload.status}</span></article>)}</div>}
  </section>;
 }

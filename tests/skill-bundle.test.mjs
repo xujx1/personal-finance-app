@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import {openTestDatabase} from './helpers/d1.mjs';
 import {snapshot,executeCommand} from '../src/server/finance-store.ts';
 import {createSkillHandlers,buildSkillPackage} from '../src/server/skill-http.ts';
-import {DEFAULT_SKILLS} from '../src/domain/skill-catalog.mjs';
+import {DEFAULT_SKILLS,currentSkillVersion,normalizeSkillCatalogue} from '../src/domain/skill-catalog.mjs';
 import {INSTALLER_SOURCE} from '../src/domain/skill-installer-source.mjs';
 import {familyContext,familyCommand} from '../src/server/family-service.ts';
 import {scopeDb} from '../src/server/ledger-scope.ts';
@@ -18,3 +18,22 @@ test('skill maintenance versions and restore are audited without financial write
 test('invalid skill paths, scripts and permission changes cannot enter the fixed content catalogue',async t=>{const x=await fixture(t);for(const skills of [[{...DEFAULT_SKILLS[0],id:'../../bad'}],[{...DEFAULT_SKILLS[0],script:'rm'}],DEFAULT_SKILLS.map((s,i)=>i? s:{...s,body:''})])await assert.rejects(x.send('skills.save',{skills}));assert.equal((await snapshot(x.db)).documents.filter(d=>d.kind==='skill_version').length,0);});
 test('ordinary family member may download but cannot maintain; unsigned and revoked users cannot read',async t=>{const x=await fixture(t),invite=await familyCommand(x.db,owner,{action:'invite',revision:x.scope.revision},config);await familyCommand(x.db,member,{action:'accept',token:invite.token},config);const md=scopeDb(x.db,await familyContext(x.db,member,config)),api=createSkillHandlers({getUser:async()=>member,getDb:()=>md});assert.equal((await api.GET(new Request('https://fixture.test/api/skills'))).status,200);await assert.rejects(executeCommand(md,{key:'no-write',revision:(await snapshot(md)).book.revision,action:'skills.save',body:{skills:DEFAULT_SKILLS}},member.userId),/只读|修改权限/);assert.equal((await createSkillHandlers({getUser:async()=>null,getDb:()=>md}).GET(new Request('https://fixture.test/api/skills'))).status,401);x.sqlite.prepare('UPDATE household_members SET active=0 WHERE user_id=?').run(member.userId);assert.equal((await api.GET(new Request('https://fixture.test/api/skills?download=1'))).status,403);});
 test('download package genuinely installs into an isolated Codex skills directory, backs up updates and rejects tampering',async t=>{const x=await fixture(t),api=createSkillHandlers({getUser:async()=>owner,getDb:()=>x.db}),response=await api.GET(new Request('https://fixture.test/api/skills?download=1'));assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'application/zip');const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'finance-skills-test-'));t.after(()=>fs.rmSync(tmp,{recursive:true,force:true}));const zip=path.join(tmp,'skills.zip'),unpacked=path.join(tmp,'unpacked'),target=path.join(tmp,'codex-skills');fs.writeFileSync(zip,Buffer.from(await response.arrayBuffer()));let r=spawnSync('python3',['-c','import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; z.extractall(sys.argv[2])',zip,unpacked],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);const install=()=>spawnSync('python3',[path.join(unpacked,'install.py'),'--target',target],{encoding:'utf8'});r=install();assert.equal(r.status,0,r.stderr);for(const s of DEFAULT_SKILLS)assert.ok(fs.readFileSync(path.join(target,s.id,'SKILL.md'),'utf8').includes(s.id));fs.appendFileSync(path.join(target,DEFAULT_SKILLS[0].id,'SKILL.md'),'\n本机旧版');r=install();assert.equal(r.status,0,r.stderr);assert.ok(fs.readdirSync(target).some(n=>n.startsWith('.family-finance-backup-')));fs.appendFileSync(path.join(unpacked,'skills',DEFAULT_SKILLS[0].id,'SKILL.md'),'\n被篡改');r=install();assert.notEqual(r.status,0);assert.match(r.stderr,/SHA256|校验/);});
+
+const onboardingId='family-finance-onboarding';
+test('latest bundle includes onboarding while a saved five-workflow version retains its custom bodies',async()=>{
+ const legacy=DEFAULT_SKILLS.filter(s=>s.id!==onboardingId).map((s,i)=>({...s,body:s.body+(i===0?'\n家庭自定义规则。':'')}));
+ const state={documents:[{kind:'skill_version',payload:{version:7,skills:legacy,note:'旧版',createdAt:null}}]};
+ const current=currentSkillVersion(state);assert.equal(current.skills.length,6);assert.equal(current.skills[0].body,legacy[0].body);assert.equal(current.skills.find(s=>s.id===onboardingId)?.title,'家庭财务建档');
+ const latest=await buildSkillPackage(state);assert.equal(latest.skills.length,6);assert.equal(latest.skills.find(s=>s.id===legacy[0].id).body,legacy[0].body);
+ const historical=await buildSkillPackage(state,7);assert.equal(historical.skills.length,5);assert.deepEqual(historical.skills.map(s=>s.body),legacy.map(s=>s.body));
+ assert.throws(()=>normalizeSkillCatalogue(legacy),/六个/);
+});
+test('legacy backup installer accepts the exact five-workflow manifest and rejects unknown or missing paths',async t=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'finance-skills-legacy-'));t.after(()=>fs.rmSync(temp,{recursive:true,force:true}));
+ const legacy=DEFAULT_SKILLS.filter(s=>s.id!==onboardingId);const bundle=await buildSkillPackage({documents:[{kind:'skill_version',payload:{version:1,skills:legacy}}]},1);
+ for(const [name,body] of Object.entries(bundle.files)){const file=path.join(temp,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,body);}
+ fs.writeFileSync(path.join(temp,'install.py'),INSTALLER_SOURCE);const manifest=path.join(temp,'SKILLS-MANIFEST.json');fs.writeFileSync(manifest,JSON.stringify(bundle.manifest));
+ const run=target=>spawnSync('python3',[path.join(temp,'install.py'),'--target',path.join(temp,target)],{encoding:'utf8'});
+ let r=run('valid');assert.equal(r.status,0,r.stderr);assert.equal(JSON.parse(r.stdout).installed,5);
+ for(const files of [bundle.manifest.files.slice(1),bundle.manifest.files.map((f,i)=>i?f:{...f,path:'skills/unknown/SKILL.md'})]){fs.writeFileSync(manifest,JSON.stringify({...bundle.manifest,files}));r=run('rejected');assert.notEqual(r.status,0);assert.equal(fs.existsSync(path.join(temp,'rejected')),false);}
+});
