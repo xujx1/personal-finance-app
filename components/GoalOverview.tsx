@@ -1,14 +1,16 @@
 "use client";
+import {useFinancialPrivacy,SensitiveValue} from './FinancialPrivacy';
 import type {CSSProperties} from 'react';
 import {buildAssetGoalOverview} from '../src/domain/asset-goals.mjs';
 import {buildBudgetFundingGoals} from '../src/domain/budget-funding.mjs';
 import './AssetGoals.css';
 import './RecurringMonthOverview.css';
 
-export const goalMoney=(value:number|null)=>value===null?'待核对':'¥ '+new Intl.NumberFormat('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);
+export const goalMoney=(value:number|null)=><SensitiveValue>{value===null?'待核对':'¥ '+new Intl.NumberFormat('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100)}</SensitiveValue>;
 function ProgressRing({progress,label,detail}:{progress:number|null,label:string,detail:string}){
- const style={'--goal-progress':(progress??0)+'%'} as CSSProperties;
- return <div className={'goal-ring '+(progress===null?'goal-ring-unknown':'')} style={style} role="img" aria-label={label+'：'+(progress===null?'完成率待确认':progress.toFixed(1)+'%')}><div><strong className="money">{progress===null?'待确认':progress.toFixed(1)+'%'}</strong><small>{detail}</small></div></div>;
+ const hidden=useFinancialPrivacy();
+ const style={'--goal-progress':(hidden?0:progress??0)+'%'} as CSSProperties;
+ return <div className={'goal-ring '+(progress===null?'goal-ring-unknown':'')} style={style} role="img" aria-label={label+'：'+(hidden?'财务数值已隐藏':progress===null?'完成率待确认':progress.toFixed(1)+'%')}><div><strong className="money"><SensitiveValue>{progress===null?'待确认':progress.toFixed(1)+'%'}</SensitiveValue></strong><small>{detail}</small></div></div>;
 }
 
 export default function GoalOverview({state,valueCNY,onGoPlans,onGoRecurring,onSetup}:{state:any,valueCNY:(account:any)=>number|null,onGoPlans?:()=>void;onGoRecurring?:()=>void;onSetup?:()=>void}){

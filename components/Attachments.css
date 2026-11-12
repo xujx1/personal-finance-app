@@ -1,0 +1,18 @@
+.attachments-panel{min-width:0}
+.attachments-panel .attachment-form{display:grid;gap:16px;margin-top:16px}
+.attachments-panel .attachment-form .field{margin:0;min-width:0}
+.attachments-panel input[type=file]{max-width:100%;min-width:0;font:inherit}
+.attachments-panel .attachment-selection{display:grid;justify-items:start;gap:12px;padding:16px;border:1px solid var(--line,#d5ddd8);border-radius:12px;min-width:0}
+.attachments-panel .attachment-selection-info{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 16px;max-width:100%}
+.attachments-panel .attachment-selection .help-text{margin:0}
+.attachments-panel .attachment-filename,.attachments-panel .attachment-message{overflow-wrap:anywhere;min-width:0}
+.attachments-panel .attachment-preview{display:block;width:auto;max-width:100%;max-height:240px;object-fit:contain;border-radius:8px}
+.attachments-panel .attachment-consent{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;font-size:14px;line-height:1.6;cursor:pointer;margin:0}
+.attachments-panel .attachment-consent input{width:18px;height:18px;margin:3px 0 0;padding:0;accent-color:var(--accent,#176b50)}
+.attachments-panel .attachment-actions{display:flex;justify-content:flex-start}
+.attachments-panel .attachment-saved-list{display:grid;gap:8px;margin-top:20px}
+.attachments-panel .attachment-saved-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line,#d5ddd8)}
+.attachments-panel .attachment-success{padding:12px;border:1px solid #a3c9b8;border-radius:8px;background:#edf6f0;color:#205d42}
+.attachments-panel :is(input,button,a):focus-visible{outline:3px solid var(--accent,#176b50);outline-offset:3px}
+.attachments-panel button:disabled{cursor:not-allowed;opacity:.5}
+@media(max-width:480px){.attachments-panel .attachment-saved-item{grid-template-columns:minmax(0,1fr) auto}.attachments-panel .attachment-saved-item .text-button{grid-column:1 / -1;justify-self:start}.attachments-panel .attachment-actions .btn{width:100%}}

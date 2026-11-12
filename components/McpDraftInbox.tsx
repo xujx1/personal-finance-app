@@ -1,4 +1,5 @@
 "use client";
+import {PrivacyEditNotice} from './FinancialPrivacy';
 import ActivityImages,{ActivityImageFields} from './ActivityImages';
 import CostBasisPanel from './CostBasisPanel';
 import {PensionFields,pensionValue} from './PensionAccount';
@@ -12,6 +13,7 @@ import {normalizeExpenseDraft} from '../src/domain/expense-plan.mjs';
 import {MemberSelect,MemberAccountFields} from './MemberControls';
 import ExternalWorkflowDraftReview from './ExternalWorkflowDraftReview';
 import './McpDraftInbox.css';
+import {historicalAnalysisFacts} from '../src/domain/research-records.mjs';
 import {draftInbox,DRAFT_KINDS} from '../src/domain/draft-inbox.mjs';
 
 type Props={state:any;onSave:(action:string,body:any)=>Promise<unknown>};
@@ -52,13 +54,12 @@ function DraftReview({document,state,onSave}:{document:any;state:any;onSave:Prop
  return <article className="mcp-draft-card" data-draft-id={document.id} data-draft-kind={kind}>
   <details><summary className="mcp-draft-summary"><span><strong>{meta.payload.name??meta.payload.note??kindNames[kind]}</strong><small>{kindNames[kind]} · {meta.createdAt?new Date(meta.createdAt).toLocaleString('zh-CN'): '提交时间待核实'}</small></span><span className="badge">待本人核对 · v{meta.draftVersion??1}</span></summary>
    <p className="mcp-source-label">来源：{meta.source??'ChatGPT/MCP，外部分析待本人核对'}</p>
-   {payload.analysis&&<details className="mcp-analysis"><summary>查看外部分析依据</summary><p>{payload.analysis}</p></details>}
    {!writable&&<p className="notice neutral">家庭成员可查看草稿；仅账本本人可核对采用。预算提交后，每位有效家庭成员需单独确认。</p>}
-   <form onSubmit={submit} aria-label={kindNames[kind]+'草稿核对'}>
-    <fieldset disabled={!writable||saving} className="mcp-review-fields">
+   <form onSubmit={submit} onInvalidCapture={e=>{let node=(e.target as HTMLElement).parentElement;while(node&&node!==e.currentTarget){if(node instanceof HTMLDetailsElement)node.open=true;node=node.parentElement}}} aria-label={kindNames[kind]+'草稿核对'}>
+    <PrivacyEditNotice/><fieldset disabled={!writable||saving} className="mcp-review-fields">
      {kind==='budget'&&<>
       <div className="form-grid">{field('name','外部预算名称')}<MemberSelect state={state} label="外部预算归属成员" value={payload.ownerMemberId??''} onChange={(id:string)=>update({ownerMemberId:id})}/>{field('category','外部预算类别')}{field('date','外部预算开始日期','date')}{field('end','外部预算结束日期','date')}</div>
-      {payload.planId&&<p className="notice neutral">更新原预算：{state.documents.find((d:any)=>d.id===payload.planId)?.payload?.name??'原计划'}；采用后重新发起家庭审批，不重复新增。</p>}<BudgetDraftFields draft={payload.expenseDraft} onChange={expenseDraft=>update({expenseDraft})}/>
+      {payload.planId&&<p className="notice neutral">更新原预算：{state.documents.find((d:any)=>d.id===payload.planId)?.payload?.name??'原计划'}；采用后重新发起家庭审批，不重复新增。</p>}<BudgetDraftFields draft={payload.expenseDraft} original={meta.payload} onChange={expenseDraft=>update({expenseDraft})}/>
       <p className="notice neutral">采用后进入家庭审批，金额与行程仍属待审批草案，待审批阶段不进入日历。全体有效家庭成员确认后进入正式预算并同步生活日历；不扣款、不记流水。</p>
      </>}
      {kind==='cashflow'&&<>
@@ -75,12 +76,16 @@ function DraftReview({document,state,onSave}:{document:any;state:any;onSave:Prop
       {['cash','term_deposit'].includes(payload.category)&&<div className="form-grid">{field('bank','外部资产银行','text',payload.category==='term_deposit')}{field('startDate','外部存款起存日期','date',payload.category==='term_deposit')}{field('annualRate','外部存款年利率 %','text',payload.category==='term_deposit')}{payload.category==='term_deposit'&&field('maturityDate','外部定期到期日期','date')}</div>}
       {payload.category==='loan'&&<div className="form-grid">{field('monthly','外部贷款月供（原币）','text',false)}{field('startDate','外部贷款开始日期','date',false)}{field('maturityDate','外部贷款到期日期','date',false)}{field('rate','外部贷款年利率 %','text',false)}{field('day','外部贷款每月扣款日','number',false)}</div>}
      </>}
+     <details className="mcp-review-group" id={'draft-analysis-'+document.id}><summary>分析依据与核对备注</summary>
+     {kind==='budget'&&<p className="help-text">以下为原始分析，可手动补充；修改费用或行程不会自动重新评估原文，请核对其中旧金额与执行建议。</p>}
      <label className="field">外部分析依据<textarea aria-label="外部分析依据" value={payload.analysis??''} required={kind==='budget'} onChange={e=>update({analysis:e.target.value})}/></label>
-     <label className="field">核对备注<textarea aria-label="外部草稿核对备注" value={payload.note??''} onChange={e=>update({note:e.target.value})}/></label>
+     <label className="field">核对备注<textarea aria-label="外部草稿核对备注" value={payload.note??''} onChange={e=>update({note:e.target.value})}/></label></details>
+     <div className="mcp-confirmation-area">
      {kind!=='budget'&&<label className="mcp-confirmation"><input type="checkbox" checked={actual} onChange={e=>setActual(e.target.checked)}/>{kind==='asset'?'我已确认这是已经实际持有的资产，归属与原币金额正确，且未重复登记':'我已确认收入已到账或支出已支付，实际日期、成员与现金账户正确'}</label>}
      <label className="mcp-confirmation"><input type="checkbox" checked={reviewed} onChange={e=>setReviewed(e.target.checked)}/>我已逐项核对外部分析、金额、来源及{kind==='budget'?'费用和行程':'实际事实'}，同意采用当前填写内容</label>
      {error&&<p className="notice" role="alert">{error}</p>}
      <div className="mcp-review-actions"><button className="btn primary" type="submit" disabled={!reviewed||kind!=='budget'&&!actual||kind==='cashflow'&&!payload.prepaymentId&&(coverage!=='uncovered'&&(coverage!=='included'||!state.accounts.find((a:any)=>a.id===payload.accountId)?.metadata?.asOf||payload.date>(payload.snapshotDate??state.accounts.find((a:any)=>a.id===payload.accountId)?.metadata?.asOf)))}>{saving?'正在保存…':kind==='budget'?'采用并提交家庭审批':kind==='cashflow'?'采用并记录实际流水':'采用并登记已有资产'}</button><button className="btn" type="button" onClick={()=>setRejecting(!rejecting)}>{rejecting?'取消拒绝':'拒绝此草稿'}</button></div>
+     </div>
      {rejecting&&<div className="mcp-reject"><label className="field">拒绝原因（可选）<input aria-label="外部草稿拒绝原因" value={reason} onChange={e=>setReason(e.target.value)} maxLength={500}/></label><p className="help-text">拒绝会保留原稿与处理记录；可回到 ChatGPT 修改分析后重新提交。</p><button className="btn" type="button" onClick={reject}>确认拒绝并保留历史</button></div>}
     </fieldset>
    </form>
@@ -88,23 +93,30 @@ function DraftReview({document,state,onSave}:{document:any;state:any;onSave:Prop
  </article>;
 }
 
-function BudgetDraftFields({draft,onChange}:{draft:any;onChange:(draft:any)=>void}){
+function BudgetDraftFields({draft,original,onChange}:{draft:any;original:any;onChange:(draft:any)=>void}){
  const value=draft??{kind:'general',items:[],itinerary:[],comparisons:[]};
  const change=(patch:any)=>onChange({...value,...patch,reviewed:false});
  const item=(index:number,patch:any)=>change({items:(value.items??[]).map((x:any,i:number)=>i===index?{...x,...patch,...(['unitPrice','quantity','merchant','name','version'].some(key=>Object.hasOwn(patch,key)&&patch[key]!==x[key])?{sourceType:'user_quote',sourceUrl:null,checkedAt:null,priceEvidence:null,pricing:undefined}:{})}:x)});
+ const info=historicalAnalysisFacts({original,reviewed:{...original,expenseDraft:value}});
  let total='待补齐';try{total=decimal(normalizeExpenseDraft(value,{requireReview:false}).totalMinor)+' CNY'}catch{}
  return <section className="mcp-budget-items" aria-label="外部预算费用和行程"><div className="mcp-inbox-heading"><h3>核对费用与行程</h3><strong className="money">{total}</strong></div>
-  <CostBasisPanel draft={value}/><p className="help-text">参考报价不代表成交价。无可核验来源的金额属于情景估算；更改商家、名称或价格后按本人填写参考处理。</p>
+  <div className="mcp-budget-overview"><p className="help-text">当前填写结构化合计 · {value.items?.length??0} 项费用 · {value.itinerary?.length??0} 项行程 · 原分析需逐项核对</p>{info.reviewChanged&&<p className="notice neutral sensitive-text" role="status">原稿金额 {info.original?.amount??'待补齐'} → 当前填写 {info.reviewed?.amount??'待补齐'} CNY。费用或行程已修改，原分析与行程备注尚未重新评估。</p>}<div className="mcp-section-shortcuts" aria-label="草稿分组导航">{[['costs','费用'],['itinerary','行程'],['images','图片与地点']].map(([group,label])=><button key={group} type="button" className="btn" onClick={e=>openReviewGroup(e.currentTarget,group)}>{label}</button>)}<button type="button" className="btn" onClick={e=>{const target=e.currentTarget.closest('form')?.querySelector<HTMLDetailsElement>('[id^="draft-analysis-"]');if(target){target.open=true;target.scrollIntoView({block:'start'})}}}>分析与备注</button><button type="button" className="btn" onClick={e=>e.currentTarget.closest('form')?.querySelector('.mcp-confirmation-area')?.scrollIntoView({block:'center'})}>核对并提交</button></div>{(value.items??[]).some((x:any)=>!x.name||!x.unitPrice)&&<p className="notice" role="status">待补齐：部分费用缺少名称或单价，请展开费用核对。</p>}{(value.itinerary??[]).some((x:any)=>!x.date||!x.title)&&<p className="notice" role="status">待补齐：部分行程缺少日期或安排。</p>}</div><CostBasisPanel draft={value}/><p className="help-text">参考报价不代表成交价。无可核验来源的金额属于情景估算；更改商家、名称或价格后按本人填写参考处理。</p>
   <label className="field">消费场景<select aria-label="外部预算消费场景" value={value.kind??'general'} onChange={e=>change({kind:e.target.value})}><option value="travel">旅行</option><option value="shopping">购物</option><option value="dining">餐饮</option><option value="general">其他消费</option></select></label>
-  {(value.items??[]).map((x:any,i:number)=><article className="mcp-budget-item" key={x.id??i}>
+  <details className="mcp-review-group" data-review-group="costs"><summary>费用明细（{value.items?.length??0} 项） · 逐项核对数量、单价与来源</summary>
+  {(value.items??[]).map((x:any,i:number)=><details className="mcp-budget-item" key={x.id??i} open={(value.items??[]).length<=3}><summary>{i+1}. {x.name||'费用名称待补齐'} <span className="money">{x.quantity??1} × ¥{x.unitPrice??(x.amount!=null?decimal(x.amount):'待补齐')}</span></summary>
    <div className="mcp-item-heading"><label className="mcp-confirmation"><input type="checkbox" aria-label={'外部预算纳入项目 '+(i+1)} checked={x.selected!==false} onChange={e=>item(i,{selected:e.target.checked})}/>计入预算 {i+1}</label><button type="button" className="text-button" onClick={()=>change({items:value.items.filter((_:any,j:number)=>j!==i)})}>移除费用 {i+1}</button></div>
    <div className="form-grid"><label className="field">项目<input aria-label={'外部费用名称 '+(i+1)} value={x.name??''} required onChange={e=>item(i,{name:e.target.value})}/></label><label className="field">数量<input aria-label={'外部费用数量 '+(i+1)} value={x.quantity??'1'} required onChange={e=>item(i,{quantity:e.target.value})}/></label><label className="field">单价 CNY<input aria-label={'外部费用单价 '+(i+1)} value={x.unitPrice??(x.amount!=null?decimal(x.amount):'')} required onChange={e=>item(i,{unitPrice:e.target.value})}/></label><label className="field">商家<input aria-label={'外部费用商家 '+(i+1)} value={x.merchant??''} onChange={e=>item(i,{merchant:e.target.value})}/></label><label className="field">类别<input aria-label={'外部费用类别 '+(i+1)} value={x.category??'其他'} onChange={e=>item(i,{category:e.target.value})}/></label><label className="field">关联行程<select aria-label={'外部费用关联行程 '+(i+1)} value={x.itineraryId??''} onChange={e=>item(i,{itineraryId:e.target.value||null})}><option value="">独立费用</option>{(value.itinerary??[]).map((a:any,j:number)=><option key={a.id??j} value={a.id??'activity-'+j}>{a.date} · {a.title}</option>)}</select></label></div>
    <p className="mcp-price-boundary">{x.sourceType==='retrieved_reference'&&safeLink(x.sourceUrl)&&x.checkedAt&&x.priceEvidence?'检索参考 · 非实时成交价':x.sourceType==='user_quote'?'本人填写 · 参考报价':'情景估算 · 未核验报价'}{safeLink(x.sourceUrl)&&<> · <a href={safeLink(x.sourceUrl)} target="_blank" rel="noreferrer">查看来源</a></>}{x.checkedAt&&<> · 查询时间 {x.checkedAt}</>}</p>{x.priceEvidence&&<blockquote>{x.priceEvidence}</blockquote>}
    <label className="field">费用备注<input aria-label={'外部费用备注 '+(i+1)} value={x.note??''} onChange={e=>item(i,{note:e.target.value})}/></label>
-  </article>)}
+  </details>)}
   <button className="text-button" type="button" disabled={(value.items??[]).length>=50} onClick={()=>change({items:[...(value.items??[]),{id:crypto.randomUUID(),name:'',quantity:'1',unitPrice:'',category:'其他',selected:true,sourceType:'user_quote'}]})}>添加外部预算费用</button>
-  {(value.itinerary??[]).map((a:any,i:number)=><article className="mcp-budget-item" key={a.id??i}><h4>行程 {i+1}</h4><label className="field">阶段<select aria-label={'外部行程阶段 '+(i+1)} value={a.phase??'trip'} onChange={e=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,phase:e.target.value}:x)})}><option value="preparation">出发前准备</option><option value="trip">出游</option><option value="follow_up">后续安排</option></select></label>{(['date','time','title','location','notes'] as const).map(key=><label className="field" key={key}>{{date:'日期',time:'时间',title:'安排',location:'具体地点',notes:'备注'}[key]}<input aria-label={'外部行程'+{date:'日期',time:'时间',title:'安排',location:'具体地点',notes:'备注'}[key]+' '+(i+1)} type={key==='date'?'date':'text'} value={a[key]??''} required={key==='date'||key==='title'} onChange={e=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,[key]:e.target.value}:x)})}/></label>)}<ActivityImages activity={a}/><ActivityImageFields activity={a} prefix={'外部行程'+(i+1)} onChange={images=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,images}:x)})}/><button className="text-button" type="button" onClick={()=>change({itinerary:value.itinerary.filter((_:any,j:number)=>i!==j),items:value.items.map((x:any)=>x.itineraryId===a.id?{...x,itineraryId:null}:x)})}>移除行程 {i+1}并解除费用关联</button></article>)}
+  </details><details className="mcp-review-group" data-review-group="itinerary"><summary>行程安排（{value.itinerary?.length??0} 项） · 日期、地点与历史备注</summary>
+  <p className="help-text">行程备注保留原始表述；调整费用后，其中金额与执行建议须本人重新核对。</p>
+  {(value.itinerary??[]).map((a:any,i:number)=><details className="mcp-budget-item" key={a.id??i} open={(value.itinerary??[]).length<=3}><summary>行程 {i+1} · {a.date||'日期待补齐'} · {a.title||'安排待补齐'}</summary><label className="field">阶段<select aria-label={'外部行程阶段 '+(i+1)} value={a.phase??'trip'} onChange={e=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,phase:e.target.value}:x)})}><option value="preparation">出发前准备</option><option value="trip">出游</option><option value="follow_up">后续安排</option></select></label>{(['date','time','title','location','notes'] as const).map(key=><label className="field" key={key}>{{date:'日期',time:'时间',title:'安排',location:'具体地点',notes:'备注'}[key]}<input aria-label={'外部行程'+{date:'日期',time:'时间',title:'安排',location:'具体地点',notes:'备注'}[key]+' '+(i+1)} type={key==='date'?'date':'text'} value={a[key]??''} required={key==='date'||key==='title'} onChange={e=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,[key]:e.target.value}:x)})}/></label>)}<button className="text-button" type="button" onClick={()=>change({itinerary:value.itinerary.filter((_:any,j:number)=>i!==j),items:value.items.map((x:any)=>x.itineraryId===a.id?{...x,itineraryId:null}:x)})}>移除行程 {i+1}并解除费用关联</button></details>)}
   <button className="text-button" type="button" disabled={(value.itinerary??[]).length>=80} onClick={()=>change({itinerary:[...(value.itinerary??[]),{id:crypto.randomUUID(),date:'',time:'',title:'',notes:''}]})}>添加外部行程安排</button>
+  </details><details className="mcp-review-group" data-review-group="images"><summary>行程图片与参考地点（{value.itinerary?.length??0} 项）</summary>{(value.itinerary??[]).map((a:any,i:number)=><details className="mcp-budget-item" key={a.id??i}><summary>{a.title||'行程 '+(i+1)} · {a.location||'地点待补齐'}</summary><ActivityImages activity={a}/><ActivityImageFields activity={a} prefix={'外部行程'+(i+1)} onChange={images=>change({itinerary:value.itinerary.map((x:any,j:number)=>i===j?{...x,images}:x)})}/></details>)}</details>
   {value.comparisons?.length>0&&<details className="mcp-analysis"><summary>原始商品比价参考</summary>{value.comparisons.map((c:any,i:number)=><p key={i}>{c.title} · {c.merchant} · {c.version} · {c.price??'未核价'} · {c.checkedAt??'查询时间未提供'}{safeLink(c.url)&&<> · <a href={safeLink(c.url)} target="_blank" rel="noreferrer">参考来源</a></>} · {c.note}</p>)}</details>}
  </section>;
 }
+
+function openReviewGroup(button:HTMLButtonElement,group:string){const target=button.closest('form')?.querySelector<HTMLDetailsElement>(`[data-review-group="${group}"]`);if(target){target.open=true;target.scrollIntoView({block:'start'});target.querySelector('summary')?.focus();}}

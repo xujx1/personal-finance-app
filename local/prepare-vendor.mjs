@@ -10,7 +10,7 @@ export async function prepareVendor(modules){
  const react=requireModules.resolve('react'),dom=requireModules.resolve('react-dom'),client=requireModules.resolve('react-dom/client'),jsx=requireModules.resolve('react/jsx-runtime'),dev=requireModules.resolve('react/jsx-dev-runtime');
  const iconsPackage=JSON.parse(fs.readFileSync(path.join(modules,'lucide-react/package.json'),'utf8'));
  const imports={
-  react:`import React from ${JSON.stringify(react)};export default React;export const {useState,useEffect,useRef,useId,useMemo,useCallback,useContext,createContext,createElement,forwardRef,Fragment,StrictMode,Children}=React;`,
+  react:`import React from ${JSON.stringify(react)};export default React;export const {useState,useEffect,useRef,useId,useMemo,useCallback,useContext,createContext,createElement,cloneElement,isValidElement,forwardRef,Fragment,StrictMode,Children}=React;`,
   dom:`import Dom from ${JSON.stringify(dom)};export const {createPortal,flushSync}=Dom;`,
   client:`import Client from ${JSON.stringify(client)};export const {createRoot,hydrateRoot}=Client;`,
   jsx:`import Runtime from ${JSON.stringify(jsx)};export const {jsx,jsxs,Fragment}=Runtime;`,

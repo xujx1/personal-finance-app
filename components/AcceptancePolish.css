@@ -1,0 +1,51 @@
+/* Keep account identity, explanatory text and controls in their own columns. */
+.asset-accounts-table td{white-space:normal;vertical-align:top;overflow-wrap:anywhere}
+.asset-accounts-table .asset-name{align-items:flex-start;min-width:0}
+.asset-accounts-table .asset-name>div{flex:1;white-space:normal;min-width:0}
+.asset-accounts-table .asset-name small{white-space:normal;overflow-wrap:anywhere}
+.asset-accounts-table .ticker{flex-shrink:0}
+.asset-accounts-table .asset-detail{white-space:normal;line-height:1.7}
+.asset-accounts-table .num{font-variant-numeric:tabular-nums}
+body .help-text,body .goal-overview-heading .help-text,body .subtitle,body .asset-name small,body .asset-detail,body .asset-detail span,body .metric-note,body .metric-note span,body .record-result-count,body .asset-category-helper,body .transaction-parties small,body .modal-note{font-size:12px;color:#596e61;line-height:1.75}
+body .metric-label,body .field{font-size:12px;color:#52665a}
+body .badge{font-size:12px;color:#3e654e}
+body .badge.gray{color:#52635b}
+body .badge.gold{color:#765a2e}
+body .metric.emphasis .metric-label{color:#e2eee7}
+body .metric.emphasis .metric-note{color:#e2eee7}
+body .asset-history-toggle,body .record-empty{font-size:13px;line-height:1.75}
+.record-empty .btn{margin-top:12px}
+.modal-panel label:has(>input[type=checkbox]){display:flex;align-items:flex-start;gap:10px;white-space:normal;line-height:1.7}
+.modal-panel input[type=checkbox]{flex:0 0 auto;width:16px;height:16px;margin-top:3px}
+.modal-panel .modal-footer,.modal-panel .dialog-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
+.table-wrap{max-width:100%;overscroll-behavior-x:contain}
+.navigation-scrim{display:none}
+body .notice.historical-analysis-notice{display:block;line-height:1.75}
+body .notice.historical-analysis-notice p{margin-top:8px}
+@media(max-width:900px){
+ :root{--sidebar:0px}
+ body .sidebar{transform:translateX(-100%);width:224px;transition:transform .2s;z-index:31}
+ body .sidebar.open{transform:translateX(0)}
+ body .workspace{margin-left:0}
+ body .mobile-menu{display:flex;margin-right:12px}
+ body .navigation-scrim{display:block;position:fixed;inset:0;background:#203a3255;z-index:30}
+ body .topbar{padding:0 17px}
+ body .top-actions{margin-left:auto;gap:10px}
+ .table-wrap:has(table:not(.asset-accounts-table))::before{content:'表格可左右滑动，查看完整信息';display:block;position:sticky;left:0;padding:8px 0 12px;color:#526b5c;font-size:12px;white-space:normal}
+}
+@media(max-width:600px){
+ .asset-accounts-table,.asset-accounts-table tbody{display:block;width:100%;min-width:0}
+ .asset-accounts-table thead{display:none}
+ .asset-accounts-table tr{display:grid;grid-template-columns:minmax(0,1fr);padding:16px 0;border-bottom:1px solid #e5ebe7;gap:12px}
+ .asset-accounts-table td{display:block;width:auto!important;padding:0;border:0;text-align:left}
+ .asset-accounts-table td:nth-child(2)::before{content:'类型 / 存款资料';display:block;font-size:12px;color:#596e61;margin-bottom:4px}
+ .asset-accounts-table td:nth-child(4)::before{content:'当前人民币估值 / 账面';display:block;font-size:12px;color:#596e61;margin-bottom:4px}
+ .asset-accounts-table .asset-row-actions{padding-top:4px;gap:8px}
+ .asset-accounts-table .quote-details{max-width:100%}
+ .asset-accounts-table .asset-name{font-size:14px}
+ body .page-title>.actions{max-width:none;justify-content:flex-start}
+ body .page-title{flex-wrap:wrap}
+ .modal-panel .btn{white-space:normal;min-height:40px}
+ .modal-panel .form-grid{grid-template-columns:minmax(0,1fr)}
+ body .help-text,body .goal-overview-heading .help-text,body .subtitle,body .asset-name small,body .asset-detail{font-size:12px}
+}

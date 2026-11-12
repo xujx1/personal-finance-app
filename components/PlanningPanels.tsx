@@ -1,4 +1,5 @@
 "use client";
+import {SensitiveValue,SensitiveText,PrivacyEditNotice} from './FinancialPrivacy';
 import {useState,FormEvent} from 'react';
 import {annualForecast,compareMortgageScenarios,loanSimulationDefaults} from '../src/domain/planning.mjs';
 import {minor,decimal,convert} from '../src/domain/finance.mjs';
@@ -9,7 +10,7 @@ export function ForecastPanel({state}:any){
  const [months,setMonths]=useState(12);
  const f=annualForecast(state,today(),months);
  return <>
-  <section className="card section-space"><div className="card-title"><h2>未来现金流与年度支出</h2><select aria-label="预测月份" value={months} onChange={event=>setMonths(Number(event.target.value))}>{[3,6,12].map(value=><option key={value} value={value}>{value}个月</option>)}</select></div><p className="help-text">从当前可用人民币银行现金出发，加入周期收入，扣除周期支出和未来计划尚需现金；证券、房产及定期存款不作为可花现金。预留与已付预付款不重复扣除，未批准预算保守纳入并单列风险。未设置规则的生活开支和收入未纳入，预测不是保证。</p><div className="table-wrap"><table><thead><tr><th>月份</th><th>预计收入</th><th>周期支出</th><th>大型支出尚需</th><th>待家庭审批风险</th><th>预计期末现金</th></tr></thead><tbody>{f.map((row:any)=><tr key={row.month}><td>{row.month}{row.unknown>0?' · 有未知预算':''}</td><td>¥{decimal(row.income)}</td><td>¥{decimal(row.fixed)}</td><td>¥{decimal(row.planned)}</td><td>{row.pending>0?'¥'+decimal(row.pending):'—'}</td><td className={row.negative?'negative':''}>¥{decimal(row.closing)}{row.negative?' · 资金缺口':''}</td></tr>)}</tbody></table></div></section>
+  <section className="card section-space"><div className="card-title"><h2>未来现金流与年度支出</h2><select aria-label="预测月份" value={months} onChange={event=>setMonths(Number(event.target.value))}>{[3,6,12].map(value=><option key={value} value={value}>{value}个月</option>)}</select></div><p className="help-text">从当前可用人民币银行现金出发，加入周期收入，扣除周期支出和未来计划尚需现金；证券、房产及定期存款不作为可花现金。预留与已付预付款不重复扣除，未批准预算保守纳入并单列风险。未设置规则的生活开支和收入未纳入，预测不是保证。</p><div className="table-wrap"><table><thead><tr><th>月份</th><th>预计收入</th><th>周期支出</th><th>大型支出尚需</th><th>待家庭审批风险</th><th>预计期末现金</th></tr></thead><tbody>{f.map((row:any)=><tr key={row.month}><td>{row.month}{row.unknown>0?' · 有未知预算':''}</td><td><SensitiveValue>¥{decimal(row.income)}</SensitiveValue></td><td><SensitiveValue>¥{decimal(row.fixed)}</SensitiveValue></td><td><SensitiveValue>¥{decimal(row.planned)}</SensitiveValue></td><td><SensitiveValue>{row.pending>0?'¥'+decimal(row.pending):'—'}</SensitiveValue></td><td className={row.negative?'negative':''}><SensitiveValue>¥{decimal(row.closing)}</SensitiveValue>{row.negative?' · 资金缺口':''}</td></tr>)}</tbody></table></div></section>
  </>;
 }
 
@@ -18,7 +19,7 @@ export function LoanSimulator({state,asset}:any){
  const [loanId,setLoanId]=useState(loans[0]?.id??''),[fields,setFields]=useState(()=>loanSimulationDefaults(loans[0])),[result,setResult]=useState<any>(null),[error,setError]=useState('');
  const selected=loans.find((loan:any)=>loan.id===loanId),recorded=loanSimulationDefaults(selected);
  const changeLoan=(id:string)=>{setLoanId(id);setFields(loanSimulationDefaults(loans.find((loan:any)=>loan.id===id)));setResult(null);setError('');};
- return <section className="card section-space"><h2>提前还贷情景测算</h2>
+ return <section className="card section-space"><h2>提前还贷情景测算</h2><PrivacyEditNotice/>
   <p className="help-text">资料核实日期：{recorded.asOf||'未记录'} · 重定价日期：{recorded.repricingDate||'未记录'} · 到期日期：{recorded.maturityDate||'未记录'} · 扣款日：{recorded.day?'每月'+recorded.day+'日':'未记录'}。这些记录不代表已发生扣款。</p>
   <form onSubmit={(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();setError('');try{
    const body=Object.fromEntries(new FormData(event.currentTarget));if(!selected)throw Error('请选择人民币贷款');
@@ -37,14 +38,14 @@ export function LoanSimulator({state,asset}:any){
    <button className="btn primary section-space">仅模拟，不修改贷款</button>
   </form>
   {error&&<p className="notice" role="alert">{error}</p>}
-  {result&&<><p className="notice neutral">基准月供约¥{decimal(result.base.payment)} / {result.base.months}期；情景月供约¥{decimal(result.scenario.payment)} / {result.scenario.months}期。预计利息差（基准减情景）¥{decimal(result.base.interest-result.scenario.interest)}。{result.mode==='reduce_payment'?'降月供模式：基准与情景均按填写期数计算等额本息月供；账本月供仅作参考。':result.usedMonthly?'缩期模式：基准与情景均使用填写的相同月供。':'缩期模式未填写月供；基准与情景均使用同一估算月供。'}{result.scenario.disclaimer}</p><details><summary>测算还款计划</summary><div className="table-wrap"><table><thead><tr><th>期数</th><th>本金</th><th>利息</th><th>剩余本金</th></tr></thead><tbody>{result.scenario.rows.map((row:any)=><tr key={row.month}><td>{row.month}</td><td>{decimal(row.principal)}</td><td>{decimal(row.interest)}</td><td>{decimal(row.balance)}</td></tr>)}</tbody></table></div></details></>}
+  {result&&<><p className="notice neutral"><SensitiveText>基准月供约¥{decimal(result.base.payment)} / {result.base.months}期；情景月供约¥{decimal(result.scenario.payment)} / {result.scenario.months}期。预计利息差（基准减情景）¥{decimal(result.base.interest-result.scenario.interest)}。{result.mode==='reduce_payment'?'降月供模式：基准与情景均按填写期数计算等额本息月供；账本月供仅作参考。':result.usedMonthly?'缩期模式：基准与情景均使用填写的相同月供。':'缩期模式未填写月供；基准与情景均使用同一估算月供。'}{result.scenario.disclaimer}</SensitiveText></p><details><summary>测算还款计划</summary><div className="table-wrap"><table><thead><tr><th>期数</th><th>本金</th><th>利息</th><th>剩余本金</th></tr></thead><tbody>{result.scenario.rows.map((row:any)=><tr key={row.month}><td>{row.month}</td><td><SensitiveValue>{decimal(row.principal)}</SensitiveValue></td><td><SensitiveValue>{decimal(row.interest)}</SensitiveValue></td><td><SensitiveValue>{decimal(row.balance)}</SensitiveValue></td></tr>)}</tbody></table></div></details></>}
  </section>;
 }
 export function Positions({state,quotes,fx,onRefresh,asset}:any){
  const holdings=(state?.accounts??[]).filter((account:any)=>['fund','stock'].includes(account.category)&&!account.archived&&(!asset||account.id===asset.id));
  const cny=(value:number|null,currency:string|null)=>{if(value===null)return null;if(currency==='CNY')return value;if(currency!=='USD'||typeof fx?.rate!=='string')return null;try{return convert(value,fx.rate);}catch{return null;}};
  const original=(value:number|null,currency:string|null)=>value===null?'未核实':(currency??'币种未核实')+' '+decimal(value);
- const display=(value:number|null,currency:string|null)=>{const converted=cny(value,currency);return <>{converted===null?'CNY 待核实':'¥'+decimal(converted)}<small>原币 {original(value,currency)}</small></>;};
+ const display=(value:number|null,currency:string|null)=>{const converted=cny(value,currency);return <><SensitiveValue>{converted===null?'CNY 待核实':'¥'+decimal(converted)}</SensitiveValue><small>原币 <SensitiveValue>{original(value,currency)}</SensitiveValue></small></>;};
  return <section className="card section-space">
   <div className="card-title"><h2>持仓成本与当前报价</h2><button className="btn" onClick={onRefresh}>检查基金 / 美股报价</button></div>
   <p className="help-text">登记快照保留本人录入金额；快照对账仅比较存储数量×存储单价与登记金额，不拿新报价变动冒充旧快照差异。参考市值不是可用现金；查看与核对不修改资产或现金。</p>
@@ -59,12 +60,12 @@ export function Positions({state,quotes,fx,onRefresh,asset}:any){
    const source=typeof quote?.source==='string'?quote.source:'尚未取得有效来源',quoteDate=typeof quote?.asOf==='string'?quote.asOf:'日期未核实';
    return <tr key={account.id}>
     <td>{account.name}<small>{account.metadata?.code||'代码待完善'} · {snapshot.currency??'原币未核实'}</small><small>市场：{snapshot.market}</small></td>
-    <td>{snapshot.quantity??'未核实'}</td>
-    <td>单位：{display(snapshot.unitCostMinor,snapshot.currency)}<small>存储原币单价 {snapshot.unitCost??'未核实'}</small><strong>总成本：{display(snapshot.totalCostMinor,snapshot.currency)}</strong></td>
+    <td><SensitiveValue>{snapshot.quantity??'未核实'}</SensitiveValue></td>
+    <td>单位：{display(snapshot.unitCostMinor,snapshot.currency)}<small>存储原币单价 <SensitiveValue>{snapshot.unitCost??'未核实'}</SensitiveValue></small><strong>总成本：{display(snapshot.totalCostMinor,snapshot.currency)}</strong></td>
     <td>{display(snapshot.registeredMinor,snapshot.currency)}<small>资料日期 {snapshot.asOf??'未核实'}</small></td>
-    <td>{display(snapshot.calculatedSnapshotMinor,snapshot.currency)}<small>存储原币单价 {snapshot.storedPrice??'未核实'}</small></td>
-    <td>{snapshot.status==='unknown'?<span>快照字段不足，待核实</span>:snapshot.status==='matched'?<span>快照金额一致</span>:<span className="negative">快照算术差异 {snapshot.discrepancyMinor!>0?'+':''}{original(snapshot.discrepancyMinor,snapshot.currency)}</span>}<small>存储数量×存储单价 − 登记快照</small>{snapshot.status==='discrepancy'&&<small>保留两项原值，待本人核对；未自动调账</small>}</td>
-    <td>{validQuote&&sameCurrency?display(quoteUnit,snapshot.currency):'未取得可比报价'}<small>报价原币 {validQuote?String(quote.currency??'未核实')+' '+rawPrice:'未取得'}</small>{validQuote&&!sameCurrency&&<small>报价币种与登记币种不一致，待核实</small>}{typeof quote?.estimate?.price==='string'&&<small>另有盘中估值 {quote.estimate.price} · {typeof quote.estimate.asOf==='string'?quote.estimate.asOf:'日期未核实'}；不是最终净值</small>}</td>
+    <td>{display(snapshot.calculatedSnapshotMinor,snapshot.currency)}<small>存储原币单价 <SensitiveValue>{snapshot.storedPrice??'未核实'}</SensitiveValue></small></td>
+    <td>{snapshot.status==='unknown'?<span>快照字段不足，待核实</span>:snapshot.status==='matched'?<span>快照金额一致</span>:<span className="negative">快照算术差异 <SensitiveValue>{snapshot.discrepancyMinor!>0?'+':''}{original(snapshot.discrepancyMinor,snapshot.currency)}</SensitiveValue></span>}<small>存储数量×存储单价 − 登记快照</small>{snapshot.status==='discrepancy'&&<small>保留两项原值，待本人核对；未自动调账</small>}</td>
+    <td>{validQuote&&sameCurrency?display(quoteUnit,snapshot.currency):'未取得可比报价'}<small>报价原币 <SensitiveValue>{validQuote?String(quote.currency??'未核实')+' '+rawPrice:'未取得'}</SensitiveValue></small>{validQuote&&!sameCurrency&&<small>报价币种与登记币种不一致，待核实</small>}{typeof quote?.estimate?.price==='string'&&<small>另有盘中估值 <SensitiveValue>{quote.estimate.price}</SensitiveValue> · {typeof quote.estimate.asOf==='string'?quote.estimate.asOf:'日期未核实'}；不是最终净值</small>}</td>
     <td>{display(referenceValue,snapshot.currency)}<small>参考浮动差额</small>{display(difference,snapshot.currency)}<small>按已录成本计算，不含未录费用</small></td>
     <td><strong>{quoteDate}</strong><details><summary>行情来源与缓存详情</summary>{source}<small>{quoteDate} · {typeof quote?.kind==='string'?quote.kind:'未联网'} · {typeof quote?.status==='string'?quote.status:'未取得'}</small><small>{typeof quote?.message==='string'?quote.message:typeof quote?.delay==='string'?quote.delay:'不称实时价格'}</small></details></td>
    </tr>;

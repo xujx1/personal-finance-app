@@ -19,3 +19,8 @@ test('session research view restores filters, page and expanded history safely',
  assert.equal(normalizeResearchView({page:-1,scrollY:NaN}).page,1);
  assert.equal(normalizeResearchView().open,false);
 });
+test('current saved plan budget outranks an older expense draft and fractional quantities use money rounding',()=>{
+ const facts=research.historicalAnalysisFacts({original:payload('300.00'),reviewed:payload('250.00'),current:payload('250.00',{budget:24000})});
+ assert.equal(facts.current.amount,'240.00');assert.equal(facts.currentChanged,true);
+ assert.equal(research.budgetResearchFacts({expenseDraft:{items:[{unitPrice:'0.29',quantity:'0.5'}]}}).amount,'0.15');
+});

@@ -1,3 +1,4 @@
+import {minor,decimal} from './finance.mjs';
 import {consumptionTypeOf,dateInRange} from './consumption.mjs';
 const localDay=timestamp=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(timestamp));
 export function researchRecordDate(record){
@@ -35,10 +36,12 @@ export function filterResearchRecords(records,{query='',kind='all',from='',to=''
 export function budgetResearchFacts(payload){
  if(!payload)return null;
  let amount=null;
- if(Array.isArray(payload.expenseDraft?.items)&&payload.expenseDraft.items.length){
-  try{const total=payload.expenseDraft.items.filter(x=>x.selected!==false).reduce((sum,x)=>{const price=x.unitPrice!=null?Number(x.unitPrice):Number(x.amount)/100;return sum+Math.round(price*Number(x.quantity??1)*100);},0);if(Number.isSafeInteger(total))amount=(total/100).toFixed(2);}catch{}
+ // Saved plan budgets are integer minor units; editable draft totals come from their current items.
+ if(typeof payload.budget==='number'&&Number.isSafeInteger(payload.budget))amount=decimal(payload.budget);
+ if(amount===null&&Array.isArray(payload.expenseDraft?.items)&&payload.expenseDraft.items.length){
+  try{const total=payload.expenseDraft.items.filter(x=>x.selected!==false).reduce((sum,x)=>{const price=x.unitPrice!=null?minor(String(x.unitPrice)):x.amount;const quantity=String(x.quantity??'1');if(!/^\d+(\.\d{1,4})?$/.test(quantity))throw Error('invalid quantity');const [whole,fraction='']=quantity.split('.'),q=BigInt(whole)*10000n+BigInt(fraction.padEnd(4,'0'));return sum+Number((BigInt(price)*q+5000n)/10000n);},0);if(Number.isSafeInteger(total))amount=decimal(total);}catch{}
  }
- if(amount===null&&payload.budget!=null&&payload.budget!==''){const n=typeof payload.budget==='number'?payload.budget/100:Number(payload.budget);if(Number.isFinite(n))amount=n.toFixed(2);}
+ if(amount===null&&payload.budget!=null&&payload.budget!==''){try{amount=decimal(minor(String(payload.budget)))}catch{}}
  const itinerary=payload.expenseDraft?.itinerary??payload.itinerary??[];
  return {amount,name:payload.name??payload.title??'',date:payload.date??'',end:payload.end??payload.tripEnd??payload.date??'',items:payload.expenseDraft?.items?.length??0,itinerary:itinerary.length,signature:JSON.stringify([amount,payload.name??payload.title??'',payload.date??'',payload.end??payload.tripEnd??payload.date??'',(payload.expenseDraft?.items??[]).map(x=>[x.id,x.name,x.quantity,x.unitPrice,x.selected!==false,x.itineraryId,x.merchant]),itinerary.map(x=>[x.id,x.date,x.time,x.title,x.location])])};
 }
