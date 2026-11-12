@@ -1,4 +1,5 @@
 import {extendMcpDraft} from './mcp-draft.ts';
+import {extendSkills} from '../domain/skill-catalog.mjs';
 import {beginFamilyApproval,applyFamilyApproval} from '../domain/family-approval.mjs';
 import {normalizeAssetGoalInput} from '../domain/asset-goals.mjs';
 import {minor,decimal} from '../domain/finance.mjs';
@@ -9,7 +10,8 @@ const positive=(x:any)=>{const n=minor(String(x));if(!n)throw Error('金额必�
 const units=(x:any)=>{if(!/^\d+(\.\d{1,6})?$/.test(String(x)))throw Error('数量无效');const [a,b='']=String(x).split('.');return BigInt(a)*1000000n+BigInt(b.padEnd(6,'0'))};
 const unitText=(n:bigint)=>{const a=n/1000000n,b=(n%1000000n).toString().padStart(6,'0').replace(/0+$/,'');return a.toString()+(b?'.'+b:'')};
 export async function extendFinance(c:any){
- if(extendMcpDraft(c))return true;
+ if(extendSkills(c))return true;
+ if(await extendMcpDraft(c))return true;
  const {action,body,state,rows,db,ds,account,cash,doc,writeDoc,journal,entry,system,result,assertCashMember,stagedAccounts}=c;
  const metadata=(a:any,v:any)=>rows.push(db.prepare('UPDATE accounts SET metadata=? WHERE dataset_id=? AND id=?').bind(JSON.stringify(v),ds,a.id));
 

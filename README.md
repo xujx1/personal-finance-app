@@ -1,17 +1,9 @@
-# Personal Finance Center — 2026-11-11接续快照
+# 家庭财务中心
 
-私人家庭财务站：Sites Vinext / React / TypeScript / D1。当前包含账本、资产/贷款、AI评估、预算付款退款、预付款、图片候选、周期规则、目标、站内提醒、加密备份和OAuth协议等实现，但主流程仍有未完成需求。
+同一Sites站点的Vinext / React / TypeScript / D1项目。现行开发分支为`codex/chatgpt-mcp-skills`。AI消费、投资、图片理解、周期归并和月度AI总结由ChatGPT及Skill完成；MCP提供受控财务查询和六类待核对草稿，网站保留编辑、家庭审批、真实记账和展示。
 
-先读：
+先读docs/requirements-chatgpt-mcp-2026-11-12.md（当前迁移）、docs/requirements-consolidated-2026-11-12.md（全量业务规则）和docs/CHATGPT-MCP-SKILLS.md（使用与接续）。旧阶段文档在顶部注明历史，不作为当前配置要求。
 
-- [Mac接续开发](docs/MAC-HANDOFF.md)
-- [最新需求](docs/requirements-latest.md)
-- [需求执行清单](docs/superpowers/plans/2026-11-11-execution-checklist.md)
-- [复杂需求技术方案v2](docs/TECHNICAL-DESIGN-v2.md)
-- [部署资源清单](docs/DEPLOYMENT-RESOURCES.md)
+开发使用Node24、锁文件依赖。验证：`npm run typecheck`、`npm test`、`npm run test:e2e:local`。E2E需要Chrome和Playwright，默认查找work/calendar-qa/node_modules，可通过脚本位置参数指定已有Playwright目录；不需要模型或搜索Key，测试使用独立qa-*.sqlite。`npm run skills:sync`同步内置Skill备份和安装器源。
 
-交接前重跑npm test：107项通过。新历史弹窗E2E目前预期失败，组件还没实现；投资统一节点、自动分类和可编辑清单的页面接线也尚未完成。不要把方案当成现有功能。
-
-建议Node24；npm ci后按Mac文档启动与验证。源码包不含node_modules、真实数据库、用户截图、API密钥或OAuth凭据。默认空模拟账本；源码恢复不等于真实数据恢复。
-
-站点尚未正式发布。保留.openai/hosting.json中同一project_id，依照Sites源码流程发布；不要新建重复Site，不将local/server.mjs的模拟身份服务作为公网生产入口。
+站点：https://xu-family-finance-20261111.shady-gnat-0277.chatgpt.site。保持同一project_id和原访问范围，使用Sites原生发布；local/server.mjs的模拟身份仅用于本机，不能用作公网服务。源码包不含数据库、密钥、用户截图或依赖缓存。

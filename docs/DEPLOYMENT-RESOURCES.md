@@ -1,3 +1,7 @@
+<!-- current-chatgpt-migration -->
+> **2026-11-12现行方案：ChatGPT + MCP + Skill。** 以[迁移需求](requirements-chatgpt-mcp-2026-11-12.md) M001–M012、[完整需求规范](requirements-consolidated-2026-11-12.md)的现行修订及[使用与接续说明](CHATGPT-MCP-SKILLS.md)为准。AI消费、投资、图片理解、周期归并与月度AI总结由ChatGPT处理；网站保留核对、家庭审批、真实记账和展示。本站不再需要模型或搜索Key。后续旧阶段的v30、AI配置、SSE和历史验收数量只作历史，不代表现行实现或本轮覆盖率。本轮变更在 codex/chatgpt-mcp-skills 分支。
+<!-- /current-chatgpt-migration -->
+
 # 部署资源与接续清单（2026-11-11）
 
 当前是可接续源码快照，尚未正式发布；以下“已实现”指代码/本地验证，不等于托管环境资源已验收。先按MAC-HANDOFF.md完成本机验证。

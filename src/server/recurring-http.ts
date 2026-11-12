@@ -1,4 +1,4 @@
-import {reviewRecurringCandidates} from './recurring-ai.ts';
+import {retiredAIResponse} from './retired-ai.ts';
 import {snapshot} from './finance-store.ts';
 import {accountMember} from '../domain/member-ownership.mjs';
 const nextScheduledDate=(base:string,day:number)=>{let [year,month]=base.slice(0,7).split('-').map(Number);for(let i=0;i<2;i++){const value=String(year)+'-'+String(month).padStart(2,'0')+'-'+String(Math.min(day,new Date(Date.UTC(year,month,0)).getUTCDate())).padStart(2,'0');if(value>base)return value;if(++month>12){year++;month=1}}throw Error('周期日期无效')};
@@ -25,5 +25,5 @@ export async function suggestRecurring(db:any){
 }
 export function createRecurringHandlers(deps:any){const json=(v:any,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});return {
  async GET(){try{if(!await deps.getUser())return json({error:'请先登录'},401);const db=deps.getDb();if(!db)return json({error:'数据库尚未配置'},503);return json(await suggestRecurring(db))}catch(e:any){return json({error:String(e.message).slice(0,180)},String(e.message).startsWith('CONFLICT:')?409:403)}},
- async POST(req:Request){try{const u=await deps.getUser();if(!u)return json({error:'请先登录'},401);if(deps.getOwner?.()&&deps.getOwner()!==u.userId)return json({error:'当前分享访问为只读'},403);if(req.headers.get('origin')&&new URL(req.headers.get('origin')!).origin!==new URL(req.url).origin)return json({error:'请求来源无效'},403);const db=deps.getDb();if(!db)return json({error:'数据库尚未配置'},503);const result=await suggestRecurring(db);const reviewed=await reviewRecurringCandidates(result.candidates,deps.getConfig?.()??{},{fetcher:deps.fetcher,signal:req.signal});await snapshot(db);return json({...result,...reviewed})}catch(e:any){return json({error:String(e.message).slice(0,180)},String(e.message).startsWith('CONFLICT:')?409:403)}}
+ async POST(_req:Request){if(!await deps.getUser())return json({error:'请先登录'},401);return retiredAIResponse();}
  };}

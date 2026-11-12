@@ -19,7 +19,7 @@ export default function LifeCalendar({plans,onPlan,onNew}:Props){
  function move(date:string){setAnchor(date);setSelected(date);}
  const period=view==='month'?`${anchor.slice(0,4)}年${Number(anchor.slice(5,7))}月`:`${days[0].date} — ${days[6].date}`;
  return <>
-  <div className="page-title"><div><div className="eyebrow">MAKE ROOM FOR THE WEEKEND</div><h1>生活日历</h1><p className="subtitle">把出游和一日三餐，放进期待的日子里。</p></div><button className="btn primary" onClick={()=>onNew(selected)}>AI规划这一天</button></div>
+  <div className="page-title"><div><div className="eyebrow">MAKE ROOM FOR THE WEEKEND</div><h1>生活日历</h1><p className="subtitle">把出游和一日三餐，放进期待的日子里。</p></div><button className="btn primary" onClick={()=>onNew(selected)}>在ChatGPT规划这一天</button></div>
   <section className="card life-calendar" aria-label="旅行与餐饮日历">
    <div className="life-calendar-toolbar">
     <div className="life-calendar-period"><button className="icon-button" aria-label={view==='month'?'上个月':'上一周'} disabled={previous===anchor} onClick={()=>move(previous)}>‹</button><h2 aria-live="polite">{period}</h2><button className="icon-button" aria-label={view==='month'?'下个月':'下一周'} disabled={next===anchor} onClick={()=>move(next)}>›</button></div>
@@ -42,7 +42,7 @@ export default function LifeCalendar({plans,onPlan,onNew}:Props){
     </div>
     <section className="life-calendar-agenda" aria-label="当天安排" aria-live="polite">
      <div className="life-calendar-agenda-title"><small>{selected}</small><h2>{fullDate(selected)}</h2><p>{active?.events.length??0}项安排</p></div>
-     {!active?.events.length&&<div className="life-calendar-empty"><strong>这一天，还留着空白</strong><p>可以安排一次出游，或一顿想吃的饭。</p><button className="btn" onClick={()=>onNew(selected)}>去AI消费助手规划</button></div>}
+     {!active?.events.length&&<div className="life-calendar-empty"><strong>这一天，还留着空白</strong><p>可以安排一次出游，或一顿想吃的饭。</p><button className="btn" onClick={()=>onNew(selected)}>去ChatGPT规划</button></div>}
      {active?.events.map(event=><article key={event.planId} className={'life-calendar-event '+event.kind}>
       <div className="life-calendar-event-meta"><span>{event.kind==='travel'?'旅行':'餐饮'}</span><span>{statuses[event.status]??'状态待核实'}</span></div>
       <h3>{event.name}</h3><p className="life-calendar-event-range">{event.date===event.end?event.date:`${event.date} — ${event.end}`}</p>

@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {retiredAIResponse} from '../src/server/retired-ai.ts';
+test('retired model routes are explicit and do not depend on any model/search key',async()=>{const r=retiredAIResponse();assert.equal(r.status,410);assert.equal((await r.json()).code,'CHATGPT_WORKFLOW');for(const route of ['advisor','investment','research','images','chatgpt']){const source=readFileSync(new URL('../app/api/'+route+'/route.ts',import.meta.url),'utf8');assert.ok(source.includes('retiredAIResponse'));assert.ok(!/NEW_API_|TAVILY_API_KEY|chatGPTService/.test(source));}const example=readFileSync(new URL('../.env.example',import.meta.url),'utf8');assert.ok(!/NEW_API_|TAVILY_API_KEY|AI_ADVISOR_DAILY_LIMIT/.test(example));});
+test('website has no local assistant or image model component and includes workflow maintenance',()=>{const source=readFileSync(new URL('../components/FinanceApp.tsx',import.meta.url),'utf8');assert.ok(!/import (?:AdvisorPanel|InvestmentPanel|ImageImport)/.test(source));assert.ok(!/\['advisor','AI消费助手'|\['investment','AI投资助手'/.test(source));assert.ok(source.includes('SkillPanel'));});

@@ -15,7 +15,8 @@
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "dev:local": "node local/start.mjs",
-    "test:e2e:local": "node local/browser-e2e.mjs"
+    "test:e2e:local": "node local/chatgpt-migration-e2e.mjs",
+    "skills:sync": "node scripts/sync-skill-assets.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
