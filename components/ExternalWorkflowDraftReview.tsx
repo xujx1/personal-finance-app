@@ -1,6 +1,6 @@
 "use client";
 import {useState} from 'react';
-import {useMonthlyBasis} from './ExternalReviews';
+import {useMonthlyBasis} from './useMonthlyBasis';
 import {MemberSelect} from './MemberControls';
 import {decimal} from '../src/domain/finance.mjs';
 import {RichText} from './AssistantPresentation';

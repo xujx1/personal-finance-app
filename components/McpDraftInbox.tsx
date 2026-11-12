@@ -11,26 +11,27 @@ import {normalizeExpenseDraft} from '../src/domain/expense-plan.mjs';
 import {MemberSelect,MemberAccountFields} from './MemberControls';
 import ExternalWorkflowDraftReview from './ExternalWorkflowDraftReview';
 import './McpDraftInbox.css';
+import {draftInbox,DRAFT_KINDS} from '../src/domain/draft-inbox.mjs';
 
-type Props={state:any;kinds?:string[];compact?:boolean;pendingOnly?:boolean;onSave:(action:string,body:any)=>Promise<unknown>};
+type Props={state:any;onSave:(action:string,body:any)=>Promise<unknown>};
 const kindNames:Record<string,string>={setup:'家庭财务建档',budget:'消费预算与行程',cashflow:'实际现金流水',asset:'已有资产登记',investment:'投资研究',monthly_review:'月度总结',recurring:'周期规则'};
 const statusNames:Record<string,string>={PENDING:'待本人核对',ACCEPTED:'已采用',REJECTED:'已拒绝 · 保留历史'};
 const assetCategories:Record<string,string>={cash:'银行现金',term_deposit:'银行定期存款',fund:'基金',stock:'股票证券',property:'房产',loan:'住房贷款',other:'其他资产'};
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const safeLink=(value:unknown)=>{try{const u=new URL(String(value));return u.protocol==='https:'&&!u.username&&!u.password?u.href:undefined}catch{return undefined}};
 
-export default function McpDraftInbox({state,kinds=['budget','cashflow','asset','investment','monthly_review','recurring','setup'],onSave,compact=false,pendingOnly=false}:Props){
- const [history,setHistory]=useState(false);
- const documents=(state?.documents??[]).filter((d:any)=>d.kind==='financial_draft'&&kinds.includes(d.payload?.kind));
- const pending=documents.filter((d:any)=>d.payload.status==='PENDING'),closed=documents.filter((d:any)=>d.payload.status!=='PENDING');
- if((compact||pendingOnly)&&!pending.length)return null;
+export default function McpDraftInbox({state,onSave}:Props){
+ const [status,setStatus]=useState('PENDING'),[kind,setKind]=useState('all'),[query,setQuery]=useState(''),[page,setPage]=useState(1);
+ const view=draftInbox(state,{kind,query,status,page});
  return <section className="card mcp-draft-inbox" aria-label="ChatGPT外部分析草稿">
-  <div className="mcp-inbox-heading"><div>{!compact&&<div className="eyebrow">CHATGPT · MCP</div>}<h2>{compact?(kinds[0]==='setup'?'待核对家庭建档':kinds[0]==='recurring'?'待核对周期规则':kinds[0]==='investment'?'待核对投资研究':'待核对月度总结'):'外部分析草稿'} <span className="badge gray">待核对 {pending.length}</span></h2></div>{!pendingOnly&&closed.length>0&&<button className="text-button" type="button" aria-expanded={history} onClick={()=>setHistory(!history)}>{history?'收起处理历史':'处理历史 '+closed.length}</button>}</div>
-  {!compact&&<p className="help-text">在ChatGPT中选择家庭财务中心，分析后保存为相应草稿，再回这里核对。提交草稿不会批准预算或扣款；无需本站再次调用AI。</p>}
-  {!pending.length&&<p className="mcp-inbox-empty">当前没有待核对的外部{ kinds.length===1?kindNames[kinds[0]]:'' }草稿。</p>}
-  {pending.some((d:any)=>(d.payload.draftVersion??1)>1)&&<p className="help-text" role="status">草稿已在ChatGPT续改并保存，请按当前版本重新核对；旧版本确认不沿用。</p>}
-  {pending.map((d:any)=>d.payload.kind==='setup'?<HouseholdSetupReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>:['investment','monthly_review','recurring'].includes(d.payload.kind)?<ExternalWorkflowDraftReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>:<DraftReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>)}
-  {!pendingOnly&&history&&<div className="mcp-draft-history">{closed.map((d:any)=><article key={d.id} className="mcp-history-row"><div><strong>{d.payload.payload?.name??d.payload.payload?.title??d.payload.payload?.note??kindNames[d.payload.kind]}</strong><small>{kindNames[d.payload.kind]} · {d.payload.source}</small>{d.payload.destinationKind==='plan'&&<small>已提交家庭审批；全体有效家庭成员确认后才进入正式预算与生活日历。</small>}{d.payload.rejectionReason&&<small>拒绝原因：{d.payload.rejectionReason}</small>}</div><span className="badge gray">{statusNames[d.payload.status]??d.payload.status}</span></article>)}</div>}
+  <div className="mcp-inbox-heading"><h2>同步草稿</h2><span className="badge gray">待处理 {view.pendingCount}</span></div>
+  <p className="help-text">统一核对ChatGPT同步的资料。展开待处理草稿可编辑、采纳或拒绝；采纳后按对应业务规则保存，预算仍需家庭审批。</p>
+  <div className="tabs-row" role="group" aria-label="草稿状态">{[['PENDING','待处理',view.pendingCount],['PROCESSED','已处理',view.processedCount]].map(([id,label,count])=><button type="button" key={id} className={'filter '+(status===id?'active':'')} aria-pressed={status===id} onClick={()=>{setStatus(String(id));setPage(1)}}>{label}（{count}）</button>)}</div>
+  <div className="record-filters"><label className="field">搜索同步草稿<input aria-label="搜索同步草稿" value={query} onChange={e=>{setQuery(e.target.value);setPage(1)}}/></label><label className="field">草稿类型<select aria-label="草稿类型" value={kind} onChange={e=>{setKind(e.target.value);setPage(1)}}><option value="all">全部类型</option>{DRAFT_KINDS.map(id=><option key={id} value={id}>{kindNames[id]}</option>)}</select></label></div>
+  {!view.shown.length&&<p className="mcp-inbox-empty">{query||kind!=='all'?'没有匹配的草稿。':status==='PENDING'?'当前没有待处理草稿。':'当前没有已处理草稿。'}</p>}
+  {status==='PENDING'&&view.shown.some((d:any)=>(d.payload.draftVersion??1)>1)&&<p className="help-text" role="status">草稿已在ChatGPT续改并保存，请按当前版本重新核对；旧版本确认不沿用。</p>}
+  {status==='PENDING'?view.shown.map((d:any)=>d.payload.kind==='setup'?<HouseholdSetupReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>:['investment','monthly_review','recurring'].includes(d.payload.kind)?<ExternalWorkflowDraftReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>:<DraftReview key={d.id+':'+(d.payload.draftVersion??1)} document={d} state={state} onSave={onSave}/>):<div className="mcp-draft-history">{view.shown.map((d:any)=><article key={d.id} className="mcp-history-row" data-processed-draft-id={d.id}><div><strong>{d.payload.reviewedPayload?.name??d.payload.reviewedPayload?.title??d.payload.payload?.name??d.payload.payload?.title??d.payload.payload?.note??kindNames[d.payload.kind]}</strong><small>{kindNames[d.payload.kind]} · {d.payload.source}</small>{d.payload.destinationKind==='plan'&&<small>已提交家庭审批，可在预算详情查看当前审批与计划。</small>}{d.payload.rejectionReason&&<small>拒绝原因：{d.payload.rejectionReason}</small>}<details><summary>查看处理记录</summary><p className="help-text">{d.payload.reviewedPayload?.analysis??d.payload.reviewedPayload?.summary??d.payload.payload?.analysis??d.payload.payload?.summary??'已保留核对与处理记录。'}</p></details></div><span className="badge gray">{statusNames[d.payload.status]??d.payload.status}</span></article>)}</div>}
+  <div className="actions section-space" aria-label="草稿分页"><button type="button" className="btn" disabled={view.page<=1} onClick={()=>setPage(view.page-1)}>上一页草稿</button><span>第 {view.page} / {view.pages} 页 · {view.total} 条</span><button type="button" className="btn" disabled={view.page>=view.pages} onClick={()=>setPage(view.page+1)}>下一页草稿</button></div>
  </section>;
 }
 
@@ -57,7 +58,7 @@ function DraftReview({document,state,onSave}:{document:any;state:any;onSave:Prop
      {kind==='budget'&&<>
       <div className="form-grid">{field('name','外部预算名称')}<MemberSelect state={state} label="外部预算归属成员" value={payload.ownerMemberId??''} onChange={(id:string)=>update({ownerMemberId:id})}/>{field('category','外部预算类别')}{field('date','外部预算开始日期','date')}{field('end','外部预算结束日期','date')}</div>
       {payload.planId&&<p className="notice neutral">更新原预算：{state.documents.find((d:any)=>d.id===payload.planId)?.payload?.name??'原计划'}；采用后重新发起家庭审批，不重复新增。</p>}<BudgetDraftFields draft={payload.expenseDraft} onChange={expenseDraft=>update({expenseDraft})}/>
-      <p className="notice neutral">采用后进入家庭审批，金额与行程仍属待审批草案。全体有效家庭成员确认后才进入正式预算和生活日历；不扣款、不记流水。</p>
+      <p className="notice neutral">采用后进入家庭审批，金额与行程仍属待审批草案，可在生活日历查看待审批安排。全体有效家庭成员确认后才进入正式预算；不扣款、不记流水。</p>
      </>}
      {kind==='cashflow'&&<>
       <div className="form-grid"><label className="field">实际流水类型<select aria-label="外部实际流水类型" value={payload.type??''} required onChange={e=>update({type:e.target.value})}><option value="">请选择</option><option value="income">实际收入到账</option><option value="expense">实际消费支出</option></select></label><MemberAccountFields state={state} defaultAccountId={payload.accountId??''} defaultMemberId={payload.cashMemberId??''} memberLabel="外部流水收付款成员" label="外部流水实际现金账户" onAccountChange={(id:string)=>{const account=state.accounts.find((a:any)=>a.id===id);update({accountId:id,cashMemberId:account?.metadata?.ownerMemberId??''})}}/>{field('amount','外部流水实际金额 CNY')}{field('date','外部流水实际发生日期','date')}</div>

@@ -1,19 +1,17 @@
 "use client";
-import {useEffect,useState} from 'react';
+import {useState} from 'react';
+import McpDraftInbox from './McpDraftInbox';
 import {CONSUMPTION_TYPES,consumptionTypeOf} from '../src/domain/consumption.mjs';
 import {researchRecords,filterResearchRecords,researchRecordDate} from '../src/domain/research-records.mjs';
 import {RichText} from './AssistantPresentation';
 import './ChatGPTWorkflows.css';
 import './RecordFilters.css';
-export function useMonthlyBasis(month:string|undefined,revision:number){
- const [result,setResult]=useState<any>({data:null,loading:Boolean(month),error:''});
- useEffect(()=>{if(!month){setResult({data:null,loading:false,error:''});return;}const controller=new AbortController();setResult({data:null,loading:true,error:''});fetch('/api/reviews?month='+encodeURIComponent(month),{cache:'no-store',signal:controller.signal}).then(async r=>{const data:any=await r.json();if(!r.ok)throw Error(data.error??'月报依据读取失败');if(!controller.signal.aborted)setResult({data,loading:false,error:''})}).catch(e=>{if(!controller.signal.aborted)setResult({data:null,loading:false,error:e.message})});return()=>controller.abort()},[month,revision]);return result;
-}
-export default function ResearchRecords({state}:{state:any;onSave?:any}){
+export default function ResearchRecords({state,onSave}:{state:any;onSave:any}){
  const [query,setQuery]=useState(''),[kind,setKind]=useState('all'),[from,setFrom]=useState(''),[to,setTo]=useState(''),[page,setPage]=useState(1);
  const all=researchRecords(state),records=filterResearchRecords(all,{query,kind,from,to}),pages=Math.max(1,Math.ceil(records.length/5)),currentPage=Math.min(page,pages),shown=records.slice((currentPage-1)*5,currentPage*5),invalidRange=Boolean(from&&to&&from>to);
  const labels:Record<string,string>=Object.fromEntries([...CONSUMPTION_TYPES,{id:'investment',label:'投资研究'}].map(t=>[t.id,t.label]));
- return <><div className="page-title"><div><div className="eyebrow">RESEARCH RECORDS</div><h1>研究记录</h1><p className="subtitle">查看已保存的研究与历史方案；研究记录不执行交易。</p></div></div>
+ return <><div className="page-title"><div><div className="eyebrow">RESEARCH RECORDS</div><h1>研究记录</h1><p className="subtitle">统一核对同步草稿，查看已保存的研究与历史方案。</p></div></div>
+ <McpDraftInbox state={state} onSave={onSave}/>
  <section className="card section-space"><div className="card-title"><h2>研究与历史方案</h2><span>共 {all.length} 条 · 匹配 {records.length} 条 · 每页5条</span></div>
  <div className="record-filters"><label className="field">搜索研究记录<input aria-label="搜索研究记录" value={query} onChange={e=>{setQuery(e.target.value);setPage(1)}}/></label><label className="field">消费种类<select aria-label="消费种类" value={kind} onChange={e=>{setKind(e.target.value);setPage(1)}}><option value="all">全部种类</option>{[...CONSUMPTION_TYPES,{id:'investment',label:'投资研究'}].map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select></label><label className="field">评估 / 保存时间 · 从<input aria-label="研究开始日期" type="date" value={from} onChange={e=>{setFrom(e.target.value);setPage(1)}}/></label><label className="field">至<input aria-label="研究结束日期" type="date" value={to} onChange={e=>{setTo(e.target.value);setPage(1)}}/></label></div>
  {invalidRange&&<p className="help-text" role="status">开始日期不能晚于结束日期。</p>}<p className="help-text">按评估或保存时间筛选；旧记录仅有计划日期时会明确标注，未记录时间的方案仅在未限定日期时显示。</p>

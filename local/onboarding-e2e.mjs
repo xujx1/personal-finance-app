@@ -38,7 +38,7 @@ async function nav(name,p=page){
  const toggle=p.getByRole('button',{name:'切换菜单'});if(await toggle.isVisible())await toggle.click();await p.getByRole('navigation').getByRole('button',{name,exact:true}).click();await p.locator('.sidebar').evaluate(node=>Promise.all(node.getAnimations().map(a=>a.finished.catch(()=>{}))));
 }
 const card=(id,p=page)=>p.locator(`[data-draft-id="${id}"]`);
-async function open(id,p=page){const c=card(id,p);await c.locator(':scope > details > summary').click();return c}
+async function open(id,p=page){await nav('研究记录',p);await p.getByRole('button',{name:/^待处理（/}).click();await p.getByLabel('草稿类型',{exact:true}).selectOption('all');await p.getByLabel('搜索同步草稿',{exact:true}).fill(id);const c=card(id,p);await c.locator(':scope > details > summary').click();return c}
 async function reload(name){await page.reload({waitUntil:'networkidle'});if(name)await nav(name)}
 async function accepted(id){await card(id).waitFor({state:'detached'});return (await state()).documents.find(d=>d.id===id).payload.destinationId}
 async function adoptSetup(id){const c=await open(id);await c.getByRole('checkbox',{name:'我已核对家庭建档资料',exact:true}).check();await c.getByRole('button',{name:'核对并保存建档资料',exact:true}).click();return accepted(id)}
@@ -65,9 +65,9 @@ try{
   await nav('工作流集成');await page.getByRole('region',{name:'家庭财务建档',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'交给ChatGPT ↗',exact:true}).count(),1);
  });
  let spouse,kid,bank,zero,fund,loan,firstRule;
- await check('成员草稿在总览、家庭、目标和工作流可核对；改称呼后重新确认且不授予访问权',async()=>{
+ await check('成员草稿只在研究记录核对；改称呼后重新确认且不授予访问权',async()=>{
   const before=await state(),d=await stage('setup',setup('members',{members:[{name:'模拟配偶'},{name:'模拟孩子'}]}));assert.equal((await state()).financeMembers.some(m=>m.name==='模拟配偶'),false);
-  for(const name of ['财务总览','家庭管理','目标设置','工作流集成']){await reload(name);await card(d.id).waitFor()}
+  for(const name of ['财务总览','家庭管理','目标设置','工作流集成']){await reload(name);assert.equal(await card(d.id).count(),0)}await reload('研究记录');await card(d.id).waitFor();
   const c=await open(d.id),box=c.getByRole('checkbox',{name:'我已核对家庭建档资料',exact:true});await box.check();await c.getByLabel('成员称呼 2',{exact:true}).fill('模拟宝宝');assert.equal(await box.isChecked(),false);await box.check();await c.getByRole('button',{name:'核对并保存建档资料',exact:true}).click();await accepted(d.id);
   const s=await state();spouse=s.financeMembers.find(m=>m.name==='模拟配偶').id;kid=s.financeMembers.find(m=>m.name==='模拟宝宝').id;assert.ok(spouse.startsWith('person:'));assert.equal(s.financeMembers.find(m=>m.id===kid).userId,null);assert.deepEqual(s.householdMembers,before.householdMembers);assert.deepEqual(s.accounts,before.accounts);assert.deepEqual(s.transactions,before.transactions);
  });

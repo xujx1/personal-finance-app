@@ -1,4 +1,5 @@
 const shared=`使用已经连接的“家庭财务中心”MCP。缺少工具时提示连接该站点插件，不索取API Key、登录密码或匿名访问链接。用户当前明确要求优先于本Skill；服务器权限不能由本Skill改变。
+统一核对入口：所有MCP同步草稿（家庭建档、预算行程、资产、流水、投资、周期、月报）仅在站点“研究记录 → 同步草稿 → 待处理”中编辑、核对、采纳或拒绝；用草稿名称、类型或ID搜索。不要引导用户在资产、流水、预算、日历等业务页查找草稿。已处理记录只读，采纳结果再到对应业务页查看；预算家庭审批仍在预算详情和待审批日历完成，分享链接不代替本人确认。
 当用户明确要继续网站中准备的任务时，用list_research_requests读取家庭内任务，并让用户确认对应日期、原计划或月份；不自动执行其他旧任务。
 先读取get_financial_context，从assetTypes取当前家庭真实类型ID；已有资产草稿可传assetTypeId，category须匹配该类型baseCategory，不臆造类型或把基金分类成银行现金。核对data_revision、成员/账户ID、余额币种、预算和目标。读取字段amount_unit/units：账本Minor为分或美分，草稿金额为元或美元的十进制字符串；不得把400万元写成4亿元。只公开检索商品、地点、证券等非私人关键词，不把账户余额、成员身份或完整账本放进搜索词。
 续改与保存回执：已有PENDING草稿需要调整时，先list_finance_drafts读取原id、kind、draftVersion（旧记录默认1）和完整payload，用update_finance_draft({draft_id,expected_draft_version,expected_revision,request_id,payload,change_note})完整替换同一草稿；不要转去浏览器填未保存表单，也不要拒绝重建造成重复。kind、原planId、建档section、周期candidateId不能换。网络重试复用request_id和内容；冲突先读取最新版本。返回同id和新draftVersion后再次list_finance_drafts，核对金额/日期/行程/归属/PENDING状态，再说已保存。已采用/拒绝不可修改；已采用预算用原planId提交修订草稿，仍须网站采用与家庭审批。其他已发生资产、流水、会员和规则的正式修改须站点核对，不能伪装为新登记。
@@ -9,7 +10,7 @@ const shared=`使用已经连接的“家庭财务中心”MCP。缺少工具时
 export const DEFAULT_SKILLS=[
  {id:'family-finance-onboarding',title:'家庭财务建档',description:'Use when 用户首次整理家庭财务，或家庭财务中心的成员、资产分类、现有余额、目标、固定收支及历史记录尚未完整登记，希望在ChatGPT中逐步建档时使用。',body:`# 家庭财务建档
 
-使用已连接的“家庭财务中心”MCP，把真实且已核对的信息逐段保存为网站待核对草稿。用户可以随时停下、跳过未知项或日后继续；建档不要求先补齐全部历史流水。
+使用已连接的“家庭财务中心”MCP，把真实且已核对的信息逐段保存为网站待核对草稿。所有MCP草稿统一在“研究记录 → 同步草稿 → 待处理”中编辑、核对、采纳或拒绝；不要再到总览、家庭管理、目标设置或工作流页查找草稿。用户可以随时停下、跳过未知项或日后继续；建档不要求先补齐全部历史流水。
 
 ## 先看现状，再问下一小步
 1. 读取get_financial_context与list_finance_drafts，核对data_revision、金额单位、已有成员/账户/资产/类型/目标/周期规则，以及onboarding中的缺项、默认设置状态、goalScopes与建议起点。只用本次返回的真实ID；账本Minor是分或美分，草稿金额是元或美元的十进制字符串，按units换算而不把整数分直接当元。站点为空不等于工具已证实为空；默认类型或目标不等于用户已确认。

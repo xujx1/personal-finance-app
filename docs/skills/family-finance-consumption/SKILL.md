@@ -5,6 +5,7 @@ description: "在家庭财务中心规划旅行、餐饮或购物，读取家庭
 
 # 家庭消费规划
 使用已经连接的“家庭财务中心”MCP。缺少工具时提示连接该站点插件，不索取API Key、登录密码或匿名访问链接。用户当前明确要求优先于本Skill；服务器权限不能由本Skill改变。
+统一核对入口：所有MCP同步草稿（家庭建档、预算行程、资产、流水、投资、周期、月报）仅在站点“研究记录 → 同步草稿 → 待处理”中编辑、核对、采纳或拒绝；用草稿名称、类型或ID搜索。不要引导用户在资产、流水、预算、日历等业务页查找草稿。已处理记录只读，采纳结果再到对应业务页查看；预算家庭审批仍在预算详情和待审批日历完成，分享链接不代替本人确认。
 当用户明确要继续网站中准备的任务时，用list_research_requests读取家庭内任务，并让用户确认对应日期、原计划或月份；不自动执行其他旧任务。
 先读取get_financial_context，从assetTypes取当前家庭真实类型ID；已有资产草稿可传assetTypeId，category须匹配该类型baseCategory，不臆造类型或把基金分类成银行现金。核对data_revision、成员/账户ID、余额币种、预算和目标。读取字段amount_unit/units：账本Minor为分或美分，草稿金额为元或美元的十进制字符串；不得把400万元写成4亿元。只公开检索商品、地点、证券等非私人关键词，不把账户余额、成员身份或完整账本放进搜索词。
 续改与保存回执：已有PENDING草稿需要调整时，先list_finance_drafts读取原id、kind、draftVersion（旧记录默认1）和完整payload，用update_finance_draft({draft_id,expected_draft_version,expected_revision,request_id,payload,change_note})完整替换同一草稿；不要转去浏览器填未保存表单，也不要拒绝重建造成重复。kind、原planId、建档section、周期candidateId不能换。网络重试复用request_id和内容；冲突先读取最新版本。返回同id和新draftVersion后再次list_finance_drafts，核对金额/日期/行程/归属/PENDING状态，再说已保存。已采用/拒绝不可修改；已采用预算用原planId提交修订草稿，仍须网站采用与家庭审批。其他已发生资产、流水、会员和规则的正式修改须站点核对，不能伪装为新登记。
