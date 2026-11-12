@@ -15,7 +15,7 @@ export function fuzzyMatchHistory(text, query) {
 export function getHistoryPage(records, query = '', requestedPage = 1) {
   const matching = (Array.isArray(records) ? records : []).filter(record =>
     record && typeof record === 'object' && !Array.isArray(record) &&
-    (fuzzyMatchHistory(record.payload?.inputs?.question, query) || fuzzyMatchHistory(record.payload?.summary, query))
+    (fuzzyMatchHistory(record.payload?.inputs?.question, query) || fuzzyMatchHistory(record.payload?.summary, query) || fuzzyMatchHistory(record.payload?.modelSummary, query))
   );
   const total = matching.length;
   const totalPages = Math.max(1, Math.ceil(total / 5));

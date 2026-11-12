@@ -1,3 +1,4 @@
+import {sortItineraryActivitiesByTime} from './trip-details.mjs';
 const DAY=86400000;
 export const MIN_CALENDAR_DATE='0001-01-01',MAX_CALENDAR_DATE='9998-12-31';
 const supported=value=>typeof value==='string'&&value>=MIN_CALENDAR_DATE&&value<=MAX_CALENDAR_DATE;
@@ -41,7 +42,7 @@ export function buildLifeCalendar(plans,{anchor,view='month',kind='all',includeC
   if(!begin||!end||end<begin){unscheduled.push(p);continue;}
   for(const day of days){
    if(day.date<p.date||day.date>key(end))continue;
-   const activities=(Array.isArray(p.itinerary)?p.itinerary:[]).filter(a=>a&&parseDay(a.date)&&a.date===day.date&&typeof a.title==='string'&&a.title.trim());
+   const activities=sortItineraryActivitiesByTime((Array.isArray(p.itinerary)?p.itinerary:[]).filter(a=>a&&parseDay(a.date)&&a.date===day.date&&typeof a.title==='string'&&a.title.trim()));
    day.events.push({planId:p.id,name:p.name,kind:type,date:p.date,end:key(end),status:p.status,budget:p.budget,budgetStatus:p.budgetStatus,activities});
   }
  }

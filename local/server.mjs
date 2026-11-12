@@ -41,7 +41,7 @@ const research=createResearchHandlers({getUser:async()=>({userId:'local-simulate
 const investment=createInvestmentHandlers({getUser:async()=>({userId:'local-simulated-owner'}),getOwner:()=> 'local-simulated-owner',getDb:()=>db,chatgpt:chatgptService,fetcher:researchFetcher,getConfig:()=>({baseUrl:process.env.NEW_API_BASE_URL,key:process.env.NEW_API_KEY,model:process.env.NEW_API_MODEL,searchKey:process.env.TAVILY_API_KEY})});
 const jobDeps={getUser:async()=>({userId:'local-simulated-owner'}),getOwner:()=> 'local-simulated-owner',getDb:()=>db,getQuotes:async()=>((await(await market.GET(new Request('http://127.0.0.1/api/market'))).json()).quotes??{})};
 const jobs=createJobsHandlers(jobDeps);
-const advisor=createAdvisorHandlers({getUser:async()=>({userId:'local-simulated-owner'}),getDb:()=>db,getOwner:()=> 'local-simulated-owner',chatgpt:chatgptService,getConfig:()=>({baseUrl:process.env.NEW_API_BASE_URL,model:process.env.NEW_API_MODEL,key:process.env.NEW_API_KEY})});
+const advisor=createAdvisorHandlers({getUser:async()=>({userId:'local-simulated-owner'}),getDb:()=>db,getOwner:()=> 'local-simulated-owner',chatgpt:chatgptService,getConfig:()=>({baseUrl:process.env.NEW_API_BASE_URL,model:process.env.NEW_API_MODEL,key:process.env.NEW_API_KEY,dailyLimit:process.env.AI_ADVISOR_DAILY_LIMIT})});
 const images=createImageHandlers({getUser:async()=>({userId:'local-simulated-owner'}),getOwner:()=> 'local-simulated-owner',getDb:()=>db,getConfig:()=>({baseUrl:process.env.NEW_API_BASE_URL,key:process.env.NEW_API_KEY,model:process.env.NEW_API_VISION_MODEL})});
 const mcp=createMcpHandler({getIdentity:async()=>({id:'local-simulated-owner',canWrite:true}),getDb:()=>db});
 const server=http.createServer(async(req,res)=>{try{

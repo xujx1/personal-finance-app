@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';import path from 'node:path';
 const mods=path.resolve(process.argv[2]??'work/calendar-qa/node_modules');const {chromium}=createRequire(path.join(mods,'../package.json'))(path.join(mods,'playwright'));
 const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1100}});page.setDefaultTimeout(7000);const errors=[],calls=[],results=[];page.on('pageerror',e=>errors.push(e.message));
-const fixture={book:{revision:1},viewer:{canWrite:true},accounts:[],transactions:[],planSummaries:[],documents:[]};
+const fixtureOwner='simulated-receipt-owner';
+const fixture={book:{revision:1},viewer:{canWrite:true,subject:fixtureOwner},householdMembers:[{userId:fixtureOwner,displayName:'模拟本人',active:true,role:'owner'}],financeMembers:[{id:'family',name:'家庭共用',kind:'family',userId:null,active:true,selectable:true},{id:'user:'+fixtureOwner,name:'模拟本人',kind:'user',userId:fixtureOwner,active:true,selectable:true}],accounts:[],transactions:[],planSummaries:[],documents:[]};
 const draft={kind:'travel',reviewed:false,items:[{id:'hotel',name:'模拟酒店',category:'住宿',quantity:'2',unitPrice:'100.00',selected:true,sourceType:'scenario_estimate',merchant:'模拟黄山国际大酒店',alternatives:[{merchant:'模拟黄山维笙酒店',unitPrice:'90.00',sourceType:'scenario_estimate'}]},{id:'train',name:'模拟车票',category:'火车票',quantity:'2',unitPrice:'50.00',selected:true,sourceType:'scenario_estimate'}],itinerary:[{date:'2026-12-01',time:'19:00',title:'模拟接站',notes:'未出票'},{date:'2026-12-02',time:'12:00',title:'模拟午餐'}],comparisons:[{title:'模拟同款票务',merchant:'模拟商家',version:'同线路',price:'50.00',shipping:'0',url:'https://example.com/train',checkedAt:'2026-11-11T00:00:00Z',comparability:'unverified'}]};
 await page.route('**/api/**',async route=>{const req=route.request(),endpoint=new URL(req.url()).pathname;
  if(req.method()==='GET')return route.fulfill({json:endpoint==='/api/finance'?fixture:endpoint==='/api/advisor'?{configured:true,model:'SIMULATED-UI-FIXTURE'}:{}});
@@ -14,8 +15,9 @@ await page.route('**/api/**',async route=>{const req=route.request(),endpoint=ne
   fixture.documents.push({id,kind:'advice',payload:advice});return route.fulfill({json:{id,advice}});
  }
  if(endpoint==='/api/finance'&&input.action==='advice.accept'){
+  assert.equal(input.body.ownerMemberId,'family');
   const a=fixture.documents.find(d=>d.id===input.body.adviceId).payload;a.status='ACCEPTED';fixture.book.revision++;
-  fixture.documents.push({id:'accepted-fixture-plan',kind:'plan',payload:{name:input.body.name,category:input.body.category,date:a.inputs.date,end:a.expenseEnd,status:'PLANNED',budgetStatus:'APPROVED',version:1,budget:a.inputs.budgetMinor,expenseDraft:a.expenseDraft,itinerary:a.expenseDraft.itinerary,items:a.expenseDraft.items,reserved:0}});
+  fixture.documents.push({id:'accepted-fixture-plan',kind:'plan',payload:{ownerMemberId:input.body.ownerMemberId,ownerLabel:'家庭共用',familyApproval:{version:1,required:[fixtureOwner],approvals:[{userId:fixtureOwner,at:new Date().toISOString()}],status:'APPROVED'},name:input.body.name,category:input.body.category,date:a.inputs.date,end:a.expenseEnd,status:'PLANNED',budgetStatus:'APPROVED',version:1,budget:a.inputs.budgetMinor,expenseDraft:a.expenseDraft,itinerary:a.expenseDraft.itinerary,items:a.expenseDraft.items,reserved:0}});
   return route.fulfill({json:{ok:true,id:'accepted-fixture-plan'}});
  }
  throw Error('Unexpected fixture write: '+endpoint);
@@ -37,20 +39,21 @@ try{
   await page.getByLabel('项目单价 1',{exact:true}).fill('120.00');await page.getByText('¥340.00',{exact:true}).waitFor();
   assert.equal(await page.getByLabel('本次总预算 CNY（可空）',{exact:true}).inputValue(),'340.00');
   await page.getByText('查看与调整行程 · 2项',{exact:true}).click();await page.getByLabel('行程安排 1',{exact:true}).fill('模拟接站修改');await page.getByText('查看商品比价参考',{exact:true}).click();await page.getByText(/模拟同款票务/).waitFor();
-  await page.getByRole('button',{name:'核对并AI复核',exact:true}).click();await page.locator('.advisor-result').getByText('模拟清单复核结果，不是真实财务建议',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'核对并AI复核',exact:true}).click();await page.locator('.advisor-verdict').getByText(/本计划总预算340\.00元/).waitFor();assert.match(await page.locator('.advisor-verdict').innerText(),/银行现金10000\.00元/);assert.equal(await page.locator('.advisor-result').getByText('模拟清单复核结果，不是真实财务建议',{exact:true}).isVisible(),false);await page.getByText('查看模型说明与可选方案（未逐项核实）',{exact:true}).click();await page.locator('.advisor-result').getByText('模拟清单复核结果，不是真实财务建议',{exact:true}).waitFor();await page.getByText('查看模型说明与可选方案（未逐项核实）',{exact:true}).click();
+  await page.getByLabel('预算归属成员',{exact:true}).selectOption('family');assert.equal(await page.getByLabel('预算归属成员',{exact:true}).inputValue(),'family');
   assert.equal(await page.getByRole('button',{name:'确认并发起家庭审批',exact:true}).isDisabled(),false);
  });
  await check('再编辑使旧建议失效，必须重新核对复核',async()=>{
   await page.getByLabel('项目数量 1',{exact:true}).fill('1');assert.equal(await page.getByRole('button',{name:'✦ AI复核清单',exact:true}).isDisabled(),true);
   assert.equal(await page.getByRole('button',{name:'确认并发起家庭审批',exact:true}).count(),0);
-  await page.getByRole('button',{name:'核对并AI复核',exact:true}).click();await page.locator('.advisor-result').getByText('模拟清单复核结果，不是真实财务建议',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'核对并AI复核',exact:true}).click();await page.locator('.advisor-verdict').getByText(/本计划总预算220\.00元/).waitFor();assert.equal(await page.locator('.advisor-result').getByText('模拟清单复核结果，不是真实财务建议',{exact:true}).isVisible(),false);await page.getByText('查看模型说明与可选方案（未逐项核实）',{exact:true}).click();await page.locator('.advisor-result').getByText('模拟清单复核结果，不是真实财务建议',{exact:true}).waitFor();await page.getByText('查看模型说明与可选方案（未逐项核实）',{exact:true}).click();
   assert.equal(calls.filter(x=>x.endpoint==='/api/advisor').length,2);
  });
  await check('采纳预算保存清单，行程进入日历',async()=>{
   await page.getByRole('button',{name:'确认并发起家庭审批',exact:true}).click();await page.getByText(/已提交家庭预算审批|家庭审批通过 · 已纳入正式预算/).waitFor();
   await page.getByRole('navigation').getByRole('button',{name:'生活日历',exact:true}).click();await page.getByLabel('跳转月份',{exact:true}).fill('2026-12');
   await page.getByRole('button',{name:'2026-12-01，1项安排',exact:true}).click();await page.getByText('模拟接站修改',{exact:true}).waitFor();
-  assert.equal(calls.filter(x=>x.endpoint==='/api/finance').length,1);
+  assert.equal(calls.filter(x=>x.endpoint==='/api/finance').length,1);assert.equal(fixture.documents.find(x=>x.kind==='plan').payload.ownerMemberId,'family');assert.equal(fixture.documents.find(x=>x.kind==='plan').payload.budget,22000);assert.equal(fixture.transactions.length,0);
  });
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:results.length,pageErrors:errors,fixtureOnly:true}));
 }finally{await browser.close()}

@@ -2,7 +2,7 @@ import {ledgerBookId,assertLedgerAccess,ledgerWriteGuard} from './ledger-scope.t
 import {extendFinance} from './finance-extensions.ts';
 import { minor, decimal, balanceJournal } from '../domain/finance.mjs';
 import {normalizeProposal} from '../domain/research.mjs';
-import {normalizeExpenseDraft} from '../domain/expense-plan.mjs';
+import {normalizeExpenseDraft,expenseResearchNeedsRegeneration,consumptionAdviceNeedsRiskAcknowledgement} from '../domain/expense-plan.mjs';
 import {beginFamilyApproval,currentFamilyApproval,approveFamilyPlan,applyFamilyApproval} from '../domain/family-approval.mjs';
 import {normalizeLoanMetadata} from '../domain/loan.mjs';
 import {normalizeDepositMetadata} from '../domain/deposit.mjs';
@@ -118,7 +118,7 @@ export async function executeCommand(db:DB,input:any,actor:string,options:{signa
   const optional=(v:any)=>v==null||v===''?null:minor(String(v));
   writeDoc('financial-profile','financial_profile',{monthlyIncomeMinor:optional(body.monthlyIncome),livingExpenseMinor:optional(body.livingExpense),emergencyReserveMinor:optional(body.emergencyReserve),historyComplete:body.historyComplete===true,updatedAt:new Date().toISOString()});result.id='financial-profile';
  }else if(action==='research.generated'){
-  const payload=normalizeProposal(body),id=uid();writeDoc(id,'research_proposal',{...payload,sources:payload.sources.map((s:any)=>({...s,verification:'本站研究时取得的引用，正文结论仍需核实'})),status:'PENDING',createdAt:new Date().toISOString(),source:'本站研究Agent',question:typeof body.question==='string'?body.question.slice(0,3000):null,model:body.model,requestFingerprint:body.requestFingerprint??null,missing:body.missing,factsRevision:body.factsRevision});result.id=id;
+  const payload=normalizeProposal(body),id=uid();writeDoc(id,'research_proposal',{...payload,...(body.kind==='wealth'&&body.calculation?.version===1?{calculation:body.calculation}:{}),...(body.kind==='wealth'&&typeof body.modelSummary==='string'?{modelSummary:body.modelSummary.slice(0,1500)}:{}),sources:payload.sources.map((s:any)=>({...s,verification:'本站研究时取得的引用，正文结论仍需核实'})),status:'PENDING',createdAt:new Date().toISOString(),source:'本站研究Agent',question:typeof body.question==='string'?body.question.slice(0,3000):null,model:body.model,requestFingerprint:body.requestFingerprint??null,missing:body.missing,factsRevision:body.factsRevision});result.id=id;
  }else if(action==='research.submit'){
   const payload=normalizeProposal(body),id=uid();
   // External agents supply unverified references; only the server research fetch can attest to price evidence.
@@ -136,6 +136,8 @@ writeDoc(id,'research_proposal',{...payload,status:'PENDING',createdAt:new Date(
   writeDoc(id,'advice',{...payload,status:'READY',approvalRevision:book.revision+1,dataset:ds});result.id=id;
  }else if(action==='advice.accept'){
   const a=doc(text(body.adviceId));if(a.kind!=='advice')throw Error('建议不存在');
+  const researchSource=a.payload.researchProposalId?state.documents.find((document:any)=>document.id===a.payload.researchProposalId&&document.kind==='research_proposal')?.payload:null;
+  if(expenseResearchNeedsRegeneration(a.payload)||expenseResearchNeedsRegeneration(researchSource))throw Error('旧方案费用结构可能重复，请重新生成并AI复核后再采纳');
   if(a.payload.status==='ACCEPTED')return {ok:true,id:a.payload.accountId??a.payload.planId};
   const assetInput=a.payload.intent==='asset'?a.payload.inputs?.asset:null;let imageSource:any=null,imageRow:any=null;
   if(assetInput?.imageImportId!=null||assetInput?.imageRowIndex!=null){
@@ -146,7 +148,10 @@ writeDoc(id,'research_proposal',{...payload,status:'PENDING',createdAt:new Date(
   }
 
   if(a.payload.dataset!==ds||a.payload.approvalRevision!==book.revision||a.payload.expiresAt<=Date.now())throw Error('CONFLICT:账本或建议已变化，请重新评估');
-  if(a.payload.source!=='model'||a.payload.verdict!=='可考虑')throw Error('请先取得AI评估通过，再由本人确认；规则测算不能作为审批');
+  if(a.payload.source!=='model'||a.payload.intent==='asset'&&a.payload.verdict!=='可考虑')throw Error('请先取得AI评估通过，再由本人确认；规则测算不能作为审批');
+  const riskRequired=consumptionAdviceNeedsRiskAcknowledgement(a.payload);
+  if(riskRequired&&body.acknowledgeRisk!==true)throw Error('请先了解未核实资料及资金风险，并由本人明确确认后提交家庭审批');
+  const riskAcknowledgement=riskRequired?{riskAcknowledgedBy:actor,riskAcknowledgedAt:new Date().toISOString()}:{};
   if(a.payload.intent==='asset'){
    const x=a.payload.inputs.asset;if(!x?.owned)throw Error('请先确认资产已经持有');const id=uid(),kind=x.category==='loan'?'LIABILITY':'ASSET',signed=kind==='LIABILITY'?-x.amountMinor:x.amountMinor;const owner=chosenOwner(body.ownerMemberId??x.ownerMemberId??a.payload.inputs.ownerMemberId,'user:'+actor);stagedAccounts.push({id,name:x.name,kind,category:x.category,currency:x.currency,metadata:owner});
    rows.push(db.prepare('INSERT INTO accounts VALUES(?,?,?,?,?,?,0,?)').bind(ds,id,x.name,kind,x.category,x.currency,JSON.stringify({...owner,...(['cash','term_deposit'].includes(x.category)?normalizeDepositMetadata(x,{required:x.category==='term_deposit'}):{}),...(x.category==='loan'?normalizeLoanMetadata(x):{}),note:x.source,status:x.status,market:market(x.market),quantity:x.quantity,cost:x.cost,monthly:x.monthly,code:x.code,price:x.price,asOf:a.payload.inputs.date,adviceId:a.id})));
@@ -162,8 +167,8 @@ writeDoc(id,'research_proposal',{...payload,status:'PENDING',createdAt:new Date(
   const expenseDraft=a.payload.expenseDraft?normalizeExpenseDraft(a.payload.expenseDraft):null;
   const requestedPlanOwner=body.ownerMemberId??a.payload.inputs.ownerMemberId;const planOwner=requestedPlanOwner===undefined&&existing?{ownerMemberId:old.ownerMemberId,ownerLabel:old.ownerLabel,ownerSubject:old.ownerSubject??null}:chosenOwner(requestedPlanOwner,'family');
   if(expenseDraft&&expenseDraft.totalMinor!==a.payload.inputs.budgetMinor)throw Error('清单与审批预算不一致，请重新评估');
-  writeDoc(id,'plan',applyFamilyApproval({...old,...planOwner,name:text(body.name??a.payload.inputs.question.slice(0,50),100),category:text(body.category??old.category??'其他',30),date:a.payload.inputs.date,end:a.payload.expenseEnd??(old.end&&old.end>=a.payload.inputs.date?old.end:a.payload.inputs.date),...(expenseDraft?{expenseDraft,itinerary:expenseDraft.itinerary,items:expenseDraft.items.filter((x:any)=>x.selected),comparisons:expenseDraft.comparisons}:{}),budget:a.payload.inputs.budgetMinor,status:old.status??'PLANNED',reserved:Math.min(old.reserved??0,Math.max(0,a.payload.inputs.budgetMinor-Number(state.planSummaries.find((x:any)=>x.planId===id)?.paid??0))),budgetStatus:'APPROVED',version:(old.version??0)+1,approvedAt:new Date().toISOString(),note:old.note??'本人采纳消费建议，实际付款另行记录',adviceId:a.id},beginFamilyApproval((old.familyApproval?.version??old.version??0)+1,state.householdMembers,actor,undefined,state.householdRevision)));
-  writeDoc(a.id,'advice',{...a.payload,status:'ACCEPTED',planId:id,acceptedAt:new Date().toISOString()});result.id=id;
+  writeDoc(id,'plan',applyFamilyApproval({...old,...planOwner,...riskAcknowledgement,name:text(body.name??a.payload.inputs.question.slice(0,50),100),category:text(body.category??old.category??'其他',30),date:a.payload.inputs.date,end:a.payload.expenseEnd??(old.end&&old.end>=a.payload.inputs.date?old.end:a.payload.inputs.date),...(expenseDraft?{expenseDraft,itinerary:expenseDraft.itinerary,items:expenseDraft.items.filter((x:any)=>x.selected),comparisons:expenseDraft.comparisons}:{}),budget:a.payload.inputs.budgetMinor,status:old.status??'PLANNED',reserved:Math.min(old.reserved??0,Math.max(0,a.payload.inputs.budgetMinor-Number(state.planSummaries.find((x:any)=>x.planId===id)?.paid??0))),budgetStatus:'APPROVED',version:(old.version??0)+1,approvedAt:new Date().toISOString(),note:old.note??'本人采纳消费建议，实际付款另行记录',adviceId:a.id},beginFamilyApproval((old.familyApproval?.version??old.version??0)+1,state.householdMembers,actor,undefined,state.householdRevision)));
+  writeDoc(a.id,'advice',{...a.payload,...riskAcknowledgement,status:'ACCEPTED',planId:id,acceptedAt:new Date().toISOString()});result.id=id;
   }
  }else if(action==='account.save'){
   const id=body.id?text(body.id):uid(), existing=state.accounts.find((a:any)=>a.id===id);

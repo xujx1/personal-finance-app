@@ -1,3 +1,4 @@
+import {calculateInvestmentScenario} from '../domain/investment-scenario.mjs';
 import {financialToolSummary} from '../domain/analysis-flow.mjs';
 import {snapshot} from './finance-store.ts';
 import {financialTools} from './financial-tools.ts';
@@ -48,6 +49,7 @@ export function createInvestmentHandlers(deps:any){
      facts[name]=name==='get_market_quotes'?{...(value as object),quotes:((value as {quotes?:{accountId:string;status:string}[]}).quotes??[]).map(quote=>({...quote,status:refreshedQuotes[quote.accountId]?.status??quote.status,message:refreshedQuotes[quote.accountId]?.message??null})),refreshAttempted:true,note:'已检查报价源与短期缓存，保留原报价日期；更新失败时标注stale或unavailable，不保证实时成交价'}:value;
      signal.throwIfAborted();emit({type:'tool',name,status:'completed',summary:financialToolSummary(name,facts[name])});
     }
+    const calculation={...calculateInvestmentScenario(input.question,{state,quotes:(facts.get_market_quotes as any)?.quotes??[],cashflowForecast:(facts.get_cashflow_context as any)?.forecast??null}),factsRevision:state.book.revision};
     const fetcher=async(target:any,options:RequestInit={})=>{
      const combined=options.signal?AbortSignal.any([signal,options.signal]):signal;combined.throwIfAborted();
      const response=await(deps.fetcher??fetch)(target,{...options,signal:combined});combined.throwIfAborted();return response;
@@ -55,7 +57,7 @@ export function createInvestmentHandlers(deps:any){
     const chatgpt=deps.chatgpt?{...deps.chatgpt,infer:async(owner:string,instructions:string,question:string,options:Record<string,unknown>={})=>{
      signal.throwIfAborted();const response=await deps.chatgpt.infer(owner,instructions,question,{...options,signal});signal.throwIfAborted();return response;
     }}:undefined;
-    let streamed=false;const delegated=createResearchHandlers({...deps,getUser:async()=>user,getDb:()=>db,getConfig:()=>config,fetcher,chatgpt,financialFacts:facts,onEvent:(event:Event)=>{if(event.type==='tool'&&event.name!=='classify_expense')emit({...event,...(event.name==='public_research'?{name:'market_research'}:{})})},onDelta:(text:string)=>{streamed=true;emit({type:'delta',text,mode:'stream'})}});
+    let streamed=false;const delegated=createResearchHandlers({...deps,getUser:async()=>user,getDb:()=>db,getConfig:()=>config,fetcher,chatgpt,financialFacts:facts,investmentCalculation:calculation,onEvent:(event:Event)=>{if(event.type==='tool'&&event.name!=='classify_expense')emit({...event,...(event.name==='public_research'?{name:'market_research'}:{})})},onDelta:(text:string)=>{streamed=true;emit({type:'delta',text,mode:'stream'})}});
     emit({type:'tool',name:'investment_research',status:'running',mode:'complete_result'});
     const response=await delegated.POST(new Request(req.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:input.key,kind:'wealth',question:input.question,provider:input.provider,...(input.searchQuery?{searchQuery:input.searchQuery}:{})}),signal}));
     const result=await response.json() as {id?:unknown;proposal?:{kind?:unknown;budget?:unknown;content?:unknown};error?:unknown};

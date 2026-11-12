@@ -2,11 +2,12 @@
 
 import {useEffect, useRef, useState, type FormEvent, type ReactNode} from 'react';
 import AdvisorHistory from './AdvisorHistory';
+import InvestmentCalculation from './InvestmentCalculation';
 import {AnalysisFlow,RichText,upsertAnalysisStep} from './AssistantPresentation';
 import {consumeAdviceStream} from '../src/domain/advisor-stream.mjs';
 
 type Props={state:any;onRefresh:()=>Promise<void>;registration:ReactNode;startWithRegistration?:boolean};
-type Proposal={kind:string;title:string;summary:string;content:string;createdAt?:string;missing?:string[];sources?:{url:string;title:string;checkedAt?:string|null;verification?:string}[]};
+type Proposal={kind:string;title:string;summary:string;content:string;calculation?:any;modelSummary?:string;createdAt?:string;missing?:string[];sources?:{url:string;title:string;checkedAt?:string|null;verification?:string}[]};
 type Result={id:string;proposal:Proposal};
 type Stage={name:string;status:string;summary?:string};
 const labels:Record<string,string>={get_assets:'核对已有资产',get_liabilities:'核对贷款和负债',get_budgets:'核对预算占用',get_holdings:'核对证券持仓',get_savings_goals:'核对金额与期限目标',get_market_quotes:'更新可用报价并核对来源日期',get_recent_consumption:'核对已确认消费',get_cashflow_context:'核对现金流依据',investment_research:'检索资料并分析投资问题'};
@@ -52,10 +53,11 @@ export default function InvestmentPanel({state,onRefresh,registration,startWithR
    </form>
    <section className="card advisor-result" aria-label="投资分析结果">
     <div className="card-title"><h2>建议与资金影响</h2>{result&&<small>研究草稿 · 由本人决定后续操作</small>}</div>
-    {result&&<div className="advisor-verdict"><h3>{result.proposal.title}</h3><RichText text={result.proposal.summary}/></div>}
+    {result?.proposal.calculation&&<InvestmentCalculation calculation={result.proposal.calculation}/>}
+    {result&&<div className="advisor-verdict"><h3>{result.proposal.calculation?'投资研究与资金核对':result.proposal.title}</h3><RichText text={result.proposal.calculation?result.proposal.summary:'此份历史研究未附服务器逐项测算，正文金额和结论尚需核实；请重新分析以取得当前报价及计算。'}/></div>}
     <AnalysisFlow steps={stages} busy={busy}/>
     {busy&&<p className="help-text" aria-live="polite">{answer?'正在生成分析…':'正在分析，请稍候…'}</p>}
-    {answer&&!result&&<p className="help-text">以下为未完成校验的分析片段</p>}{answer?result?<details key={result.id+':analysis'} className="assistant-details"><summary>查看完整分析与依据</summary><RichText text={answer}/></details>:<RichText text={answer}/>:<p className="help-text">提出问题后，分析会在这里逐步展开。</p>}
+    {answer&&!result&&<p className="help-text">以下为未完成校验的分析片段</p>}{answer?result?<details key={result.id+':analysis'} className="assistant-details"><summary>查看完整分析与依据</summary><div className="notice neutral">以下为模型研究文字，金额与判断尚需逐项核实。请先核对上方服务器情景测算及现金预测；这些文字不执行记账或交易。</div>{result.proposal.modelSummary&&<><h3>模型原始摘要 · 待核实</h3><RichText text={result.proposal.modelSummary}/></>}<RichText text={answer}/></details>:<RichText text={answer}/>:<p className="help-text">提出问题后，分析会在这里逐步展开。</p>}
     {result?.proposal.missing?.length? <div className="notice neutral"><strong>尚需核实</strong><ul>{result.proposal.missing.map((item,index)=><li key={index}>{item}</li>)}</ul></div>:null}
     {result&&<details key={result.id+':sources'} className="assistant-details"><summary>查看研究来源</summary><p className="help-text">研究时间：{result.proposal.createdAt??'未记录'}；以下为研究时取得的引用，正文结论仍需核实。</p>{result.proposal.sources?.length?<ul>{result.proposal.sources.map((source,index)=><li key={index}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a><small> · 查询时间 {source.checkedAt??'未提供'}</small></li>)}</ul>:<p className="notice neutral">未取得可核验引用，分析中的报价与市场判断仍需核实。</p>}</details>}
    </section></div>

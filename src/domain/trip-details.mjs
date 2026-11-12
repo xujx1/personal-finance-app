@@ -4,3 +4,15 @@ export function inferTripDetails(question,today,fallbackDate=null){const q=Strin
  if(!date&&fallbackDate&&/^\d{4}-\d{2}-\d{2}$/.test(fallbackDate))date=fallbackDate;
  const number=s=>({'一':1,'二':2,'两':2,'三':3,'四':4,'五':5,'六':6}[s]??Number(s)),days=/(\d+|[一二两三四五六])\s*(?:天(?:游|行程|亲子游)?|日(?:游|行程))/.exec(q);if(!end&&date&&days){const d=new Date(date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+Math.max(0,number(days[1])-1));end=d.toISOString().slice(0,10);}
  const adults=/(\d+|[一二两三四五六])\s*(?:位|个|名)?\s*(?:成人|大人)/.exec(q),babies=/(\d+|[一二两三四五六])\s*(?:位|个|名)?\s*(?:宝宝|婴儿|孩子)/.exec(q);return {date,end,adults:adults?number(adults[1]):null,babies:babies?number(babies[1]):/无宝宝|不带宝宝|没有宝宝/.test(q)?0:null};}
+
+/** Remove only the known generated schema instruction; real travel reminders remain untouched. */
+export function cleanItineraryNotes(value){
+ const original=String(value??'');
+ const clean=original.replace(/(?:[，,；;]\s*)?(?:`expenses`|expenses)\s*(?:为|=|：|:)\s*(?:空数组|\[\s*\])(?=\s*(?:[，,。；;.!！?？]|$))/gi,'');
+ return clean===original?original:clean.replace(/^\s*[，,；;]\s*/,'').trim();
+}
+const itineraryMinute=value=>{
+ const match=/^([01]?\d|2[0-3])[:：]([0-5]\d)(?:\s*[-–—~～至到]\s*(?:[01]?\d|2[0-3])[:：][0-5]\d)?$/.exec(String(value??'').trim());
+ return match?Number(match[1])*60+Number(match[2]):Number.POSITIVE_INFINITY;
+};
+export function sortItineraryActivitiesByTime(activities){return activities.map((activity,index)=>({activity,index})).sort((a,b)=>itineraryMinute(a.activity.time)-itineraryMinute(b.activity.time)||a.index-b.index).map(({activity})=>({...activity,...(typeof activity.notes==='string'?{notes:cleanItineraryNotes(activity.notes)}:{})}));}
