@@ -229,6 +229,7 @@ writeDoc(id,'research_proposal',{...payload,consumptionType:consumptionTypeForWr
   const other=state.documents.filter((d:any)=>d.kind==='plan'&&d.id!==p.id&&!['COMPLETED','CANCELLED'].includes(d.payload.status)).reduce((n:number,d:any)=>n+(d.payload.reserved??0),0);
   if(amount+other>totalCash)throw Error('预留资金超过现有现金');writeDoc(p.id,'plan',{...p.payload,reserved:amount});
  }else if(action==='plan.pay'){
+  if(date(body.date??localDate())>localDate())throw Error('不能提前记录未来实际消费');
   const p=doc(body.planId),a=cash(body.accountId),n=minor(String(body.amount));
   if(p.kind!=='plan'||['COMPLETED','CANCELLED'].includes(p.payload.status))throw Error('计划已结束');if(!n)throw Error('金额必须大于0');
   if(p.payload.loanId)throw Error('贷款计划请使用实际还款，不能将本金记为消费');

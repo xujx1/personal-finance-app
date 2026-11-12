@@ -55,6 +55,7 @@ export async function extendFinance(c:any){
   const chosen=options.find((x:any)=>x.id===body.selected);if(body.selected&&(!chosen||chosen.amount!==p.payload.budget))throw Error('执行方案金额与正式预算不一致，请重新AI评估');
   const payload={...p.payload,options,items,selectedOption:body.selected||null};if(p.payload.familyApproval&&JSON.stringify([p.payload.options??[],p.payload.items??[],p.payload.selectedOption??null])!==JSON.stringify([options,items,body.selected||null]))Object.assign(payload,applyFamilyApproval(payload,beginFamilyApproval(p.payload.familyApproval.version+1,state.householdMembers,null,undefined,state.householdRevision)));writeDoc(p.id,'plan',payload);result.id=p.id;return true;
  }
+ if(['plan.prepay','plan.consume','plan.prepay.refund'].includes(action)&&day(body.date??new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai'}).format(new Date()))>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai'}).format(new Date()))throw Error('不能提前记录未来实际付款、消费或退款');
  if(action==='plan.prepay'){
   const p=doc(body.planId),bank=cash(body.accountId),n=positive(body.amount);if(p.kind!=='plan'||p.payload.budgetStatus!=='APPROVED'||['COMPLETED','CANCELLED'].includes(p.payload.status))throw Error('计划未批准或已结束');
   if(p.payload.loanId)throw Error('贷款计划不能使用消费预付款，请记录实际贷款还款');

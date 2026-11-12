@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {buildLifeCalendar} from '../src/domain/life-calendar.mjs';
+const p={id:'plan',name:'消费计划',date:'2026-11-15',end:'2026-11-15',status:'PLANNED',budget:30000,category:'国内旅行',consumptionType:'travel'};
+const events=plans=>buildLifeCalendar(plans,{anchor:p.date}).days.find(d=>d.date===p.date).events;
+test('only approved budgets reach calendar; pending and draft remain in budget approval',()=>{for(const budgetStatus of ['DRAFT','PENDING_APPROVAL',undefined])assert.equal(events([{...p,budgetStatus}]).length,0);assert.equal(events([{...p,budgetStatus:'APPROVED',familyApproval:{status:'PENDING_APPROVAL'}}]).length,0);assert.equal(events([{...p,budgetStatus:'APPROVED',familyApproval:{status:'APPROVED'}}]).length,1)});
+test('approved shopping and loan plans appear with their own dates without cash posting or duplication',()=>{const rows=[{...p,id:'shop',category:'商品购物',consumptionType:'shopping',budgetStatus:'APPROVED'},{...p,id:'loan',category:'提前还贷',consumptionType:'other',budgetStatus:'APPROVED',loanId:'mortgage'}],before=JSON.stringify(rows);assert.deepEqual(events(rows).map(x=>x.planId),['loan','shop']);assert.ok(events(rows).every(x=>x.kind==='plan'&&!x.pendingApproval));assert.equal(JSON.stringify(rows),before)});

@@ -7,7 +7,7 @@ import {decimal} from '../src/domain/finance.mjs';
 
 type Props={onMemberships?:()=>void;onReview?:(id:string)=>void;plans:any[];onPlan:(id:string)=>void;onNew:(date:string)=>void;onCancel?:(id:string)=>void;canWrite?:boolean;busy?:boolean};
 const weekdays=['周一','周二','周三','周四','周五','周六','周日'];
-const eventName=(event:any)=>event.kind==='travel'?'旅行':event.kind==='dining'?'餐饮':event.kind==='investment'?'投资复核':'预算审批';
+const eventName=(event:any)=>event.kind==='travel'?'旅行':event.kind==='dining'?'餐饮':event.kind==='investment'?'投资复核':'消费计划';
 const statuses:Record<string,string>={PLANNED:'计划中',BOOKED:'已预订',IN_PROGRESS:'执行中',COMPLETED:'已完成',CANCELLED:'已取消',DRAFT:'草稿'};
 const fullDate=(date:string)=>new Intl.DateTimeFormat('zh-CN',{timeZone:'UTC',month:'long',day:'numeric',weekday:'long'}).format(new Date(date+'T00:00:00Z'));
 
@@ -28,7 +28,7 @@ export default function LifeCalendar({onMemberships,onReview,plans,onPlan,onNew,
     <div className="actions"><button className="btn" onClick={()=>move(today)}>今天</button><div className="segment" aria-label="日历视图"><button aria-pressed={view==='month'} className={view==='month'?'active':''} onClick={()=>{setView('month');setAnchor(selected)}}>整月</button><button aria-pressed={view==='week'} className={view==='week'?'active':''} onClick={()=>{setView('week');setAnchor(selected)}}>本周</button></div></div>
    </div>
    <div className="life-calendar-filters">
-    <label>安排类型 <select aria-label="日历安排类型" value={kind} onChange={e=>setKind(e.target.value)}><option value="all">全部安排</option><option value="travel">只看旅行</option><option value="dining">只看餐饮</option><option value="pending">只看待审批</option><option value="investment">只看投资复核</option></select></label>
+    <label>安排类型 <select aria-label="日历安排类型" value={kind} onChange={e=>setKind(e.target.value)}><option value="all">全部安排</option><option value="travel">只看旅行</option><option value="dining">只看餐饮</option><option value="plan">只看其他计划</option><option value="investment">只看投资复核</option></select></label>
     <label>跳转月份 <input aria-label="跳转月份" type="month" min={MIN_CALENDAR_DATE.slice(0,7)} max={MAX_CALENDAR_DATE.slice(0,7)} value={anchor.slice(0,7)} onChange={e=>{const date=e.target.value+'-01';if(/^\d{4}-\d{2}$/.test(e.target.value)&&date>=MIN_CALENDAR_DATE&&date<=MAX_CALENDAR_DATE)move(date)}}/></label>
     <label className="life-calendar-cancelled"><input type="checkbox" checked={includeCancelled} onChange={e=>setIncludeCancelled(e.target.checked)}/>显示已取消</label>
    </div>
@@ -40,7 +40,7 @@ export default function LifeCalendar({onMemberships,onReview,plans,onPlan,onNew,
       <span className="life-calendar-day-events">{day.events.slice(0,2).map(event=><span key={event.planId} className={'life-calendar-chip '+event.kind+(event.status==='CANCELLED'?' cancelled':'')+(event.pendingApproval?' pending-approval':'')}>{event.pendingApproval?'待审批 · ':''}{event.name}</span>)}{day.events.length>2&&<span className="life-calendar-more">另有{day.events.length-2}项</span>}</span>
       {day.events.length>0&&<span className="life-calendar-mobile-count">{day.events.length}项</span>}
      </button>)}</div>
-     <p className="life-calendar-legend"><span className="travel">● 旅行</span><span className="dining">● 餐饮</span><span className="approval">● 待审批</span><span className="investment">● 投资复核</span><span>浅底色为周末 · 按北京时间日期</span></p>
+     <p className="life-calendar-legend"><span className="travel">● 旅行</span><span className="dining">● 餐饮</span><span className="plan">● 其他计划</span><span className="investment">● 投资复核</span><span>浅底色为周末 · 按北京时间日期</span></p>
     </div>
     <section className="life-calendar-agenda" aria-label="当天安排" aria-live="polite">
      <div className="life-calendar-agenda-title"><small>{selected}</small><h2>{fullDate(selected)}</h2><p>{active?.events.length??0}项安排</p></div>
@@ -55,7 +55,7 @@ export default function LifeCalendar({onMemberships,onReview,plans,onPlan,onNew,
     </section>
    </div>
    {unscheduled.length>0&&<section className="life-calendar-unscheduled"><h3>待排期 · {unscheduled.length}项</h3><p>这些计划的日期尚未填写完整，未放入日历。</p>{unscheduled.map(p=><button className="btn" key={p.id} onClick={()=>p.reviewId?onReview?.(p.reviewId):onPlan(p.id)}>{p.name} · {p.budgetStatus==='PENDING_APPROVAL'||p.familyApproval?.status==='PENDING_APPROVAL'?'待审批':'查看计划'}</button>)}</section>}
-   <p className="help-text">展示旅行、餐饮、待审批预算及投资复核安排；投资复核不执行交易。待审批为候选安排，不代表已预订或已纳入正式预算。日历仅整理日期，实际付款仍在原计划中核实。</p>
+   <p className="help-text">家庭审批通过的预算自动显示在日历。待审批事项请在预算与大型支出处理；实际发生后打开计划记录消费，同步流水和账户。投资复核仅作日程，不执行交易。</p>
   </section>
  </>;
 }
