@@ -1,6 +1,7 @@
 import {normalizeAssetTypes,assetTypeCatalogue} from '../domain/asset-types.mjs';
 import {extendAssetTrade} from './asset-trade.ts';
 import {extendMcpDraft} from './mcp-draft.ts';
+import {extendMonthlyReports} from './monthly-report-document.ts';
 import {extendSkills} from '../domain/skill-catalog.mjs';
 import {beginFamilyApproval,applyFamilyApproval} from '../domain/family-approval.mjs';
 import {normalizeAssetGoalInput,getAssetGoal} from '../domain/asset-goals.mjs';
@@ -10,6 +11,7 @@ const txt=(x:any,n=200)=>{if(typeof x!=='string'||!x.trim()||x.length>n)throw Er
 const day=(x:any)=>{if(typeof x!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x)||new Date(x).toISOString().slice(0,10)!==x)throw Error('日期无效');return x};
 const positive=(x:any)=>{const n=minor(String(x));if(!n)throw Error('金额必须大于0');return n};
 export async function extendFinance(c:any){
+ if(await extendMonthlyReports(c))return true;
  if(extendSkills(c))return true;
  if(await extendMcpDraft(c))return true;
  const {action,body,state,rows,db,ds,account,cash,doc,writeDoc,journal,entry,system,result,assertCashMember,stagedAccounts}=c;

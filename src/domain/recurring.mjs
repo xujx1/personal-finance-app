@@ -9,3 +9,12 @@ export function recurringSetupSuggestions(state,start){
   return {id:'setup:'+a.id,missing,payload:{name:a.name+'每月还款',type:'loan',loanId:a.id,accountId:'',amount,principal:null,day,start,end:null,autoPost:false,paused:false}};
  });
 }
+
+// The summary describes this month's scheduled occurrences, including ones
+// already due, rather than every unpaused template across all future months.
+export function recurringMonthPlan(rules,month){
+ const [year,m]=month.split('-').map(Number),date=new Date(0);date.setUTCFullYear(year,m,0);
+ const last=date.getUTCDate();
+ const active=rules.filter(rule=>{const r=rule.payload,day=month+'-'+String(Math.min(r.day,last)).padStart(2,'0');return !r.paused&&day>=r.start&&(!r.end||day<=r.end)});
+ return {active,income:active.filter(r=>r.payload.type==='income').reduce((n,r)=>n+r.payload.amount,0),outflow:active.filter(r=>r.payload.type!=='income').reduce((n,r)=>n+r.payload.amount,0)};
+}
