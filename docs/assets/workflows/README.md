@@ -1,18 +1,18 @@
 # 流程截图 / Workflow screenshots
 
-[中文指南](../../USER-GUIDE.md) · [English guide](../../USER-GUIDE.en.md) · [完整清单 / Full manifest](manifest.json)
+[产品手册](../../PRODUCT-MANUAL.md) · [English manual](../../PRODUCT-MANUAL.en.md) · [关键案例](../../KEY-CASES.md) · [清单 / Manifest](manifest.json)
 
-## 来源与边界 / Provenance and limits
+## 证据范围 / Evidence scope
 
-这些图片来自2026-11-12的已有本地Chrome验收，逐张检查后原样复制。数据为隔离模拟家庭，身份与ChatGPT结构化内容为测试输入；应用HTTP/SQLite/浏览器为实际运行。图片来自不同场景，不拼接为连续真实用户流程。原报告仅在开发工作目录，本表与清单保留其元数据；不将原报告结果计入本轮通过数。
+本目录18张图均为已有本地浏览器或组件验收产物，逐张检查、原样复制，没有新拍或改画界面。图片来自不同用例，不是一组连续生产操作。数据是隔离模拟家庭或独立组件，不证明生产登录、真实AI/银行交易或手机插件安装。来源报告没有日期时保持未知，不把复制日期当拍摄日期。
 
-Images were captured during existing local Chrome checks on 2026-11-12 and copied unchanged after visual inspection. Household data, identities, and structured AI content are synthetic test inputs; HTTP/SQLite/browser execution is real. Separate scenarios are not one continuous production session. Original reports remain in the development work directory; this inventory preserves their metadata, not newly executed evidence.
+These 18 images are existing local browser/component artifacts, inspected and copied unchanged. Separate scenarios are not a continuous production session. Data uses isolated demo households/components and does not verify production sign-in, real AI/banking, or mobile installation. Missing original dates remain unknown.
 
-本轮重新采集因本地TCP监听EPERM受阻，没有新截图。图片不证明生产Sites登录、生产D1、实际ChatGPT推理/搜索/图片识别、跨设备安装或银行交易。原图中的隐私模糊是应用自身效果，未用图像工具补画或修改。
+新采集受TCP监听EPERM及Chrome沙箱启动SIGABRT限制。应用隐私模糊不是对真实截图的安全脱敏保证。原报告仅在开发work目录；表中套件数量是历史来源，不是本轮新通过。
 
-New capture was blocked by local TCP listen EPERM. Images do not verify production Sites identity/D1, actual ChatGPT inference/search/vision, cross-device installation, or banking. Privacy blur is the application’s own display; images were not redrawn or edited.
+New capture was blocked by TCP listen EPERM and sandbox Chrome SIGABRT. App privacy blur does not certify real-image redaction. Original reports remain under the development work directory; their suite counts are historical provenance, not new passes.
 
-| ID | 流程 / Step | 原报告时间 UTC / Original report | 原套件通过/失败 / Historical suite P/F |
+| ID | 流程 / Step | 来源时间 UTC / Date | 原套件P/F / Historical P/F |
 | --- | --- | --- | --- |
 | [S01](01-onboarding.png) | 建档 / Onboarding | 2026-11-12T10:14:12.766Z | 15/0 |
 | [S02](02-workflow-integration.png) | 工作流接续（旧六入口）/ Handoff (older six-entry screen) | 2026-11-12T10:14:12.766Z | 15/0 |
@@ -22,18 +22,32 @@ New capture was blocked by local TCP listen EPERM. Images do not verify producti
 | [S06](06-actual-expense-review.png) | 实际流水核对 / Actual cashflow review | 2026-11-12T10:31:49.001Z | 17/0 |
 | [S07](07-recorded-cashflow.png) | 现金流水 / Cashflow | 2026-11-12T10:14:38.464Z | 11/0 |
 | [S08](08-adopted-mobile.png) | 已采用草稿 / Processed drafts | 2026-11-12T13:50:33.873Z | 4/0 |
+| [S09](09-plugin-connection.png) | 本站连接检查（本地）/ Site connection (local) | 未记录 / not recorded | 未记录 / not recorded |
+| [S10](10-assets-desktop.png) | 资产和持仓行操作 / Assets and holdings | 2026-11-12T06:51:54.327Z | 10/0 |
+| [S11](11-asset-type-editor-mobile.png) | 家庭类型维护 / Asset types | 2026-11-12T08:50:08.919Z | 16/0 |
+| [S12](12-liquidation-mobile.png) | 清仓净回款 / Liquidation proceeds | 2026-11-12T06:51:54.327Z | 10/0 |
+| [S13](13-monthly-archive.png) | 月报已保存版本 / Monthly archive | 2026-11-12T10:16:19.944Z | 6/0 |
+| [S14](14-recurring-rule-mobile.png) | 新增周期规则 / Recurring rule | 2026-11-12T10:16:19.944Z | 6/0 |
+| [S15](15-recurring-monthly-overview.png) | 月报中的周期与预测 / Recurring report | 2026-11-12T10:53:20.699Z | 4/0 |
+| [S16](16-monthly-second-version.png) | 月报后续版本 / Later report version | 2026-11-12T10:16:19.944Z | 6/0 |
+| [S17](17-attachments-mobile.png) | 附件独立组件 / Attachment component | 未记录 / not recorded | 9/0 |
+| [S18](18-investment-followup-calendar.png) | 未交易的投资复核 / Investment follow-up | 2026-11-12T10:29:30.989Z | 5/0 |
 
-## 已知版本差异 / Known differences
+## 版本差异 / Differences
 
-- S02展示旧版六入口及本机安装地址。当前有七个业务入口，插件接入另有本地改动；不要从图片复制安装命令。 / S02 shows an older six-entry installer and localhost URL. There are now seven business entries and additional local plugin changes; do not copy its command.
-- S03为长草稿专项界面，含采用后的状态提示，不独立证明整个采用请求。原专项脚本未入库，不能承诺一条命令重现同图。 / S03 includes post-adoption feedback in a long-draft scenario. Its focused script was not tracked; a one-command reproduction is not claimed.
-- S04仅展示分享弹窗，不是家人已同意的证据。 / S04 shows sharing, not completed consent.
-- S05选中12日，批准计划在14–15日。底部待审批候选描述为旧文案，现行待批预算不进入正式日历。 / S05 selects the 12th; the approved plan is on the 14th–15th. Its pending-candidate footer is historical; pending budgets do not enter the formal calendar.
-- S06为历史已含余额示例，不是新付款或关联预付款截图。 / S06 illustrates history already covered by a balance, not a new payment or prepayment settlement.
-- S07金额隐藏；S08仅展示处理状态。两图均不能单独证明余额数值及幂等。 / S07 hides amounts; S08 shows processing status. Neither alone proves balances or idempotency.
+- S02为旧六入口和本机命令，当前本地连接界面见S09。 / S02 is the old installer; S09 is current local connection UI.
+- S03来源为未入库专项脚本，不承诺一条命令重现或完整采用证据。 / S03 has an untracked focused source script, not full adoption evidence.
+- S04只显示分享；S05选中12日、批准计划在14–15日，底部待批候选文案为旧版。 / S04 shows sharing; S05 has historical pending-candidate footer text.
+- S06为已含余额历史；S08只显示处理状态。 / S06 is covered history; S08 is processing status.
+- S09仅本地实现，不证明另一ChatGPT会话已连接。 / S09 is local-only, not another chat’s connection status.
+- S10页顶草稿箱为旧布局；当前统一在研究记录。 / S10 retains a historical draft panel.
+- S13/S16是归档不同版本；S15不是独立预测页。 / S13/S16 are separate archives; S15 is not the forecast page.
+- S17为组件画面，S18为投资复核，不是付款或交易。 / S17 is component-level; S18 is a follow-up, not trading.
 
-## 刷新规则 / Refresh rules
+## 尚缺的清洁截图 / Missing clean screenshots
 
-只从新建隔离家庭重新拍摄，明确脚本、源码版本、日期及测试数据，不复用个人账本；更新图片后同步中英文指南与manifest哈希。涉及真实登录、生产读写或客户端验证的证据须另行授权并脱敏，不能用演示图替代。
+家庭完整邀请/第二真实账号、目标、贷款、养老金、会员、独立预测及年度预算仍缺来源完整的清洁截图。部分既有样本沿用个人参数来源，故不复制公开。文字步骤已覆盖，截图缺口不标通过。
 
-Refresh from a new isolated household, recording the script, source revision, date, and synthetic inputs. Update both guides and manifest hashes. Real sign-in, production operations, and client acceptance require separate authorized, sanitized evidence.
+Clean images are still needed for full invitation/real second identity, goals, loans, pensions, memberships, dedicated forecasts, and annual budgets. Some existing samples reuse personal-input provenance and are excluded. Written instructions exist; screenshot gaps are not passes.
+
+刷新使用独立合成数据，记录源码、脚本、日期和环境，同步双语手册与哈希。 / Refresh using independent synthetic data and source/script/date/environment metadata; update both manuals and hashes.

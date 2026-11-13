@@ -7,7 +7,10 @@
 | Goal | Document |
 | --- | --- |
 | Understand the project | [Overview](../README.en.md) |
-| Follow the workflow with screenshots | [User guide](USER-GUIDE.en.md) |
+| Full product operation —18 chapters | [Product manual](PRODUCT-MANUAL.en.md) |
+| Forty key business cases | [Case library](KEY-CASES.en.md) |
+| Offline illustrated edition, search, print | [Bilingual HTML](product-demo.html) |
+| Quick start | [Short guide](USER-GUIDE.en.md) |
 | Run, test, and build locally | [Development](DEVELOPMENT.en.md) |
 | Understand privacy and permissions | [Data security](../SECURITY.en.md) |
 | Review findings and outstanding risks | [Public-data review, bilingual](PUBLIC-DATA-REVIEW-2026-11-13.md) |

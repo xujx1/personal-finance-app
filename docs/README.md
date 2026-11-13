@@ -7,7 +7,10 @@
 | 目的 | 文档 |
 | --- | --- |
 | 了解项目 | [项目说明](../README.md) |
-| 按步骤操作并查看截图 | [使用指南](USER-GUIDE.md) |
+| 完整产品操作演示（18章） | [产品手册](PRODUCT-MANUAL.md) |
+| 关键业务案例（40项） | [案例库](KEY-CASES.md) |
+| 单文件图文演示、搜索及打印 | [中英文HTML](product-demo.html) |
+| 快速上手 | [简明指南](USER-GUIDE.md) |
 | 本地运行、测试与构建 | [开发与验证](DEVELOPMENT.md) |
 | 隐私、权限与公开资料边界 | [数据安全](../SECURITY.md) |
 | 本轮检查与遗留风险 | [公开资料安全校验](PUBLIC-DATA-REVIEW-2026-11-13.md) |

@@ -1,5 +1,7 @@
 # User guide and workflow screenshots
 
+> This is the quick-start guide. See the [18-chapter manual](PRODUCT-MANUAL.en.md), [40-case library](KEY-CASES.en.md), and [standalone illustrated edition](product-demo.html) for full operations.
+
 [中文](USER-GUIDE.md) · **English** · [Documentation](README.en.md)
 
 Images are **existing local-browser screenshots from 2026-11-12**, using isolated ledgers, simulated identities, and explicitly supplied draft content. They come from separate scenarios, not one continuous production session. They do not verify real ChatGPT inference, hosted sign-in, or bank transactions. Images were inspected and copied unchanged, not generated or redrawn. See [provenance and limitations](assets/workflows/README.md).

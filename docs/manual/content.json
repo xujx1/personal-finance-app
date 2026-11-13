@@ -856,5 +856,1574 @@
       ]
     }
   ],
-  "cases": []
+  "cases": [
+    {
+      "id": "C01",
+      "priority": "P0",
+      "title": {
+        "zh": "已有余额开账不当收入",
+        "en": "Opening balances are not income"
+      },
+      "data": {
+        "zh": "独立空家庭A；演示银行A已有1000元，余额日D-1；D为演示当天。",
+        "en": "Independent empty household A; demo bank A has CNY1,000 as of D-1; D is the demo date."
+      },
+      "steps": {
+        "zh": [
+          "提交owned=true的已有资产草稿。",
+          "采用前查看正式账户；再在网站核对持有、成员和日期后采用。",
+          "查资产、现金流水和月报。"
+        ],
+        "en": [
+          "Submit an owned existing-asset draft.",
+          "Inspect formal accounts before adoption, then confirm ownership/member/date on the website.",
+          "Inspect assets, cashflow, and the monthly report."
+        ]
+      },
+      "expected": {
+        "zh": "采用前不建正式资产；采用后银行1000元、开账记录存在，不多出1000元收入或第二次充值。",
+        "en": "No formal asset before adoption. Afterwards bank cash is1,000 with an opening record, not1,000 of income or a second top-up."
+      },
+      "failure": {
+        "zh": "把开账当工资收入，或已持有余额采用后翻倍。",
+        "en": "Opening counted as wages, or the existing balance doubled after adoption."
+      },
+      "tests": [
+        "tests/onboarding-setup.test.mjs",
+        "tests/mcp-drafts.test.mjs"
+      ],
+      "screenshots": [
+        "S01"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C02",
+      "priority": "P0",
+      "title": {
+        "zh": "重复登记和重复采用",
+        "en": "Duplicate registration and adoption"
+      },
+      "data": {
+        "zh": "C01已采用；保存原草稿ID与原请求。",
+        "en": "C01 adopted; retain its draft ID and request."
+      },
+      "steps": {
+        "zh": [
+          "重试同一采用请求。",
+          "读取原结果和账户数；再尝试把同一已有资产作为新草稿登记。"
+        ],
+        "en": [
+          "Retry the same adoption request.",
+          "Read the original result/account count, then attempt a second registration of the same holding."
+        ]
+      },
+      "expected": {
+        "zh": "原请求不重复创建资产/分录；新的疑似重复登记需拒绝或核对，不能仅靠改名称绕过。",
+        "en": "The original request creates no additional asset/journal. A suspicious duplicate registration must be rejected or reviewed, not bypassed by renaming."
+      },
+      "failure": {
+        "zh": "第二账户、双倍余额或两份开账。",
+        "en": "A second account, doubled balance, or duplicate opening."
+      },
+      "tests": [
+        "tests/mcp-drafts.test.mjs",
+        "tests/onboarding-setup.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C03",
+      "priority": "P0",
+      "title": {
+        "zh": "快照日期与未来实际",
+        "en": "Snapshot dates and future actual events"
+      },
+      "data": {
+        "zh": "银行余额日D-1；实际未覆盖的新付款10元；另准备D+1的未发生付款。",
+        "en": "Bank snapshot D-1; an uncovered actual payment10; a separate unperformed payment on D+1."
+      },
+      "steps": {
+        "zh": [
+          "用D记录已发生付款，核对日期与快照关系。",
+          "把日期改D+1或不匹配的已覆盖历史日期，尝试保存。"
+        ],
+        "en": [
+          "Record the actual event on D with correct snapshot coverage.",
+          "Attempt D+1 or a mismatched covered-history date."
+        ]
+      },
+      "expected": {
+        "zh": "合法当前事实可核对；未来实际和覆盖冲突拒绝，银行不因失败变化。",
+        "en": "A valid actual event can be reviewed; future actuals and inconsistent coverage are rejected without cash changes."
+      },
+      "failure": {
+        "zh": "未来事件提前扣款，或历史跨快照二次扣。",
+        "en": "Premature debit or a second debit across a snapshot."
+      },
+      "tests": [
+        "tests/plan-actual-date.test.mjs",
+        "tests/onboarding-setup.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C04",
+      "priority": "P0",
+      "title": {
+        "zh": "预算全流程不自动扣现",
+        "en": "Budget lifecycle does not auto-debit cash"
+      },
+      "data": {
+        "zh": "银行1000元；预算300元；两位有效登录成员。",
+        "en": "Bank1,000; budget300; two active signed-in members."
+      },
+      "steps": {
+        "zh": [
+          "提交预算草稿，回读。",
+          "网站采用并提交审批。",
+          "两人分别同意，再检查日历和银行。"
+        ],
+        "en": [
+          "Submit and read back a budget.",
+          "Adopt it for approval.",
+          "Have both members agree, then inspect calendar and cash."
+        ]
+      },
+      "expected": {
+        "zh": "提交、采用、审批与排期后银行均1000元，实际流水无300元消费；全体同意后才出现正式计划。",
+        "en": "Cash stays1,000 throughout submission/adoption/approval/scheduling, with no300 expense. A formal plan appears only after all agree."
+      },
+      "failure": {
+        "zh": "预算一保存就少钱，或待批即当正式计划。",
+        "en": "Cash debited on budget save, or pending budget treated as formal."
+      },
+      "tests": [
+        "tests/family-approval-v15.test.mjs",
+        "tests/approved-plan-calendar.test.mjs"
+      ],
+      "screenshots": [
+        "S03",
+        "S04",
+        "S05"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C05",
+      "priority": "P0",
+      "title": {
+        "zh": "本人逐人审批不能代签",
+        "en": "Every member approves for themselves"
+      },
+      "data": {
+        "zh": "A管理员、B家人；300元待批预算。",
+        "en": "Administrator A and member B; pending budget300."
+      },
+      "steps": {
+        "zh": [
+          "A核对并同意后读取B待审批。",
+          "A尝试指定B身份代同意；B再以自身账号确认。"
+        ],
+        "en": [
+          "After A agrees, inspect B’s pending approval.",
+          "Attempt to approve as B from A, then have B approve using their own identity."
+        ]
+      },
+      "expected": {
+        "zh": "A不能代B；B本人同意前不正式。身份来自服务器，不从参数指定。",
+        "en": "A cannot vote for B. The plan remains pending until B agrees; identity is server-derived."
+      },
+      "failure": {
+        "zh": "传入他人ID即能同意，或一票当全体同意。",
+        "en": "Client-specified identity votes, or one vote treated as unanimous."
+      },
+      "tests": [
+        "tests/family-approval-v15.test.mjs",
+        "tests/mcp-plan-actuals.test.mjs"
+      ],
+      "screenshots": [
+        "S04"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C06",
+      "priority": "P0",
+      "title": {
+        "zh": "变更预算重审和旧版拒绝",
+        "en": "Budget edits require reapproval"
+      },
+      "data": {
+        "zh": "已批准300元v1，修改为320元v2。",
+        "en": "Approved300 version1, amended to320 version2."
+      },
+      "steps": {
+        "zh": [
+          "通过原计划ID修改费用并采用新版。",
+          "用v1审批参数重试。",
+          "按v2重新完成全部成员确认。"
+        ],
+        "en": [
+          "Amend costs under the original plan ID and adopt.",
+          "Retry approval with v1 parameters.",
+          "Complete all approvals for v2."
+        ]
+      },
+      "expected": {
+        "zh": "原计划ID不变；v1意见不批准v2，旧请求拒绝；新版未全同意前不能新增实际付款。",
+        "en": "Plan ID stays the same. Old opinions do not approve v2; stale requests fail, and new payments are blocked until renewed approval."
+      },
+      "failure": {
+        "zh": "改价沿用旧审批或另建一份正式计划。",
+        "en": "Old approval survives a price change, or a duplicate formal plan is created."
+      },
+      "tests": [
+        "tests/family-approval-v15.test.mjs",
+        "tests/mcp-amend.test.mjs",
+        "tests/mcp-plan-actuals.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C07",
+      "priority": "P0",
+      "title": {
+        "zh": "实际消费关联原预算",
+        "en": "Link actual payment to its budget"
+      },
+      "data": {
+        "zh": "已审批预算300元；银行1000元；真实已付120元，未含余额。",
+        "en": "Approved budget300; bank1,000; actual uncovered payment120."
+      },
+      "steps": {
+        "zh": [
+          "提交带原planId的120元cashflow草稿。",
+          "网站核对成员、账户、日期和未包含，确认实际付款后采用。",
+          "查看原计划、流水和银行。"
+        ],
+        "en": [
+          "Submit a120 cashflow draft linked to the original planId.",
+          "Confirm member/account/date/uncovered status and actual payment on the website.",
+          "Inspect the plan, transaction, and bank."
+        ]
+      },
+      "expected": {
+        "zh": "草稿阶段银行1000；采用后银行880，恰好一笔关联原计划的付款，不能扣预算总额300。",
+        "en": "Cash remains1,000 at draft stage, then880 after adoption with exactly one linked payment; do not debit the300 budget."
+      },
+      "failure": {
+        "zh": "扣300、关联错计划、草稿提交已扣现。",
+        "en": "Debits300, links the wrong plan, or debits during draft submission."
+      },
+      "tests": [
+        "tests/mcp-plan-actuals.test.mjs"
+      ],
+      "screenshots": [
+        "S06",
+        "S07"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C08",
+      "priority": "P0",
+      "title": {
+        "zh": "已含余额历史不二扣",
+        "en": "Covered history is not debited twice"
+      },
+      "data": {
+        "zh": "银行快照余额1000元，日D-1已包括此前20元消费。",
+        "en": "Bank snapshot1,000 on D-1 already covers a prior20 expense."
+      },
+      "steps": {
+        "zh": [
+          "提交该历史流水，选择已包含并匹配snapshotDate。",
+          "网站采用；重读银行及历史业务金额。",
+          "再把覆盖日改错，尝试采用。"
+        ],
+        "en": [
+          "Submit the historical event as covered with the matching snapshot date.",
+          "Adopt and inspect bank balance and historical business amount.",
+          "Attempt an inconsistent coverage date."
+        ]
+      },
+      "expected": {
+        "zh": "银行保持1000；记录历史消费20且本次现金变化0；错误覆盖拒绝。",
+        "en": "Cash stays1,000; historical expense20 is recorded with zero current cash movement. Inconsistent coverage is rejected."
+      },
+      "failure": {
+        "zh": "银行变980，或把历史金额也抹成0。",
+        "en": "Cash falls to980, or the historical business amount is erased."
+      },
+      "tests": [
+        "tests/mcp-plan-actuals.test.mjs",
+        "tests/onboarding-setup.test.mjs"
+      ],
+      "screenshots": [
+        "S06"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C09",
+      "priority": "P0",
+      "title": {
+        "zh": "实付—预付—消费—退款闭环",
+        "en": "Payment–prepayment–consumption–refund cycle"
+      },
+      "data": {
+        "zh": "独立银行1000元；批准预算300元；各步均D实际发生且不含快照。",
+        "en": "Independent bank1,000; approved budget300; each event actually occurs on D and is not snapshot-covered."
+      },
+      "steps": {
+        "zh": [
+          "直接付款120元。",
+          "预付款50元。",
+          "从该预付款确认消费30元。",
+          "将尚未消费20元退款记回原银行。",
+          "分别核对银行、预付资产和实际消费，重试同一消费请求。"
+        ],
+        "en": [
+          "Pay120 directly.",
+          "Prepay50.",
+          "Consume30 from that prepayment.",
+          "Refund the unused20 to the original bank.",
+          "Check cash/prepaid/consumption at each step and retry the same consumption request."
+        ]
+      },
+      "expected": {
+        "zh": "银行依次880→830→830→850；预付资产0→50→20→0；最终实际消费150。重复消费不再扣现、不再冲预付。",
+        "en": "Cash880→830→830→850; prepaid asset0→50→20→0; final actual consumption150. Retry neither debits cash nor consumes prepaid funds twice."
+      },
+      "failure": {
+        "zh": "消费时再扣30、退已消费部分、退到别人的账户或重试重复消耗。",
+        "en": "Consumption debits cash again, consumed funds are refunded, refund goes elsewhere, or retry consumes twice."
+      },
+      "tests": [
+        "tests/mcp-plan-actuals.test.mjs",
+        "tests/ledger.test.mjs",
+        "tests/extensions.test.mjs"
+      ],
+      "screenshots": [
+        "S06",
+        "S08"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C10",
+      "priority": "P0",
+      "title": {
+        "zh": "响应丢失后安全重试",
+        "en": "Safe retry after a lost response"
+      },
+      "data": {
+        "zh": "1000元银行付款10元；原请求key已知。",
+        "en": "Bank1,000 pays10; retain the original request key."
+      },
+      "steps": {
+        "zh": [
+          "在隔离故障测试中模拟服务端成功但响应丢失。",
+          "先按原key查询结果，再重试同一个原请求。",
+          "检查账户、交易数与原回执。"
+        ],
+        "en": [
+          "In an isolated fault test, let the server succeed while dropping the response.",
+          "Query the original key, then retry the same request.",
+          "Inspect balance, transaction count, and receipt."
+        ]
+      },
+      "expected": {
+        "zh": "最终银行990且一笔付款；结果不明不能直接换key新增。",
+        "en": "Final cash990 with one payment. An uncertain result is not permission to create a new key."
+      },
+      "failure": {
+        "zh": "多扣一次、自动生成新key重放或只凭页面无提示判失败。",
+        "en": "Second debit, silent replay with a new key, or treating missing UI feedback as definite failure."
+      },
+      "tests": [
+        "tests/http.test.mjs",
+        "tests/store.test.mjs",
+        "tests/attachments.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C11",
+      "priority": "P0",
+      "title": {
+        "zh": "余额不足全回滚",
+        "en": "Insufficient funds roll back completely"
+      },
+      "data": {
+        "zh": "银行50元；尝试实际付款60元或买入50元另收1元费。",
+        "en": "Bank50; try payment60 or a purchase50 plus fee1."
+      },
+      "steps": {
+        "zh": [
+          "提交并确认该操作。",
+          "比较操作前后账户、计划、交易和审计业务状态。"
+        ],
+        "en": [
+          "Submit and confirm the operation.",
+          "Compare accounts, plan, transactions, and business audit state before/after."
+        ]
+      },
+      "expected": {
+        "zh": "拒绝；现金仍50，无半笔分录、无新持仓、无错误已付状态。",
+        "en": "Reject; cash remains50 with no partial journal, new holding, or false paid status."
+      },
+      "failure": {
+        "zh": "银行负数、先建资产后报错或计划已付但流水没有。",
+        "en": "Negative cash, orphan holding, or paid plan without a transaction."
+      },
+      "tests": [
+        "tests/ledger.test.mjs",
+        "tests/security-trades.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C12",
+      "priority": "P0",
+      "title": {
+        "zh": "取消保留实际款项与安全刷新",
+        "en": "Cancellation preserves actuals and recovers refresh"
+      },
+      "data": {
+        "zh": "批准计划有20元实际付款、30元未消费预付。",
+        "en": "An approved plan has20 paid and30 unused prepaid."
+      },
+      "steps": {
+        "zh": [
+          "取消当前计划版本。",
+          "查看正常列表、显示已取消和原流水。",
+          "模拟取消成功后刷新失败，再刷新核对。"
+        ],
+        "en": [
+          "Cancel the current version.",
+          "Inspect normal/cancelled views and original transactions.",
+          "Simulate successful cancellation with failed refresh, then refresh again."
+        ]
+      },
+      "expected": {
+        "zh": "未用预算预留释放；20付款和30预付历史不删除；取消不自动退款，也不因刷新失败再次取消。已有预付按实际消费/退款结算。",
+        "en": "Unused reserves release;20 paid and30 prepaid history remain. No automatic refund or repeat cancellation; existing prepaid funds remain settleable by actual consumption/refund."
+      },
+      "failure": {
+        "zh": "取消恢复现金、删除付款，或结果已成功却重放写入。",
+        "en": "Cancellation invents cash, deletes payments, or replays a successful write."
+      },
+      "tests": [
+        "tests/calendar-cancel.test.mjs",
+        "tests/cancellation-ui.test.mjs"
+      ],
+      "screenshots": [
+        "S05"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C13",
+      "priority": "P0",
+      "title": {
+        "zh": "家庭隔离覆盖读取与写入",
+        "en": "Household isolation on reads and writes"
+      },
+      "data": {
+        "zh": "家庭A/B各有独立演示账号，A有私密计划与账户。",
+        "en": "Separate demo households A/B; A owns a private plan and account."
+      },
+      "steps": {
+        "zh": [
+          "用B打开A计划链接、猜账户ID并访问财务、报告、附件及MCP。",
+          "尝试提交对A资源的草稿或写入。",
+          "用未登录身份重测读取。"
+        ],
+        "en": [
+          "As B, open A’s plan URL and request A’s account/finance/report/attachment/MCP data.",
+          "Attempt drafts or writes referencing A’s resources.",
+          "Repeat reads anonymously."
+        ]
+      },
+      "expected": {
+        "zh": "无A的名称、金额、票据或记录泄露，写入拒绝；未认证通常401，已认证无权通常403或不暴露资源的响应。",
+        "en": "No A names, amounts, receipts, or records leak; writes fail. Anonymous access normally gets401; unauthorized authenticated access gets403 or a nonrevealing response."
+      },
+      "failure": {
+        "zh": "知道ID就能读、MCP绕过家庭范围、错误信息携带余额。",
+        "en": "ID knowledge grants access, MCP bypasses scope, or errors leak balances."
+      },
+      "tests": [
+        "tests/family-api-isolation-v15.test.mjs",
+        "tests/family-route.test.mjs",
+        "tests/mcp.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C14",
+      "priority": "P0",
+      "title": {
+        "zh": "只读成员仅提交本人意见",
+        "en": "Read-only members submit only their own opinion"
+      },
+      "data": {
+        "zh": "家人B只读，但在待批预算成员集中。",
+        "en": "Member B is read-only and included in the pending approval set."
+      },
+      "steps": {
+        "zh": [
+          "B读家庭并尝试改资产、规则、目标、采用草稿及修改会员。",
+          "B打开预算并提交自己的同意。"
+        ],
+        "en": [
+          "As B, read the household and attempt financial/rule/goal/draft/membership changes.",
+          "Submit B’s own budget opinion."
+        ]
+      },
+      "expected": {
+        "zh": "一般写入拒绝；本人预算意见允许。不能因为只读而取消其本人投票，也不能因可投票开放财务写入。",
+        "en": "General writes fail while B’s own opinion succeeds. Voting permission neither disappears with read-only status nor expands into financial write access."
+      },
+      "failure": {
+        "zh": "审批权限与一般写入混用。",
+        "en": "Approval and general-write permissions are conflated."
+      },
+      "tests": [
+        "tests/family-api-isolation-v15.test.mjs",
+        "tests/family-approval-v15.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C15",
+      "priority": "P0",
+      "title": {
+        "zh": "移除成员使旧会话与在途写入失效",
+        "en": "Removal revokes stale sessions and in-flight writes"
+      },
+      "data": {
+        "zh": "B已加载家庭；准备在写入前由A移除B。",
+        "en": "B has loaded the household; A removes B before commit."
+      },
+      "steps": {
+        "zh": [
+          "B保留旧页面和请求版本。",
+          "A移除B，B刷新、查询与提交旧写入。",
+          "隔离测试将移除插在读取与最终提交之间。"
+        ],
+        "en": [
+          "Keep B’s stale page/request.",
+          "Remove B, then retry refresh/read/write.",
+          "In an isolated test, remove membership between initial read and final commit."
+        ]
+      },
+      "expected": {
+        "zh": "撤销权限后后续读取/最终写入拒绝，不能靠旧快照继续；既有历史和原归属保留。",
+        "en": "Subsequent reads/final writes fail after revocation; stale snapshots grant nothing. Prior history/ownership remain."
+      },
+      "failure": {
+        "zh": "仅页面隐藏但旧请求仍可保存，或移除时删历史资产。",
+        "en": "UI hides data but stale requests still save, or removal deletes assets."
+      },
+      "tests": [
+        "tests/family-api-isolation-v15.test.mjs",
+        "tests/family.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C16",
+      "priority": "P0",
+      "title": {
+        "zh": "邀请生命周期与最后管理员",
+        "en": "Invitation lifecycle and administrator transfer"
+      },
+      "data": {
+        "zh": "独立邀请链接，仅在隔离环境测试。",
+        "en": "Independent invitation tokens used only in isolation."
+      },
+      "steps": {
+        "zh": [
+          "正常接受一次后再次使用；另测撤销、过期与错误token。",
+          "已在别家身份尝试加入；当前管理员尝试直接退出。",
+          "转移管理给有效成员再退出。"
+        ],
+        "en": [
+          "Accept once, reuse, then test revoked/expired/invalid tokens.",
+          "Try joining from another existing household and direct administrator departure.",
+          "Transfer management to an active member before leaving."
+        ]
+      },
+      "expected": {
+        "zh": "邀请不可重复/撤销后不可用；不误合并家庭；不能留下无管理员家庭；不改变个人资产所有权。",
+        "en": "No token reuse or revoked access, no accidental household merge, no ownerless household, and no asset ownership transfer."
+      },
+      "failure": {
+        "zh": "重复加入、撤销无效、转管理顺带转资产。",
+        "en": "Reuse, ineffective revocation, or asset ownership moving with management."
+      },
+      "tests": [
+        "tests/family.test.mjs",
+        "tests/family-route.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C17",
+      "priority": "P0",
+      "title": {
+        "zh": "记账档案不授予登录权限",
+        "en": "Bookkeeping profiles grant no sign-in access"
+      },
+      "data": {
+        "zh": "新增昵称“演示成员乙”，尚无登录账号关联。",
+        "en": "New nickname “Demo member B”, without a linked sign-in identity."
+      },
+      "steps": {
+        "zh": [
+          "保存昵称并给演示资产设置归属。",
+          "检查家庭登录成员与预算投票名单。",
+          "随后显式关联已加入账号，核对历史归属。"
+        ],
+        "en": [
+          "Save the nickname and assign demo asset ownership.",
+          "Inspect signed-in members and approval voters.",
+          "Explicitly link an existing household identity and inspect historical ownership."
+        ]
+      },
+      "expected": {
+        "zh": "仅有昵称不会发邀请、授予读取或增加投票人；关联按规则保留历史，不凭同名自动合并资产。",
+        "en": "A nickname sends no invitation, grants no read access, and adds no voter. Explicit linkage preserves history without name-based automatic asset merging."
+      },
+      "failure": {
+        "zh": "建昵称即能登录/投票，或关联偷偷转归属。",
+        "en": "Nickname grants login/voting, or linking silently changes ownership."
+      },
+      "tests": [
+        "tests/member-ownership.test.mjs",
+        "tests/member-ownership-http.test.mjs",
+        "tests/onboarding-setup.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C18",
+      "priority": "P0",
+      "title": {
+        "zh": "同ID续改、双版本与已处理只读",
+        "en": "Same-ID amendment, version checks, processed immutability"
+      },
+      "data": {
+        "zh": "PENDING预算草稿v1；保留原request_id与全局版本。",
+        "en": "Pending budget draft v1; retain its request/global version."
+      },
+      "steps": {
+        "zh": [
+          "回读后以同ID、同类型完整替换payload。",
+          "用旧draftVersion或旧全局revision重试；尝试改planId或类型。",
+          "采用后再尝试原地续改。"
+        ],
+        "en": [
+          "Read back and replace the complete payload under the same ID/type.",
+          "Retry stale draft/global versions and attempt changing planId/type.",
+          "Attempt amendment after adoption."
+        ]
+      },
+      "expected": {
+        "zh": "合法续改版本递增、回读一致；旧版本、关联更换与已处理续改拒绝，不产生第二份草稿。",
+        "en": "Valid updates increment versions and read back consistently. Stale versions, reassociation, and processed edits fail without creating a duplicate."
+      },
+      "failure": {
+        "zh": "丢字段、误改关联、旧稿覆盖新稿或采纳后重写历史。",
+        "en": "Dropped fields, changed associations, stale overwrite, or edited processed history."
+      },
+      "tests": [
+        "tests/mcp-amend.test.mjs"
+      ],
+      "screenshots": [
+        "S03"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C19",
+      "priority": "P1",
+      "title": {
+        "zh": "类型性质、引用与停用边界",
+        "en": "Asset-type nature, references, and disabling"
+      },
+      "data": {
+        "zh": "自定义银行性质类型“演示备用金”，被账户或目标引用。",
+        "en": "Custom cash-nature type “Demo reserve” referenced by an account or goal."
+      },
+      "steps": {
+        "zh": [
+          "改显示名称后读余额。",
+          "尝试将性质改为股票或停用仍被引用的类型。",
+          "移除合法引用后再按允许规则维护。"
+        ],
+        "en": [
+          "Rename and inspect balances.",
+          "Attempt switching accounting nature to stock or disabling a referenced type.",
+          "After removing legitimate references, perform allowed maintenance."
+        ]
+      },
+      "expected": {
+        "zh": "改名不改账；性质固定，引用中的类型不能停用，跨家庭类型ID拒绝。",
+        "en": "Renaming does not post. Nature is fixed, referenced types cannot be disabled, and foreign household IDs fail."
+      },
+      "failure": {
+        "zh": "改名改变账务性质、旧持仓变现金或停用破坏目标。",
+        "en": "Renaming changes accounting, holdings become cash, or disabling breaks goals."
+      },
+      "tests": [
+        "tests/custom-asset-types.test.mjs"
+      ],
+      "screenshots": [
+        "S11"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C20",
+      "priority": "P0",
+      "title": {
+        "zh": "目标单位、自由组合与去重",
+        "en": "Goal units, combinations, and deduplication"
+      },
+      "data": {
+        "zh": "演示现金1000元、其他类型200元；现金目标2000元。",
+        "en": "Demo cash1,000 and another type200; cash-only goal2,000."
+      },
+      "steps": {
+        "zh": [
+          "只勾现金并保存目标2000元。",
+          "读取完成额和进度，再把同一类型选进第二目标。",
+          "新增一个类型，检查是否自动进原目标。"
+        ],
+        "en": [
+          "Save a2,000 goal selecting cash only.",
+          "Read current value/progress, then select cash in another goal.",
+          "Create a new type and check the original goal scope."
+        ]
+      },
+      "expected": {
+        "zh": "当前1000元、进度50%，不是按分误读或把其他200元也算入；重复范围拒绝，新类别不自动加入。",
+        "en": "Current1,000 and progress50%; no minor-unit scaling error or inclusion of the other200. Duplicate scope fails; new types are not added automatically."
+      },
+      "failure": {
+        "zh": "100倍/10000倍金额错误、范围交叉、未选资产冒充完成额。",
+        "en": "Scaling errors, overlapping scopes, or unselected assets inflating progress."
+      },
+      "tests": [
+        "tests/goal-combinations.test.mjs",
+        "tests/asset-goal-amount-contract.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C21",
+      "priority": "P0",
+      "title": {
+        "zh": "买入加费用与清仓净回款",
+        "en": "Purchase plus fees and liquidation net proceeds"
+      },
+      "data": {
+        "zh": "银行1000元；新演示基金买300元、费5元、3份；后全部卖330元、费5元。",
+        "en": "Bank1,000; buy demo fund300 plus fee5,3 units; later liquidate330 minus fee5."
+      },
+      "steps": {
+        "zh": [
+          "首次实际买入并查看现金、持仓及交易种类。",
+          "清仓时核对全部3份与账面，再确认净到账。",
+          "显示清零账户并重试原清仓。"
+        ],
+        "en": [
+          "Record the first purchase and inspect cash/holding/type.",
+          "Liquidate the complete3 units after checking the carrying amount.",
+          "Show cleared accounts and retry the same sale."
+        ]
+      },
+      "expected": {
+        "zh": "银行1000→695→1020；买入为真实交易而非开账；清仓持仓清零但历史存在，重试不再加325元。",
+        "en": "Cash1,000→695→1,020. Purchase is a trade, not an opening. Liquidation clears holdings while preserving history; retry does not credit another325."
+      },
+      "failure": {
+        "zh": "忘手续费、清仓回账面金额代成交、删除历史或重复到账。",
+        "en": "Missing fees, crediting carrying value instead of proceeds, deleted history, or duplicate cash."
+      },
+      "tests": [
+        "tests/security-trades.test.mjs",
+        "tests/security-trade-impact.test.mjs"
+      ],
+      "screenshots": [
+        "S12"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C22",
+      "priority": "P0",
+      "title": {
+        "zh": "成员、币种和家庭账户错配",
+        "en": "Member, currency, and household mismatches"
+      },
+      "data": {
+        "zh": "人民币持仓、美元银行、另一成员现金与另一家庭账户。",
+        "en": "A CNY holding, USD bank, mismatched member cash, and a foreign household account."
+      },
+      "steps": {
+        "zh": [
+          "分别用错币种、错成员或外国账户ID记录买卖/充值/付款。",
+          "检查错误前后所有相关余额。"
+        ],
+        "en": [
+          "Attempt trades/contributions/payments with a wrong currency/member or foreign account ID.",
+          "Compare all balances before/after rejection."
+        ]
+      },
+      "expected": {
+        "zh": "错配拒绝且全回滚，不自动换汇、不猜现金归属、不跨家庭写。",
+        "en": "Reject and roll back mismatches; no automatic FX, guessed ownership, or cross-household writes."
+      },
+      "failure": {
+        "zh": "悄悄替换付款账户或隐式换汇。",
+        "en": "Silent account substitution or implicit FX conversion."
+      },
+      "tests": [
+        "tests/security-trades.test.mjs",
+        "tests/member-ownership-http.test.mjs",
+        "tests/pension.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C23",
+      "priority": "P0",
+      "title": {
+        "zh": "还贷模拟与实际本息分离",
+        "en": "Loan simulation versus actual principal and interest"
+      },
+      "data": {
+        "zh": "银行1000元、贷款本金5000元；实际还本金100元、息10元。",
+        "en": "Bank1,000; loan principal5,000; actual principal repayment100 plus interest10."
+      },
+      "steps": {
+        "zh": [
+          "运行两种提前还贷模拟并保存未来预算，检查余额。",
+          "银行实际发生后记录本金100和利息10。",
+          "检查银行、贷款、月报与剩余备款。"
+        ],
+        "en": [
+          "Run both simulation modes and save a future budget; inspect balances.",
+          "After actual payment record principal100 and interest10.",
+          "Inspect cash, debt, report, and remaining funding."
+        ]
+      },
+      "expected": {
+        "zh": "模拟/预算不改余额；实际后现金890、贷款4900；本金不是费用，利息10另列。",
+        "en": "Simulation/budget leave balances untouched. Actual cash890, debt4,900; principal is not expense and interest10 is separate."
+      },
+      "failure": {
+        "zh": "模拟扣款、110全减本金、100本金计消费或部分还款误关计划。",
+        "en": "Simulation posts, all110 reduces principal, principal becomes expense, or partial payment closes the plan."
+      },
+      "tests": [
+        "tests/money.test.mjs",
+        "tests/approved-plan-calendar.test.mjs",
+        "tests/plan-actual-date.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C24",
+      "priority": "P0",
+      "title": {
+        "zh": "未来首期、暂停与规则合计",
+        "en": "Future first occurrence, pause, and rule totals"
+      },
+      "data": {
+        "zh": "100元月收入，首期D+1；另有暂停规则。",
+        "en": "Recurring income100, first occurrence D+1; another paused rule."
+      },
+      "steps": {
+        "zh": [
+          "保存后看常规月合计与本月排期。",
+          "D前检查到期，再暂停并检查。",
+          "对照月报实际与预计。"
+        ],
+        "en": [
+          "Compare regular rule totals with month-specific schedules.",
+          "Check due items before D+1, then pause and check again.",
+          "Compare actual versus forecast in the report."
+        ]
+      },
+      "expected": {
+        "zh": "常规月卡可显示启用规则，但首期之前不生成实际；暂停不生成新的到期项；不补历史收入。",
+        "en": "An active rule may contribute to regular totals but posts no actual before its first date. Paused rules create no new due items and no historical income is invented."
+      },
+      "failure": {
+        "zh": "首期未来却提前增现金，或规则月合计当已到账。",
+        "en": "Cash increases before the first date, or regular totals are treated as receipts."
+      },
+      "tests": [
+        "tests/recurring-monthly-link.test.mjs",
+        "tests/recurring-safety.test.mjs"
+      ],
+      "screenshots": [
+        "S14",
+        "S15"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C25",
+      "priority": "P0",
+      "title": {
+        "zh": "同月改扣款日不重复执行",
+        "en": "Changing the day does not duplicate a monthly occurrence"
+      },
+      "data": {
+        "zh": "同一月规则已有待核实或已确认事项。",
+        "en": "The rule already has a due or confirmed occurrence in the same month."
+      },
+      "steps": {
+        "zh": [
+          "把每月日期改为本月另一天。",
+          "再次检查到期、确认或补执行，并重试原请求。"
+        ],
+        "en": [
+          "Move the monthly day to another date in the same month.",
+          "Recheck due items/confirmation/catch-up and retry."
+        ]
+      },
+      "expected": {
+        "zh": "同规则同月份不能生成第二笔业务；已确认金额从待预计中移除，不重复加实际或预计。",
+        "en": "No second business occurrence for the same rule/month. Confirmed amounts leave remaining forecasts without double-counting either actuals or forecasts."
+      },
+      "failure": {
+        "zh": "改日期造两笔工资或同一还贷重复扣。",
+        "en": "A moved date creates duplicate wages or repayment."
+      },
+      "tests": [
+        "tests/recurring-monthly-link.test.mjs",
+        "tests/recurring-safety.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C26",
+      "priority": "P0",
+      "title": {
+        "zh": "月度收入、费用、现金与净值分开",
+        "en": "Separate income, expense, cashflow, and net worth"
+      },
+      "data": {
+        "zh": "独立演示开账；收入200、消费50、还贷本金100息10，另有内部转账。",
+        "en": "Independent demo opening; income200, expense50, loan principal100/interest10, plus an internal transfer."
+      },
+      "steps": {
+        "zh": [
+          "按真实专用入口分别记录。",
+          "打开月报与总览实际积累，展开原币和成员。",
+          "再增加未发生周期收入，比较预计。"
+        ],
+        "en": [
+          "Record each event using its correct flow.",
+          "Open the report/actual accumulation and inspect member/currency details.",
+          "Add a pending recurring income and compare forecasts."
+        ]
+      },
+      "expected": {
+        "zh": "业务收入200、消费/利息费用60；还贷本金不是费用，开账/转账不当收入，未发生收入不混实际。现金变化与净资产变化可不同。",
+        "en": "Business income200 and consumption/interest expense60. Loan principal is not expense; openings/transfers are not income; pending income is forecast only. Cash and net-worth changes may differ."
+      },
+      "failure": {
+        "zh": "净资产增加全当收益，或贷款本金当生活费并重扣。",
+        "en": "All asset growth called returns, or loan principal treated as living expense and deducted twice."
+      },
+      "tests": [
+        "tests/monthly-report.test.mjs",
+        "tests/monthly-accumulation-v15.test.mjs"
+      ],
+      "screenshots": [
+        "S13",
+        "S15"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C27",
+      "priority": "P0",
+      "title": {
+        "zh": "归档不可变与总结依据过期",
+        "en": "Immutable archive and stale review basis"
+      },
+      "data": {
+        "zh": "某月已保存v1；准备一份以旧指纹为依据的总结。",
+        "en": "Saved monthly archive v1; review draft based on an older fingerprint."
+      },
+      "steps": {
+        "zh": [
+          "补一笔该月真实演示支出。",
+          "对比最新预览、v1与新保存v2。",
+          "尝试采用旧指纹总结，再重读生成新稿。"
+        ],
+        "en": [
+          "Add a demo expense in the same month.",
+          "Compare live preview, v1, and new archive v2.",
+          "Attempt adoption with the stale review fingerprint, then regenerate from fresh context."
+        ]
+      },
+      "expected": {
+        "zh": "v1不变，新预览/v2反映新分录；旧总结拒绝或要求重读，年度不把v1+v2重复累计。",
+        "en": "v1 remains unchanged; live/v2 reflect the new journal. Stale review adoption fails or requires refresh. Annual totals do not add both versions."
+      },
+      "failure": {
+        "zh": "新流水改写v1、旧总结无提示继续用或年度重复。",
+        "en": "A new transaction rewrites v1, stale prose silently passes, or annual totals duplicate versions."
+      },
+      "tests": [
+        "tests/monthly-report-archive.test.mjs",
+        "tests/monthly-archive-http.test.mjs",
+        "tests/mcp-drafts.test.mjs"
+      ],
+      "screenshots": [
+        "S13",
+        "S16"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C28",
+      "priority": "P0",
+      "title": {
+        "zh": "完整分页与版本一致性",
+        "en": "Complete pagination with consistent versions"
+      },
+      "data": {
+        "zh": "超过单页上限的演示流水，夹有不匹配筛选行。",
+        "en": "Demo history larger than one page, including rows outside the filter."
+      },
+      "steps": {
+        "zh": [
+          "固定筛选及版本读第一页并沿nextCursor读到complete=true。",
+          "空筛选页仍检查nextCursor。",
+          "在翻页间新增分录或改家庭成员，再用旧版本继续。"
+        ],
+        "en": [
+          "Hold filters/versions constant and follow nextCursor until complete=true.",
+          "Check cursors even on an empty filtered page.",
+          "Change ledger/membership between pages and continue with stale versions."
+        ]
+      },
+      "expected": {
+        "zh": "不中途漏页、不把最近几条当完整银行历史；版本冲突从首页重读，月报/周期归并不能混两个版本。",
+        "en": "No skipped pages or claims that recent rows represent full bank history. Restart after conflicts; reports/recurring analysis must not mix versions."
+      },
+      "failure": {
+        "zh": "空页即结束、汇总最近100条、旧新页混算。",
+        "en": "Stop on an empty page, sum only recent100 rows, or mix versions."
+      },
+      "tests": [
+        "tests/mcp.test.mjs",
+        "tests/recurring-history-v15.test.mjs",
+        "tests/monthly-report.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C29",
+      "priority": "P0",
+      "title": {
+        "zh": "养老金内部交易不当外部充值",
+        "en": "Pension internal trading is not external contribution"
+      },
+      "data": {
+        "zh": "普通银行1000；养老金现金200、产品0；演示年度额度已满。",
+        "en": "Ordinary bank1,000; pension cash200, products0; demo annual allowance already exhausted."
+      },
+      "steps": {
+        "zh": [
+          "账户内买产品100，费0。",
+          "全部赎回净额110。",
+          "用内部资金再买产品50，费0，读取银行及年度实缴。"
+        ],
+        "en": [
+          "Buy internally for100 with zero fee.",
+          "Redeem completely for net110.",
+          "Reinvest50 internally and read ordinary cash/contributions."
+        ]
+      },
+      "expected": {
+        "zh": "养老金现金200→100→210→160，产品0→100→0→50，总资产200→200→210→210；普通银行始终1000，年度实缴不变。",
+        "en": "Pension cash200→100→210→160, products0→100→0→50, total200→200→210→210. Ordinary cash stays1,000 and annual contributions do not change."
+      },
+      "failure": {
+        "zh": "额度满禁止内部投资、赎回进普通银行或账户总额加底层双算。",
+        "en": "Exhausted allowance blocks internal investment, redemption credits ordinary cash, or totals double-count products."
+      },
+      "tests": [
+        "tests/pension-investment.test.mjs",
+        "tests/pension-classification.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C30",
+      "priority": "P0",
+      "title": {
+        "zh": "养老金不能借快照或归属解锁",
+        "en": "Pension restrictions survive snapshots and ownership edits"
+      },
+      "data": {
+        "zh": "有确认缴费及内部交易的演示养老金。",
+        "en": "Demo pension with confirmed contributions and internal trades."
+      },
+      "steps": {
+        "zh": [
+          "尝试删实缴重开额度、改成普通类型、转归属或借成员别名合并。",
+          "提交早于最近交易的快照；将个人计划年龄当自动解锁。"
+        ],
+        "en": [
+          "Attempt to clear contributions, change to an ordinary type, transfer ownership, or merge through aliases.",
+          "Submit a snapshot older than the last trade and treat a planned age as automatic unlocking."
+        ]
+      },
+      "expected": {
+        "zh": "绕过拒绝，余额/缴费/归属/历史保持；分类维护不能变成提款。",
+        "en": "Reject bypasses while preserving balances, contributions, ownership, and history. Classification is not withdrawal."
+      },
+      "failure": {
+        "zh": "改一个字段即可提现或覆盖新交易事实。",
+        "en": "One field unlocks withdrawal or overwrites newer facts."
+      },
+      "tests": [
+        "tests/pension.test.mjs",
+        "tests/pension-investment.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C31",
+      "priority": "P1",
+      "title": {
+        "zh": "会员有效期、人数及增量成本",
+        "en": "Membership validity, party coverage, incremental cost"
+      },
+      "data": {
+        "zh": "独立演示双人年卡，已购成本600元；3位成人；额外车费40元为待核价参考。",
+        "en": "Independent demo two-person pass, sunk cost600; party of3 adults; extra vehicle fee40 is an unverified reference."
+      },
+      "steps": {
+        "zh": [
+          "按演示日期保存权益，再分别选有效、过期、未激活和停用日期/状态。",
+          "让规划读取权益，列出覆盖2人、第三人和车费的待核事项。"
+        ],
+        "en": [
+          "Save benefits and test valid/expired/unactivated/disabled date/status combinations.",
+          "Have planning read them and list covered2 people, the third person, and vehicle charge evidence."
+        ]
+      },
+      "expected": {
+        "zh": "600不再加为本次新增消费，不因维护扣银行；未覆盖人和车费仍列，未知票价不填0；过期权益不冒充优惠。",
+        "en": "Do not add600 again to this trip or debit cash for maintenance. List the uncovered person/vehicle charge; unknown tickets are not free and expired benefits provide no assumed discount."
+      },
+      "failure": {
+        "zh": "重复算购卡成本、默认全员免费、凭未知酒店等级给折扣。",
+        "en": "Sunk cost charged again, everyone assumed free, or an unknown hotel tier invents a discount."
+      },
+      "tests": [
+        "tests/memberships.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C32",
+      "priority": "P0",
+      "title": {
+        "zh": "报价、旧快照和缺汇率不改账",
+        "en": "Quotes, snapshots, and missing FX do not post"
+      },
+      "data": {
+        "zh": "演示证券有存储数量/单价/账面；另有缺汇率外币账户。",
+        "en": "Demo securities have stored quantity/price/carrying value; another account lacks FX."
+      },
+      "steps": {
+        "zh": [
+          "刷新最新可用行情，模拟过期、失败或币种不符。",
+          "比较存储快照算术与新参考市值。",
+          "查看汇总和当前现金。"
+        ],
+        "en": [
+          "Refresh quotes with stale/failure/currency-mismatch responses.",
+          "Compare stored-snapshot arithmetic with new indicative market value.",
+          "Inspect totals and cash."
+        ]
+      },
+      "expected": {
+        "zh": "保留原快照、来源时间和未折算提示，不默认为1:1，不把参考价格当成交或现金，不自动补差调账。",
+        "en": "Preserve stored snapshots, timestamps, and unconverted warnings. No default1:1 FX, execution-price claim, cash conversion, or balancing entry."
+      },
+      "failure": {
+        "zh": "刷新行情改真实持仓/余额，或缺汇率仍给完整净值。",
+        "en": "Quote refresh changes booked balances, or missing FX produces a false complete total."
+      },
+      "tests": [
+        "tests/position-snapshot.test.mjs",
+        "tests/valuation-boundaries.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C33",
+      "priority": "P1",
+      "title": {
+        "zh": "隐私默认隐藏但编辑值仍敏感",
+        "en": "Privacy defaults hide display, not edit values"
+      },
+      "data": {
+        "zh": "独立演示家庭，含金额与长说明。",
+        "en": "Independent demo household with amounts and explanatory prose."
+      },
+      "steps": {
+        "zh": [
+          "首次进入检查主卡、列表、说明和研究。",
+          "显示金额、跨栏目、再刷新。",
+          "打开编辑/核对表单，检查原值提示并避免共享。"
+        ],
+        "en": [
+          "Inspect cards/lists/prose/research on first load.",
+          "Reveal, navigate, then reload.",
+          "Open edit/review forms and check the original-value warning before sharing."
+        ]
+      },
+      "expected": {
+        "zh": "刷新默认隐藏、页面内选择按设计保留，敏感展示不漏在说明中；表单原值不是安全脱敏。",
+        "en": "Reload hides values; in-page preference behaves consistently and explanatory prose does not leak amounts. Original values in forms are not redacted data."
+      },
+      "failure": {
+        "zh": "上次显示状态持久化成默认明文，或小字/提示漏金额。",
+        "en": "Reveal preference becomes the next default, or small print leaks amounts."
+      },
+      "tests": [
+        "tests/financial-privacy.test.mjs"
+      ],
+      "screenshots": [
+        "S01",
+        "S07"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C34",
+      "priority": "P0",
+      "title": {
+        "zh": "附件上传成功、失败与未知结果",
+        "en": "Attachment upload success, failure, uncertain result"
+      },
+      "data": {
+        "zh": "独立计划，合成1KB PDF；原请求key固定。",
+        "en": "Independent plan, synthetic1KB PDF, fixed request key."
+      },
+      "steps": {
+        "zh": [
+          "预览但不确认，检查尚未存储；确认后保存并看清空选择。",
+          "模拟保存成功但刷新失败，以及响应丢失后重试。",
+          "换文件前核对原请求状态；测试伪装类型、超限和跨家庭下载。"
+        ],
+        "en": [
+          "Preview without consent, then consent/save and inspect reset selection.",
+          "Simulate saved-but-refresh-failed and lost-response retry.",
+          "Check the original status before changing files; test invalid signature/size and foreign downloads."
+        ]
+      },
+      "expected": {
+        "zh": "明确确认才上传；重试不多存，选择正确重置；不泄露附件，非法文件拒绝。",
+        "en": "Upload only after explicit consent; retries do not duplicate, selection resets appropriately, foreign access leaks nothing, invalid files fail."
+      },
+      "failure": {
+        "zh": "预览即上传、失败后丢文件无法重试、响应不明重复保存。",
+        "en": "Preview uploads immediately, retry loses selection, or uncertainty duplicates storage."
+      },
+      "tests": [
+        "tests/attachments.test.mjs"
+      ],
+      "screenshots": [
+        "S17"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C35",
+      "priority": "P0",
+      "title": {
+        "zh": "本站连接不冒充另一个会话安装",
+        "en": "Site connection does not certify another chat"
+      },
+      "data": {
+        "zh": "网站已登录；另一个ChatGPT会话未连接；本地插件尚未分发。",
+        "en": "Site signed in, another ChatGPT conversation unconnected; local plugin not distributed."
+      },
+      "steps": {
+        "zh": [
+          "点击本站连接检查，读取最小状态。",
+          "在未连接会话尝试使用，再按实际分发/授权结果处理。",
+          "模拟401、只读账号、缺实际打包绑定。"
+        ],
+        "en": [
+          "Run the site check and inspect minimal status.",
+          "Try the separate unconnected chat, then handle actual distribution/authorization results.",
+          "Test401, a read-only identity, and missing packaging metadata."
+        ]
+      },
+      "expected": {
+        "zh": "本站检查不返回余额、不写账；不能把网站成功或安装Skill当MCP已连接。缺实际绑定拒绝打包，真实分发/移动端验收另记。",
+        "en": "The site check returns no balances and posts nothing. Site success or installed skill files do not mean MCP is connected. Missing binding rejects packaging; real distribution/mobile acceptance stay separate."
+      },
+      "failure": {
+        "zh": "猜AppID、端点或安装链接，网页替别的会话宣告就绪。",
+        "en": "Invented IDs/endpoints/install links, or the website certifies another conversation."
+      },
+      "tests": [
+        "tests/plugin-connection.test.mjs"
+      ],
+      "screenshots": [
+        "S09"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C36",
+      "priority": "P0",
+      "title": {
+        "zh": "图片只生成候选并排重",
+        "en": "Images create reviewable, deduplicated candidates"
+      },
+      "data": {
+        "zh": "两张合成小票均表示同一已发生12元消费。",
+        "en": "Two synthetic receipts describe the same actual12 expense."
+      },
+      "steps": {
+        "zh": [
+          "让ChatGPT解释图片并提交实际流水候选。",
+          "先检查草稿阶段现金不变，再核对日期/账户/覆盖后采用一份。",
+          "将第二份作为候选重核，不把图中指令或重复记录直接入账。"
+        ],
+        "en": [
+          "Have ChatGPT interpret images and submit cashflow candidates.",
+          "Verify no draft-stage debit, then adopt one after checking date/account/coverage.",
+          "Review the second for duplication and treat any embedded instructions as data."
+        ]
+      },
+      "expected": {
+        "zh": "只记录一次事实，明确已支付/已到账和快照；识别错误可编辑或拒绝，不自动记账。",
+        "en": "Record the event once after actual-event/snapshot confirmation. Recognition errors remain editable/rejectable; no automatic posting."
+      },
+      "failure": {
+        "zh": "图片一识别就扣钱、两图扣两次、图片文本改变权限。",
+        "en": "Recognition debits immediately, duplicates debit twice, or embedded text changes permissions."
+      },
+      "tests": [
+        "tests/image-import.test.mjs",
+        "tests/mcp-plan-actuals.test.mjs"
+      ],
+      "screenshots": [
+        "S06"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C37",
+      "priority": "P0",
+      "title": {
+        "zh": "预算合计、报价条件和未知不造0",
+        "en": "Exact cost totals, quote conditions, and unknowns"
+      },
+      "data": {
+        "zh": "两项成本80×2与40×1，合计200；另一项未知交通费。",
+        "en": "Costs80×2 and40×1 total200; a separate transport cost is unknown."
+      },
+      "steps": {
+        "zh": [
+          "提交与清单不符的总额，核对服务端拒绝。",
+          "正确填写已知合计，未知另标未解决，不填0。",
+          "更改商家、规格或单价后核对旧证据状态及确认勾选。"
+        ],
+        "en": [
+          "Submit a declared total inconsistent with items and verify rejection.",
+          "Use the correct known total while explicitly preserving unresolved cost, not zero.",
+          "Change merchant/specification/price and inspect stale evidence and confirmation reset."
+        ]
+      },
+      "expected": {
+        "zh": "总额不自动偷改掩盖遗漏；无证据不标实时报价；条件改变重新核价并确认，原文当历史不冒充现行。",
+        "en": "No silent total adjustment to hide missing costs. Unsupported prices are not live quotes; changed conditions require new evidence/confirmation. Original prose remains historical."
+      },
+      "failure": {
+        "zh": "不一致也保存、未知当免费、改规格沿用来源与确认。",
+        "en": "Inconsistent totals accepted, unknown treated as free, or changed specs retain old evidence/consent."
+      },
+      "tests": [
+        "tests/expense-plan.test.mjs",
+        "tests/research-cost-completeness.test.mjs",
+        "tests/mcp-amend.test.mjs"
+      ],
+      "screenshots": [
+        "S03"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C38",
+      "priority": "P1",
+      "title": {
+        "zh": "投资研究与复核不执行交易",
+        "en": "Research and follow-up do not trade"
+      },
+      "data": {
+        "zh": "演示投资结论及一条D+1复核安排，原持仓与现金已知。",
+        "en": "Demo investment research and a D+1 follow-up, with known initial holdings/cash."
+      },
+      "steps": {
+        "zh": [
+          "保存并采用investment草稿。",
+          "调整复核日期/条件并同步日历。",
+          "比较持仓、现金、预算和流水，再取消复核。"
+        ],
+        "en": [
+          "Save/adopt an investment draft.",
+          "Adjust its follow-up date/conditions and sync to the calendar.",
+          "Compare holdings/cash/budgets/transactions, then cancel the follow-up."
+        ]
+      },
+      "expected": {
+        "zh": "只有研究和复核元数据改变，标明未交易；不能因“建议买入”新增持仓、扣银行或建消费预算。",
+        "en": "Only research/follow-up metadata changes, labeled unexecuted. A buy recommendation creates no holding, debit, or spending budget."
+      },
+      "failure": {
+        "zh": "研究采用即成交、取消复核反向改持仓。",
+        "en": "Adoption executes a trade, or cancelling a reminder reverses holdings."
+      },
+      "tests": [
+        "tests/calendar-content.test.mjs",
+        "tests/mcp-workflows.test.mjs"
+      ],
+      "screenshots": [
+        "S18"
+      ],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C39",
+      "priority": "P0",
+      "title": {
+        "zh": "同币种内部转账不当收入",
+        "en": "Same-currency transfers are not income"
+      },
+      "data": {
+        "zh": "银行A1000元、B500元，均CNY；已发生A→B200元。",
+        "en": "CNY bank A1,000 and B500; completed transfer A→B200."
+      },
+      "steps": {
+        "zh": [
+          "从A行内部转账选择B及对应成员，记录200元。",
+          "检查两边余额、总现金和月报，重试原请求。"
+        ],
+        "en": [
+          "Record200 from A to B with the correct members.",
+          "Inspect both balances, total cash/report, then retry."
+        ]
+      },
+      "expected": {
+        "zh": "A800、B700，总现金1500不变；有双方记录，不当收入或消费，重试不重复。",
+        "en": "A800, B700, total1,500 unchanged; both sides are traceable, no income/consumption, no duplicate on retry."
+      },
+      "failure": {
+        "zh": "一边变更、转账当收益、跨币种暗换汇。",
+        "en": "Only one side changes, transfer becomes income, or hidden FX occurs."
+      },
+      "tests": [
+        "tests/member-ownership-store.test.mjs",
+        "tests/extensions.test.mjs"
+      ],
+      "screenshots": [],
+      "manual_status": "not_run"
+    },
+    {
+      "id": "C40",
+      "priority": "P1",
+      "title": {
+        "zh": "清零归档保留历史与重新持有",
+        "en": "Clearing/archiving preserves history and re-entry"
+      },
+      "data": {
+        "zh": "一份已全部卖出的演示持仓，保留原买卖流水。",
+        "en": "A fully sold demo holding with its original transactions."
+      },
+      "steps": {
+        "zh": [
+          "确认普通持有列表隐藏，勾“显示清零与归档账户”。",
+          "查旧持仓/交易；允许时对同账户重新买入。",
+          "尝试归档非零资产或删除历史。"
+        ],
+        "en": [
+          "Check default hiding and enable the cleared/archived view.",
+          "Inspect original trades and, when allowed, buy into the same account again.",
+          "Attempt archiving nonzero assets or deleting history."
+        ]
+      },
+      "expected": {
+        "zh": "历史不删除，正常重买不伪造第二份开账；未满足归档条件拒绝，旧交易仍可追溯。",
+        "en": "History remains; re-entry is a trade, not another invented opening. Invalid archiving fails and old transactions remain traceable."
+      },
+      "failure": {
+        "zh": "清仓删流水、重买丢成本历史、归档抹非零资产。",
+        "en": "Liquidation deletes records, re-entry loses history, or archiving erases a balance."
+      },
+      "tests": [
+        "tests/security-trades.test.mjs",
+        "tests/store.test.mjs"
+      ],
+      "screenshots": [
+        "S10"
+      ],
+      "manual_status": "not_run"
+    }
+  ],
+  "evidence": {
+    "checked_on": "2026-11-13",
+    "automated_tests": {
+      "passed": 144,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "20 existing files; command in docs/manual/VERIFICATION.md"
+    },
+    "manual_demonstrations": "not_run",
+    "new_browser_capture": "blocked: sandbox Chrome launch SIGABRT; prior local TCP listen EPERM",
+    "screenshots": "existing reviewed local QA artifacts; not new production evidence"
+  },
+  "source_revision": "e291b5abdb6791b9a6dc1c5f2ae867c3f659f7bc"
 }

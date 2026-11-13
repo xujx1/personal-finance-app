@@ -4,7 +4,11 @@
 
 用 ChatGPT 整理家庭财务，在网站逐项核对、共同审批并查看账本。覆盖资产与贷款、预算、实际收支、生活日历、周期收支和月度报告。
 
-[使用指南与流程截图](docs/USER-GUIDE.md) · [文档导航](docs/README.md) · [开发与验证](docs/DEVELOPMENT.md) · [数据安全](SECURITY.md)
+[快速上手](docs/USER-GUIDE.md) · [文档导航](docs/README.md) · [开发与验证](docs/DEVELOPMENT.md) · [数据安全](SECURITY.md)
+
+[完整产品操作手册](docs/PRODUCT-MANUAL.md) · [关键案例库（40项）](docs/KEY-CASES.md) · [单文件中英文图文演示](docs/product-demo.html)
+
+图文版内嵌18张演示截图，下载后可离线切换语言、搜索案例和打印；GitHub在线阅读使用Markdown手册。
 
 ![家庭财务中心演示：建档入口与默认金额隐私模式](docs/assets/workflows/01-onboarding.png)
 

@@ -4,7 +4,11 @@
 
 Organize household finances with ChatGPT, then review records, approve budgets together, and track your ledger on the website. Features cover assets, loans, budgets, actual cashflow, a calendar, recurring items, and monthly reports.
 
-[User guide and screenshots](docs/USER-GUIDE.en.md) · [Documentation](docs/README.en.md) · [Development](docs/DEVELOPMENT.en.md) · [Data security](SECURITY.en.md)
+[Quick start](docs/USER-GUIDE.en.md) · [Documentation](docs/README.en.md) · [Development](docs/DEVELOPMENT.en.md) · [Data security](SECURITY.en.md)
+
+[Full product manual](docs/PRODUCT-MANUAL.en.md) · [40 key cases](docs/KEY-CASES.en.md) · [Standalone bilingual illustrated edition](docs/product-demo.html)
+
+The HTML embeds18 demo images for offline language switching, case search, and printing. Read the Markdown editions directly on GitHub.
 
 ![Demo household: onboarding and amounts hidden by default](docs/assets/workflows/01-onboarding.png)
 

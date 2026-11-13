@@ -63,3 +63,9 @@ Local links, image inventory hashes, bilingual pairs, and requirement IDs R001�
 
 Address known fixture and history remnants, then review GitHub refs and release attachments. If actual credentials are found, revoke or rotate them before history cleanup. Use authorized isolated data for household and real-client verification, not production demo transactions. Define cleanup and recovery before rewriting shared history; this revision did not perform it.
 
+
+## 产品操作与案例补充 / Product manual and cases
+
+后续补充18章完整操作手册、40项关键案例和单文件中英文图文版，截图总数由8增至18。关联20个既有测试文件本轮重跑144项通过；40项手工演示仍标not_run，旧截图不当新验收。来源、算术与浏览器限制见[本轮产品文档校验](manual/VERIFICATION.md)。旧历史和夹具风险不因文档补齐消失。
+
+The follow-up adds18 chapters,40 cases, and a standalone bilingual illustrated edition, expanding reviewed images from8 to18. Twenty existing test files were rerun with144 passes; all40 manual executions remain not_run. See [verification](manual/VERIFICATION.md). Existing history/fixture findings remain open.
