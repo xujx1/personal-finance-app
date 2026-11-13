@@ -39,5 +39,5 @@ Files: AdvisorPanel.tsx, InvestmentPanel.tsx, ExpenseDraftEditor.tsx, expense-pl
 ### Task 4: 复核、正式发布与真实场景
 - [x] 独立复核，重要问题红绿回归；完整测试、类型与构建。
 - [x] 复用当前Sites原受众，发布确切源码版本。
-- [x] 安徽亲子游与BABA/TCOM换NVDA实际API Key请求：观察首段、最终清单或结论、保留时间及来源；不审批预算或交易。
+- [x] 旅行与证券研究的真实服务请求：观察首段、最终清单或结论、保留时间及来源；不审批预算或交易。
 - [x] 更新需求与验收记录、源码交付包。

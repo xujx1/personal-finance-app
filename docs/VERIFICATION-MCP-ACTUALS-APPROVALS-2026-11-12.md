@@ -20,7 +20,7 @@
 ## 发布
 
 版本60；源提交723a930e58e37119caab9e03d9126a10474db48b。
-部署appgdep_6af5a4b5a7008191986eff278a3778dd。访问范围、D1、MCP及环境版本16保持。部署已成功。线上原生MCP只读确认工作流为七个，包含审批查询和消费planId/prepaymentId说明；真实账本修订仍为69，账户、预算、周期规则和目标均与发布前相同。公开安装包HTTP200，4520字节，SHA256与本地构建一致。未经OAuth登录直接调用MCP仍返回401。本会话已缓存的原生工具列表暂未更新新方法，新审批方法的实际OAuth调用需新会话刷新工具列表后使用；已通过隔离的真实MCP HTTP请求验收。
+部署[部署标识已移除]。访问范围、D1、MCP及环境版本16保持。部署已成功。线上原生MCP只读确认工作流为七个，包含审批查询和消费planId/prepaymentId说明；真实账本修订仍为69，账户、预算、周期规则和目标均与发布前相同。公开安装包HTTP200，4520字节，SHA256与本地构建一致。未经OAuth登录直接调用MCP仍返回401。本会话已缓存的原生工具列表暂未更新新方法，新审批方法的实际OAuth调用需新会话刷新工具列表后使用；已通过隔离的真实MCP HTTP请求验收。
 
 一键入口包：/downloads/family-finance-skills-1.3.0.tgz。
 复现：`node local/mcp-actuals-e2e.mjs`、`node local/npm-calendar-e2e.mjs`。

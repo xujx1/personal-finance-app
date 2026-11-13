@@ -19,6 +19,8 @@
     "skills:sync": "node scripts/sync-skill-assets.mjs",
     "test:e2e:trades": "node local/security-trades-e2e.mjs",
     "skills:pack": "node scripts/package-skill-cli.mjs",
+    "plugin:pack": "node scripts/package-finance-plugin.mjs",
+    "test:e2e:plugin": "node local/plugin-connection-e2e.mjs",
     "test:e2e:npm-calendar": "node local/npm-calendar-e2e.mjs",
     "test:e2e:asset-types": "node local/asset-types-e2e.mjs",
     "test:e2e:calendar-refresh": "node local/calendar-refresh-e2e.mjs",

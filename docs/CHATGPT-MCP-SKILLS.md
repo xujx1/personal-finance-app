@@ -1,6 +1,10 @@
+> **2026-11-13 安装方案更新：** 以 [统一插件接入需求](requirements-plugin-installation-2026-11-13.md) 为准。Skill文件安装、MCP连接、OAuth授权与家庭绑定是独立状态。插件包应同时声明七个业务入口和必需连接；手机/iPad不走npx或tgz。新增只读get_connection_status（共14工具），只检查发起调用的账号、家庭、权限与工作流，不返回资产余额。下文旧命令仅电脑兼容方式，不等于插件安装成功；平台注册与分发尚待完成，本地验证不能证明iPad已可安装。
+
+> 公开文档修订（2026-11-13）：个人财务数值、家庭场景和部署回执已做删减；删减部分不作为公开测试证据。现行入口见[文档导航](README.md)。
+
 # ChatGPT家庭财务工作流使用指南
 
-适用日期：2026-11-12；v60及后续本轮修订。当前版本使用研究记录集中核对、七个工作流入口和13个MCP工具。旧阶段验收记录仅作历史参考。
+适用日期：2026-11-12；v60及后续本轮修订。当前版本使用研究记录集中核对、七个工作流入口和14个MCP工具。旧阶段验收记录仅作历史参考。
 
 ## 从哪里开始
 
@@ -60,7 +64,8 @@
 账户菜单 → 工作流集成提供当前安装命令：
 
 ```sh
-npx --yes https://xu-family-finance-20261111.shady-gnat-0277.chatgpt.site/downloads/family-finance-skills-1.3.0.tgz install
+# 从自己已登录站点的“工作流集成”复制当前桌面安装命令。
+# 本公开文档不提供私人下载地址。
 ```
 
 安装七个入口：`family-finance-approvals`、`family-finance-onboarding`、`family-finance-consumption`、`family-finance-investment`、`family-finance-images`、`family-finance-monthly`、`family-finance-recurring`。已装旧五/六入口时重新执行命令升级。
@@ -69,7 +74,7 @@ npx --yes https://xu-family-finance-20261111.shady-gnat-0277.chatgpt.site/downlo
 
 公开包只含通用入口；每次使用通过`get_skill_bundle`读取最新家庭正文。入口自身升级才需要重新安装。网站已移除Skill维护、下载与备份UI，仅保留必要使用入口及安装命令；既有私有正文、版本和归档API保留作历史兼容，仍受家庭认证保护，不是当前网站操作步骤。固定历史正文安装保留当时版本，不自动跟随最新正文。
 
-## 当前13个MCP工具与金额约定
+## 当前14个MCP工具与金额约定
 
 | 用途 | 工具 |
 | --- | --- |

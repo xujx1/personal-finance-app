@@ -1,0 +1,860 @@
+{
+  "version": 1,
+  "updated": "2026-11-13",
+  "timezone": "Asia/Shanghai",
+  "sections": [
+    {
+      "id": "M01",
+      "title": {
+        "zh": "登录、家庭邀请与权限",
+        "en": "Sign-in, household invitations, and permissions"
+      },
+      "entry": {
+        "zh": "站点登录 → 右上角头像 → 家庭管理",
+        "en": "Site sign-in → avatar → 家庭管理 (Household management)"
+      },
+      "prerequisite": {
+        "zh": "准备两个独立演示账号；不要使用真实邀请链接或其他家庭资料。",
+        "en": "Use two independent demo identities; never publish real invitation links or other households’ data."
+      },
+      "steps": {
+        "zh": [
+          "用自己的ChatGPT账号登录；未加入家庭时先核对邀请来源。",
+          "管理员打开家庭管理，确认家庭名称，点击“生成邀请链接”；只私下发给对应家人。",
+          "家人打开邀请，用自己的账号登录，核对家庭名称后点击“确认加入家庭”。",
+          "回到成员表确认管理员/只读身份；在“家庭记账成员”添加昵称，必要时关联已加入账号。",
+          "需要变更权限时选择“移除成员”“转移管理”或成员自己的“退出家庭”，阅读确认说明再提交。"
+        ],
+        "en": [
+          "Sign in with your own ChatGPT account; verify the invitation source if not yet a member.",
+          "The administrator opens Household management, confirms the household name, and chooses 生成邀请链接 (Generate invitation). Send it privately to the intended person.",
+          "The recipient signs in separately, checks the household name, and chooses 确认加入家庭 (Join household).",
+          "Check administrator/read-only roles. Add bookkeeping nicknames under 家庭记账成员 and optionally link existing signed-in members.",
+          "For removal, transfer, or leaving, select the corresponding member action and read the confirmation before submitting."
+        ]
+      },
+      "result": {
+        "zh": "登录成员能查看本家庭，普通成员不能一般财务写入，但可以提交本人预算意见。昵称不是登录权限；管理权转移不改变历史资产归属。",
+        "en": "Members can read their own household. Ordinary members cannot make general financial changes but can submit their own budget opinions. Nicknames grant no access; management transfer does not change historical asset ownership."
+      },
+      "note": {
+        "zh": "邀请一次使用、7天有效，可撤销；泄露有效邀请可能让持有人加入。管理员须先转移管理再退出。截图待补：当前无可公开的完整邀请与第二真实账号演示图。",
+        "en": "Invitations are single-use, expire after seven days, and can be revoked. A leaked active link may let its holder join. Administrators must transfer management before leaving. Screenshot gap: no publishable complete invitation/real-second-user sequence is available."
+      },
+      "screenshots": [],
+      "cases": [
+        "C13",
+        "C14",
+        "C15",
+        "C16",
+        "C17"
+      ]
+    },
+    {
+      "id": "M02",
+      "title": {
+        "zh": "连接ChatGPT并检查当前会话",
+        "en": "Connect ChatGPT and check the current session"
+      },
+      "entry": {
+        "zh": "头像 → 工作流集成；ChatGPT → 已连接应用",
+        "en": "Avatar → 工作流集成 (Workflow integration); connected apps in ChatGPT"
+      },
+      "prerequisite": {
+        "zh": "网站账号与ChatGPT会话连接分别验证；插件注册和分发尚有外部环节。",
+        "en": "Verify website identity and the ChatGPT connection separately; plugin registration/distribution still has external dependencies."
+      },
+      "steps": {
+        "zh": [
+          "打开“工作流集成”，阅读插件接入说明；没有实际安装入口时由维护者完成分发，不猜插件地址。",
+          "点击“检查本站连接”，核对当前账号、家庭、权限及业务工作流数量。",
+          "在已连接的ChatGPT新会话说“检查家庭财务中心连接”，让助手核对该会话的连接状态。",
+          "连接有效后说“先读取已有数据，帮我规划……”；网页准备过任务时说“继续网站中准备的任务”。",
+          "手机/iPad使用实际可用的已连接会话；电脑端旧技能安装入口仅供已有MCP的Codex环境。"
+        ],
+        "en": [
+          "Open Workflow integration and read the connection instructions. If no real installation entry is available, the maintainer must complete distribution; do not invent a plugin URL.",
+          "Choose 检查本站连接 (Check this site), then inspect the account, household, role, and workflow availability.",
+          "In a new connected ChatGPT conversation, ask “Check my Family Finance Center connection” to verify that conversation separately.",
+          "Once connected, ask it to read existing data before planning. For a task prepared on the site, ask it to continue the prepared task.",
+          "On phones/iPads use an actually available connected conversation. The legacy desktop skill installer is only for Codex environments with MCP already configured."
+        ]
+      },
+      "result": {
+        "zh": "本站检查不读余额或流水、不修改账本；网页通过不能替另一会话承诺安装成功。当前七个业务入口，连接检查属于附加能力。",
+        "en": "The site check does not expose balances/transactions or change the ledger. A website success cannot certify another conversation’s installation. There are seven business entry points, with a separate connection-check capability."
+      },
+      "note": {
+        "zh": "S09为本地新增界面，不证明已上线、已进插件目录或真实iPad安装成功。401后重新登录并重新检查，不保留旧成功结论。",
+        "en": "S09 shows a local addition, not proof of deployment, directory publication, or real iPad installation. After a 401, sign in and check again rather than trusting an old success."
+      },
+      "screenshots": [
+        "S09"
+      ],
+      "cases": [
+        "C35"
+      ]
+    },
+    {
+      "id": "M03",
+      "title": {
+        "zh": "从空账本完成家庭建档",
+        "en": "Onboard an empty household"
+      },
+      "entry": {
+        "zh": "财务总览 → 开始家庭财务建档；已有家庭从工作流集成继续",
+        "en": "财务总览 (Overview) → 开始家庭财务建档; existing households continue through integration"
+      },
+      "prerequisite": {
+        "zh": "管理员；先收集演示资产余额和核对日期，未知不要填0。",
+        "en": "Administrator access; prepare demo balance snapshots and dates. Unknown does not mean zero."
+      },
+      "steps": {
+        "zh": [
+          "进入建档，先让ChatGPT读取已有成员、类别、资产、目标和草稿，列出缺项。",
+          "逐轮提供一两项已知资料：称呼/归属、类别、现有资产负债及余额日期、目标、固定收支；允许跳过。",
+          "ChatGPT提交建档配置或已有资产草稿；回“研究记录”逐项检查，已有资产勾选确认持有事实后采用。",
+          "每段采用后重新读取真实成员/账户ID，再继续依赖这些记录的下一段。",
+          "银行真实余额为0可以登记；缺失余额保留未知，不重建覆盖已有账本。"
+        ],
+        "en": [
+          "Ask ChatGPT to read existing members, types, assets, goals, and drafts, then identify missing information.",
+          "Provide one or two known details at a time: names/ownership, types, existing assets and debts with snapshot dates, goals, and recurring items. Skip unknowns.",
+          "Submit setup or existing-asset drafts, review each under Research records, and explicitly confirm actual ownership before adoption.",
+          "Read newly saved member/account IDs after each adopted stage before creating dependent records.",
+          "A genuinely confirmed zero bank balance is valid. Leave unknown balances unresolved and never reinitialize an existing ledger."
+        ]
+      },
+      "result": {
+        "zh": "已有资产以开账记录，不是新增收入或新买入；登记1000元已有银行余额，余额为1000元，不再产生一笔向银行充值。",
+        "en": "Existing assets are opening balances, not new income or purchases. Opening a confirmed CNY1,000 bank balance yields CNY1,000, not another top-up."
+      },
+      "note": {
+        "zh": "家庭管理的JSON初始化仅适用于空账本和已核对资料；普通用户优先逐段建档，不把别人备份或截图转录当初始化数据。",
+        "en": "JSON initialization under household management is only for an empty ledger and reviewed inputs. Prefer staged onboarding; never initialize from someone else’s backup or screenshot transcription."
+      },
+      "screenshots": [
+        "S01",
+        "S06"
+      ],
+      "cases": [
+        "C01",
+        "C02",
+        "C03"
+      ]
+    },
+    {
+      "id": "M04",
+      "title": {
+        "zh": "阅读总览、隐私模式与成员筛选",
+        "en": "Read the overview, privacy mode, and member filters"
+      },
+      "entry": {
+        "zh": "财务总览；顶部眼睛与成员筛选",
+        "en": "财务总览 (Overview); top privacy toggle and member filters"
+      },
+      "prerequisite": {
+        "zh": "已有资产/规则时读数据；空家庭会显示建档空态。",
+        "en": "Use recorded assets/rules where available; an empty household shows onboarding."
+      },
+      "steps": {
+        "zh": [
+          "先看总资产、总负债、净资产和人民币现金，确认它们代表不同口径。",
+          "点击顶部“显示金额”查看演示数值，再点击隐藏；切换栏目后核对当前选择。",
+          "选择全家汇总、家庭共用或某位成员，核对资产归属范围，不把共用和汇总当同义词。",
+          "展开目标与备款说明，比较用户目标、当前积累、未付计划与银行现金；再看实际/预计周期变化。",
+          "遇到缺汇率、缺期初、余额日期不足或待核对提示时，先补资料，不自行把未知补成0。"
+        ],
+        "en": [
+          "Read assets, liabilities, net worth, and CNY cash as separate measures.",
+          "Use 显示金额 (Show amounts) for demo values, then hide them; check the current choice after navigating.",
+          "Select all-household, shared, or individual ownership; shared and aggregate are different scopes.",
+          "Inspect goals and funding explanations, then distinguish actual accumulation from recurring forecasts.",
+          "When exchange rates, opening history, or snapshot dates are missing, resolve the inputs rather than substituting zero."
+        ]
+      },
+      "result": {
+        "zh": "显示与筛选只改变视图，不写流水。刷新/重新打开默认隐藏金额；编辑输入仍可能显示原值。证券和养老金不等于可花银行现金。",
+        "en": "Display and filters do not post transactions. Reloading hides amounts by default; editing fields may still show their original values. Securities and pensions are not spendable bank cash."
+      },
+      "note": {
+        "zh": "S01是空态示例，不展示完整持仓后的总览。完整数据总览截图待补；隐私模糊不能替代权限控制。",
+        "en": "S01 illustrates the empty state, not a populated overview. A safe populated screenshot is still needed. Privacy blur does not replace authorization."
+      },
+      "screenshots": [
+        "S01"
+      ],
+      "cases": [
+        "C26",
+        "C32",
+        "C33"
+      ]
+    },
+    {
+      "id": "M05",
+      "title": {
+        "zh": "资产分类、银行账户、内部转账与归档",
+        "en": "Asset types, bank accounts, transfers, and archiving"
+      },
+      "entry": {
+        "zh": "资产与贷款 → 管理资产类型 / 账户行操作",
+        "en": "资产与贷款 (Assets and loans) → 管理资产类型 / row actions"
+      },
+      "prerequisite": {
+        "zh": "管理员；已有资产走建档，实际资金变动走专用操作。",
+        "en": "Administrator access; existing assets use onboarding, actual cash movements use dedicated actions."
+      },
+      "steps": {
+        "zh": [
+          "通过ChatGPT登记已有账户，核对成员、币种和余额日期；回研究记录采用后在资产表找到记录。",
+          "用归属成员、持有账户和分类筛选定位；缺估值时读“待折算”，不要把合计当完整数。",
+          "点击“管理资产类型”，新增或改名、启用；核对账户性质，保存后返回资产表。",
+          "同币种银行账户之间已发生转账时，在转出行点“内部转账”，选转入成员与账户，填实际金额、日期和说明，确认到账。",
+          "零余额/清仓账户需查历史时勾选“显示清零与归档账户（保留历史）”；只在满足条件时归档。"
+        ],
+        "en": [
+          "Register an existing account through ChatGPT, review ownership, currency, and snapshot date, then locate it in the asset table after adoption.",
+          "Filter by member, holding account, or asset type. Treat missing conversions as incomplete totals.",
+          "Choose 管理资产类型 (Manage types), add or rename/enable a type, verify its accounting nature, and save.",
+          "For a completed same-currency transfer, choose 内部转账 on the source row, select the destination member/account, and record the actual amount, date, and explanation.",
+          "Enable 显示清零与归档账户 to inspect cleared/archived history. Archive only when allowed."
+        ]
+      },
+      "result": {
+        "zh": "改分类名不改余额；类型性质创建后不能改，仍被账户或目标引用时不能停用。内部转账只移动资金，不产生家庭收入。",
+        "en": "Renaming types does not alter balances. Accounting nature is fixed; referenced types cannot be disabled. Transfers move funds without creating household income."
+      },
+      "note": {
+        "zh": "S10保留旧版页顶草稿区，当前草稿统一在研究记录；S11只展示类型维护表单。归档保留历史，不能用来抹掉欠款。",
+        "en": "S10 includes an older page-top draft panel; current drafts are centralized under Research records. S11 shows the type editor. Archiving preserves history and cannot erase debt."
+      },
+      "screenshots": [
+        "S10",
+        "S11"
+      ],
+      "cases": [
+        "C19",
+        "C22",
+        "C39",
+        "C40"
+      ]
+    },
+    {
+      "id": "M06",
+      "title": {
+        "zh": "设置自由组合资产目标",
+        "en": "Configure asset goal combinations"
+      },
+      "entry": {
+        "zh": "头像 → 目标设置",
+        "en": "Avatar → 目标设置 (Goals)"
+      },
+      "prerequisite": {
+        "zh": "管理员；确认要计入目标的真实资产类型。",
+        "en": "Administrator access; identify the exact asset types included in each goal."
+      },
+      "steps": {
+        "zh": [
+          "打开目标设置，读取现有组合，区分已保存目标与旧默认参考值。",
+          "点“增加目标组合”，填写名称和人民币目标金额，展开类型选择并勾选范围。",
+          "其他组合使用不同类型，不把同一类型重复计入两个目标；新类别不会自动进目标。",
+          "按需填每月积累与目标日期，未知可留空；旧版本切换时核对完整替换范围并确认。",
+          "点击“保存资产目标”，回总览比较范围、总目标、完成额和月目标。"
+        ],
+        "en": [
+          "Open Goals and distinguish saved household goals from legacy reference defaults.",
+          "Choose 增加目标组合, enter a name and CNY target, then select included asset types.",
+          "Use disjoint types across goals. New types are not automatically included.",
+          "Optionally set a monthly target and date. For a legacy conversion, review the complete replacement scope and confirm.",
+          "Choose 保存资产目标 and compare the scope, target, current value, and monthly progress on the overview."
+        ]
+      },
+      "result": {
+        "zh": "修改目标不改变银行或持仓。未勾选资产不计进度；整体养老金与底层产品按去重规则统计，不能叠加。",
+        "en": "Goal changes do not change cash or holdings. Unselected assets do not contribute; pension account and underlying products must not be counted twice."
+      },
+      "note": {
+        "zh": "公开可用目标截图仍包含旧个人参数来源，本版不收录。当前有完整文字步骤和独立案例，清洁截图待补。",
+        "en": "Available goal screenshots retain values derived from older personal settings and are excluded here. Written steps and independent cases are complete; a clean screenshot is still needed."
+      },
+      "screenshots": [],
+      "cases": [
+        "C20",
+        "C29"
+      ]
+    },
+    {
+      "id": "M07",
+      "title": {
+        "zh": "记录基金股票买入、增持、部分卖出与清仓",
+        "en": "Record securities purchases, additions, partial sales, and liquidation"
+      },
+      "entry": {
+        "zh": "资产与贷款 → 记录基金买入/记录股票买入；持仓行 → 买入/卖出/赎回/清仓",
+        "en": "Assets and loans → purchase buttons; holding row → buy / sell / redeem / liquidate"
+      },
+      "prerequisite": {
+        "zh": "交易已在机构完成，银行余额未重复包含；有同币种真实现金账户。",
+        "en": "The institutional trade is completed and not already included in the snapshot; a matching cash account exists."
+      },
+      "steps": {
+        "zh": [
+          "首次买入点顶部基金/股票买入，或在已有持仓行点“买入”；核对持仓、成员及分类。",
+          "选资金成员与同币种银行账户，填写实际成交总额、手续费、数量和成交日期。",
+          "先读银行现金影响，确认实际成交及余额未重复包含，再保存。",
+          "部分卖出从“卖出/赎回”核对本次数量、对应账面金额、实际回款和费用；未到账不提前记银行现金。",
+          "全部清仓选择“清仓”，核对服务器带出的完整账面与已知数量、净到账；保存后查看历史，再确认零持仓可见性。"
+        ],
+        "en": [
+          "For a first purchase use the fund/stock purchase button; for an addition use 买入 on the existing holding.",
+          "Select the paying member and same-currency bank account; enter actual gross consideration, fees, quantity, and trade date.",
+          "Read the cash-impact preview and confirm the completed trade is not already covered before saving.",
+          "For a partial sale/redeem, supply the quantity, carrying amount, actual proceeds, and fees. Do not credit cash before settlement.",
+          "For liquidation, verify the complete server-derived carrying amount/known quantity and net proceeds, then inspect preserved history after saving."
+        ]
+      },
+      "result": {
+        "zh": "买入扣成交额加费用；清仓增加成交额减费用。实际交易记录不是OPENING；不自动换汇、不向券商下单。",
+        "en": "Purchases debit consideration plus fees; liquidation credits consideration minus fees. Trade records are not opening balances. The app neither converts currency nor sends orders."
+      },
+      "note": {
+        "zh": "报价不是成交价；数量未知不得用本次买入量冒充全部持仓。S12为模拟清仓表单，图片参数与案例参数独立。",
+        "en": "Quotes are not execution prices. Unknown total quantity cannot be replaced with one new lot. S12 is a demo liquidation form with parameters independent of the cases."
+      },
+      "screenshots": [
+        "S10",
+        "S12"
+      ],
+      "cases": [
+        "C21",
+        "C22",
+        "C32",
+        "C40"
+      ]
+    },
+    {
+      "id": "M08",
+      "title": {
+        "zh": "贷款资料、还贷模拟、未来预算与实际还款",
+        "en": "Loan details, simulation, future budgets, and actual repayment"
+      },
+      "entry": {
+        "zh": "资产与贷款 → 贷款行“调整/还贷测算/记录还款”；预算页 → 登记未来提前还款预算",
+        "en": "Loan row → edit / simulation / record repayment; budgets → future early-repayment budget"
+      },
+      "prerequisite": {
+        "zh": "贷款本金、利率、起止日期和银行记录已核对；模拟与记账分开。",
+        "en": "Verified principal, rates, dates, and bank records; simulation is separate from posting."
+      },
+      "steps": {
+        "zh": [
+          "在贷款行调整已知利率、起止日和月供资料，未知项留空。",
+          "点“还贷测算”，填写剩余期数、拟还本金与方案，计算后比较月供或期限，不保存为实际还款。",
+          "要备款时到预算页“登记未来提前还款预算”，填计划日期、预计金额和可选本金/利息，确认尚未发生。",
+          "银行实际扣款后回“记录还款”，选付款账户，分别填实际本金和利息、日期与核对说明。",
+          "确认后查看现金流水、银行余额和剩余贷款；部分还款核对计划仍需备款。"
+        ],
+        "en": [
+          "Edit known rate, start/end dates, and installment details; leave unknown fields blank.",
+          "Use 还贷测算, enter remaining installments and proposed principal, then compare payment/term scenarios without posting.",
+          "For funding preparation, create a future early-repayment budget with a date, estimated amount, and optional principal/interest, confirming it has not occurred.",
+          "After the bank debits the payment, use 记录还款 and enter the paying account, actual principal, interest, date, and explanation separately.",
+          "Inspect cashflow, bank balance, and remaining principal; partial repayment must leave any outstanding plan funding visible."
+        ]
+      },
+      "result": {
+        "zh": "模拟和未来预算不减少本金或银行现金。实际本金100元、利息10元时现金减110元、贷款本金减100元，利息另列。",
+        "en": "Simulation and future budgets do not debit cash or principal. For CNY100 principal and CNY10 interest, cash falls by110 and debt principal by100; interest is separate."
+      },
+      "note": {
+        "zh": "截图待补：当前没有经过公开资料检查的完整贷款模拟与还款画面。银行预约不是实际扣款。",
+        "en": "Screenshot gap: no reviewed full loan simulation/repayment image is available. A bank reservation is not an actual payment."
+      },
+      "screenshots": [],
+      "cases": [
+        "C23",
+        "C26"
+      ]
+    },
+    {
+      "id": "M09",
+      "title": {
+        "zh": "养老金充值、内部投资、赎回与分类",
+        "en": "Pension funding, internal investment, redemption, and classification"
+      },
+      "entry": {
+        "zh": "资产与贷款 → 持有账户/更多操作 → 账户明细、账户内买入、账户内赎回、调整分类",
+        "en": "Assets and loans → holding account/more actions → pension details, buy, redeem, classify"
+      },
+      "prerequisite": {
+        "zh": "管理员；核对同成员银行账户、年度已缴、内部资金和产品快照。",
+        "en": "Administrator; verify ownership, annual contributions, internal cash, and product snapshots."
+      },
+      "steps": {
+        "zh": [
+          "打开养老金账户明细，分别读内部可投资余额、产品市值和账户总资产，不把三项相加。",
+          "已有快照只核对持仓；实际从银行充值才点“记录实际充值”，确认已到账且未被两个余额重复包含。",
+          "内部买入选已有或新产品、种类和分类，填实际成交额、费用、日期，并确认平台已完成。",
+          "赎回选择全部或部分；部分赎回核对对应账面和成本，净回款留在该养老金内。",
+          "调整分类只改分类，不重写金额；展开账户内投资记录，检查普通银行及年度实缴没有因内部交易变化。"
+        ],
+        "en": [
+          "Read internal cash, product value, and total account assets separately; do not sum all three.",
+          "Use snapshot review for existing holdings. Use 记录实际充值 only for an actual bank-funded contribution not already covered by either balance.",
+          "For an internal purchase, select or add a product/type/classification, enter completed consideration, fees, and date, and confirm platform completion.",
+          "For redemption choose all or part; partial redemption needs the relevant carrying amount and cost. Net proceeds stay inside the pension.",
+          "Classification changes affect classification only. Review internal trade history and verify that ordinary cash and annual contributions did not change."
+        ]
+      },
+      "result": {
+        "zh": "内部买卖不消耗新的年度缴费额度，不把赎回款提到普通银行。受限资金不用于日常预算备款，账户与底层产品不重复统计。",
+        "en": "Internal trades do not consume new annual contribution allowance or withdraw proceeds to ordinary cash. Restricted assets are excluded from daily budget funding and are not double-counted."
+      },
+      "note": {
+        "zh": "领取年龄是个人规划，不能当法定资格或自动解锁指令。现有养老金图保留旧个人参数来源，本版不公开；按C29/C30复演并补清洁图。",
+        "en": "A planned withdrawal age is not legal eligibility or an automatic unlock instruction. Existing pension images retain older personal-input provenance and are excluded; use C29/C30 to recapture clean examples."
+      },
+      "screenshots": [],
+      "cases": [
+        "C29",
+        "C30"
+      ]
+    },
+    {
+      "id": "M10",
+      "title": {
+        "zh": "消费规划、费用核对与逐人审批",
+        "en": "Spending plans, cost review, and individual approval"
+      },
+      "entry": {
+        "zh": "ChatGPT → 保存预算草稿；研究记录 → 采用并提交家庭审批；预算详情",
+        "en": "ChatGPT → budget draft; Research records → adopt for approval; budget details"
+      },
+      "prerequisite": {
+        "zh": "已连接正确家庭，至少两位演示登录成员可验证多人审批。",
+        "en": "Correct household connection; at least two demo signed-in members for multi-user approval."
+      },
+      "steps": {
+        "zh": [
+          "说明日期、人数、偏好、上限及已有权益，先让ChatGPT读取家庭依据，再生成带来源和未知项的计划。",
+          "要求保存预算草稿并回读；回研究记录按类型/关键词找到并展开。",
+          "逐项核对数量、单价、商家、费用来源及行程；未知费用保留未知，修改后重新确认。",
+          "选择“采用并提交家庭审批”，打开预算详情；发给家人的审批链接只私下分享。",
+          "每位有效登录成员核对同一当前版本并提交本人意见；修改金额/日期/归属后重新审批。"
+        ],
+        "en": [
+          "Describe dates, party size, preferences, limits, and existing benefits. Have ChatGPT read household context before producing sourced costs and unknowns.",
+          "Ask it to save and read back the budget draft; locate it in Research records.",
+          "Check quantities, prices, merchants, source categories, and itinerary. Preserve unknown costs and reconfirm edits.",
+          "Choose 采用并提交家庭审批, open plan details, and share the approval link privately.",
+          "Every active signed-in member reviews the current version and submits their own opinion. Changes restart approval."
+        ]
+      },
+      "result": {
+        "zh": "全体同意才进入正式预算与日历；草稿保存、采用、审批和到期均不自动扣现金。费用清单合计必须一致。",
+        "en": "Only unanimous approval creates the formal budget/calendar entry. Draft submission, adoption, approval, and due dates never automatically debit cash. Cost totals must agree."
+      },
+      "note": {
+        "zh": "来源报价不代表库存/成交；修改商家或计价条件后重核来源，不能只改小计继续沿用旧报价。",
+        "en": "A sourced quote is not inventory or execution. Recheck evidence after merchant or pricing-condition changes rather than reusing an old quote."
+      },
+      "screenshots": [
+        "S03",
+        "S04"
+      ],
+      "cases": [
+        "C04",
+        "C05",
+        "C06",
+        "C37"
+      ]
+    },
+    {
+      "id": "M11",
+      "title": {
+        "zh": "实付、预付款、消费冲抵、退款与现金流水",
+        "en": "Payments, prepayments, settlement, refunds, and cashflow"
+      },
+      "entry": {
+        "zh": "预算详情 → 记录实际消费；现金流水 → 记实际收支/从图片整理；研究记录 → 实际流水草稿",
+        "en": "Plan details → actual expense; Cashflow → actual entries/images; Research records → cashflow drafts"
+      },
+      "prerequisite": {
+        "zh": "实际事实已核对，明确付款成员、账户、日期、金额与余额覆盖。",
+        "en": "Verified real-world event with an explicit paying member, account, date, amount, and snapshot coverage."
+      },
+      "steps": {
+        "zh": [
+          "已审批计划实际付款：在详情选“实际消费已付款”，填本次实付而非预算总额，选成员/账户和实际日期，确认入账。",
+          "提前付款：选“预订预付款已扣款”；实际消费时选“预付款已实际消费”并关联原预付款。",
+          "未消费部分已退款：选“预付款退款已到账”，核对原预付款和原账户，只退可退余额。",
+          "不关联计划的实际收支从现金流水“记实际收支”或图片草稿开始；图片先做候选校对和排重，再确认。",
+          "已有余额覆盖的历史选择“已包含”，匹配余额核实日期；无法确认就保留草稿。采用后回流水及资产核对，结果不明先查原记录。"
+        ],
+        "en": [
+          "For an approved plan, choose 实际消费已付款, enter this actual payment rather than the budget total, and confirm the member/account/date.",
+          "For advance payment choose 预订预付款已扣款. Later consume it with 预付款已实际消费 linked to the original prepayment.",
+          "For a received refund of unused prepayment, select 预付款退款已到账 and verify the original payment/account and refundable remainder.",
+          "Start unrelated actual income/expenses with 记实际收支 or an image draft. Images require candidate review and deduplication first.",
+          "For history already covered by a balance, choose covered and match the snapshot date. Leave uncertainty as a draft; after adoption inspect cashflow and assets before retrying."
+        ]
+      },
+      "result": {
+        "zh": "预付款先减银行、增预付资产；消费冲抵不再扣银行；退款只将未消费部分退回原账户。已含余额历史只补记录。",
+        "en": "Prepayment debits cash and creates a prepaid asset. Consumption does not debit cash again. Refunds return only unused amounts to the original account. Covered history adds records without another debit."
+      },
+      "note": {
+        "zh": "贷款本金、证券买卖及内部转账使用专用入口。未来工资、预计收益、未付款计划和重复图片都不能当实际收入/费用。",
+        "en": "Use dedicated flows for loan principal, securities, and transfers. Future wages, forecast returns, unpaid plans, and duplicate images are not actual income/expenses."
+      },
+      "screenshots": [
+        "S06",
+        "S07",
+        "S08"
+      ],
+      "cases": [
+        "C07",
+        "C08",
+        "C09",
+        "C10",
+        "C11",
+        "C36",
+        "C39"
+      ]
+    },
+    {
+      "id": "M12",
+      "title": {
+        "zh": "日历、跨日计划、投资复核与取消",
+        "en": "Calendar, multi-day plans, investment follow-ups, and cancellation"
+      },
+      "entry": {
+        "zh": "生活日历 → 月/周、筛选、当天安排与原计划详情",
+        "en": "生活日历 (Calendar) → month/week, filters, selected day, plan details"
+      },
+      "prerequisite": {
+        "zh": "已有批准计划或采用的投资复核；日期未全时列待排期。",
+        "en": "An approved plan or adopted investment follow-up; incomplete dates remain unscheduled."
+      },
+      "steps": {
+        "zh": [
+          "在整月/本周间切换，选择月份和安排类型，再选某日查看当天事项。",
+          "打开计划详情核对整个预算与当日行程；跨日出现不代表每天新增一份预算。",
+          "要调整消费计划选择“到ChatGPT调整”，保持原计划关联，采用新版后重新审批。",
+          "投资研究补复核日期和条件后点“同步复核到日历”；核对“未交易”标识。",
+          "取消时核对计划版本和已发生款项，确认后看取消提示；如提示已取消但列表未刷新，按提示刷新核对，不重复取消或退款。"
+        ],
+        "en": [
+          "Switch month/week views, choose a month and arrangement filter, then select a day.",
+          "Open details and distinguish the full budget from that day’s itinerary. Multi-day display does not create daily copies of the budget.",
+          "Use 到ChatGPT调整 for consumption changes, preserving the original plan link; a new adopted version needs approval.",
+          "Add investment follow-up dates/conditions and choose 同步复核到日历; verify the unexecuted-trade label.",
+          "Before cancellation check the version and actual payments. If cancellation succeeded but refresh failed, refresh and inspect rather than repeating cancellation or refund."
+        ]
+      },
+      "result": {
+        "zh": "取消释放未用预留并保留已付款、预付款及历史；不自动退款。投资复核只是提醒，不下单。",
+        "en": "Cancellation releases unused reserves and preserves payments, prepayments, and history; it does not issue a refund. Investment follow-ups are reminders, not orders."
+      },
+      "note": {
+        "zh": "S05底部有旧待审批候选文案，现行待审批不进正式日历；S18为投资复核示例，不能当消费预算批准图。",
+        "en": "S05 has historical pending-candidate footer text; pending budgets currently stay out of the formal calendar. S18 illustrates investment follow-up, not consumption approval."
+      },
+      "screenshots": [
+        "S05",
+        "S18"
+      ],
+      "cases": [
+        "C12",
+        "C38"
+      ]
+    },
+    {
+      "id": "M13",
+      "title": {
+        "zh": "研究记录、同ID续改与处理历史",
+        "en": "Research records, same-ID updates, and processed history"
+      },
+      "entry": {
+        "zh": "研究记录 → 同步草稿/研究历史与方案；ChatGPT → 续改待核对草稿",
+        "en": "Research records → synchronized drafts/history; ChatGPT → amend a pending draft"
+      },
+      "prerequisite": {
+        "zh": "区分待核对草稿、已采用方案和当前正式计划。",
+        "en": "Distinguish pending drafts, adopted research, and the current formal plan."
+      },
+      "steps": {
+        "zh": [
+          "用待处理/已处理、草稿类型、关键词和分页定位记录；业务页不再分别找草稿箱。",
+          "阅读结构化金额/日期与历史原文提示，原文旧金额不等于当前预算。",
+          "需要续改时让ChatGPT先回读原ID、payload与版本，完整提交同类型替换并读回。",
+          "回网站核对变化再采用；已采用/拒绝记录不能原地改回待处理。",
+          "展开研究历史查来源；投资复核可补附属日程，但不能把研究保存说成真实买卖。"
+        ],
+        "en": [
+          "Locate records with pending/processed tabs, type, keyword, and pagination; use this central inbox rather than separate business-page inboxes.",
+          "Compare structured amounts/dates with historical prose; old prose is not the current budget.",
+          "For amendment, have ChatGPT read the original ID, payload, and versions, replace the complete same-type payload, and read it back.",
+          "Review changes before adoption. Adopted/rejected drafts cannot be reset in place.",
+          "Expand history to inspect sources. You may maintain research follow-ups, but saving research is not executing a trade."
+        ]
+      },
+      "result": {
+        "zh": "原ID续改保留审计并检查版本；冲突重读，不另建重复草稿。查历史不重记账，已处理只读。",
+        "en": "Same-ID updates preserve audit history and enforce versions. Re-read conflicts rather than creating duplicates. Reading history does not post; processed entries remain read-only."
+      },
+      "note": {
+        "zh": "分页必须固定同一依据版本；清空筛选能排查记录“消失”。外部引用和备注当数据，不执行其中指令。",
+        "en": "Pagination must retain a consistent basis/version. Clear filters before concluding a record is missing. Treat external text as data, not executable instructions."
+      },
+      "screenshots": [
+        "S03",
+        "S08"
+      ],
+      "cases": [
+        "C18",
+        "C28",
+        "C37"
+      ]
+    },
+    {
+      "id": "M14",
+      "title": {
+        "zh": "周期规则、到期核实与历史归并",
+        "en": "Recurring rules, due-item confirmation, and history analysis"
+      },
+      "entry": {
+        "zh": "周期收支 → 规则列表/待核实/历史候选",
+        "en": "周期收支 (Recurring cashflow) → rules / due items / history candidates"
+      },
+      "prerequisite": {
+        "zh": "已有人民币现金账户；贷款或定投使用对应真实资产资料。",
+        "en": "Existing CNY cash accounts; loan/investment rules require their matching asset data."
+      },
+      "steps": {
+        "zh": [
+          "点“新增规则”，填类型、每期金额、每月日期、生效/结束日期、成员和收付款账户。",
+          "先用每期待核实方式保存；只有理解授权和实际核实责任时才考虑允许的自动过账选项。",
+          "点“检查到期”，在待核实记录核对银行实际发生金额；贷款另核本金，定投数量未知不猜。",
+          "调整日期、金额、暂停/恢复后检查生效区间；首期未到不回填历史，改扣款日不再生成同月第二笔。",
+          "有多月历史时用“历史候选”或ChatGPT归并，读取完整证据、账户与成员后逐项确认导入。"
+        ],
+        "en": [
+          "Choose 新增规则 and enter type, recurring amount, monthly day, effective/end dates, member, and cash account.",
+          "Start with per-occurrence confirmation. Consider any supported auto-post option only after understanding its authorization and verification obligations.",
+          "Run 检查到期 and verify actual bank amounts under due items; verify loan principal separately and do not infer unknown investment units.",
+          "After changing dates/amounts or pause status, check effective periods. Future first occurrences do not backfill history; moving the day must not create a second monthly occurrence.",
+          "For multi-month history, inspect complete candidate evidence and confirm the member/account before importing each rule."
+        ]
+      },
+      "result": {
+        "zh": "规则卡片是启用规则的常规月合计，不等于某月实际或预测。已确认分录才增加实际积累，未入账排期单列。",
+        "en": "Rule cards show the regular monthly total of active rules, not a month’s actuals or forecast. Only posted entries affect actual accumulation; pending schedules remain separate."
+      },
+      "note": {
+        "zh": "S14是新增规则表单；S15展示月报中的周期联动，不是规则列表截图。到期检查不等于银行已到账。",
+        "en": "S14 is the rule form; S15 is recurring information within the monthly report, not the rule list. A due check does not prove a bank receipt."
+      },
+      "screenshots": [
+        "S14",
+        "S15"
+      ],
+      "cases": [
+        "C24",
+        "C25",
+        "C26",
+        "C28"
+      ]
+    },
+    {
+      "id": "M15",
+      "title": {
+        "zh": "现金预测、年度预算与备款缺口",
+        "en": "Cash forecasts, annual budgets, and funding gaps"
+      },
+      "entry": {
+        "zh": "现金预测；预算与大型支出 → 年度预算",
+        "en": "现金预测 (Forecast); Budgets → 年度预算 (Annual budget)"
+      },
+      "prerequisite": {
+        "zh": "已核对当前现金、周期规则、计划日期和实际付款。",
+        "en": "Reviewed cash snapshots, recurring rules, plan dates, and actual payments."
+      },
+      "steps": {
+        "zh": [
+          "在现金预测选择月份，逐列查看预计收入、周期支出、大型支出尚需、待审批风险和期末现金。",
+          "将预测与规则生效日对照，确认没有把未来首期提前算入；核对未知生活费和未录收入的限制。",
+          "到预算页切“年度预算”，选择年度，看预算、净付款、已消费与尚需金额，不把它们叠加为支出。",
+          "从年度关联计划进入原详情核对；日期不完整的计划先补日期，取消/完成计划历史仍保留。",
+          "期末现金为负时回查计划和规则，不自动变现证券或降低真实账户余额来“修正”预测。"
+        ],
+        "en": [
+          "Select a forecast month and inspect income, recurring outflows, outstanding plan funding, pending-approval risk, and closing cash.",
+          "Compare effective dates; future first occurrences must not be pulled forward. Note omitted unknown living costs and unrecorded income.",
+          "In Annual budget, choose the year and separate budgets, net payments, consumption, and outstanding needs instead of adding them as expenses.",
+          "Open linked plans for reconciliation; resolve missing dates. Completed/cancelled plan history remains stored.",
+          "If forecast cash is negative, inspect inputs; do not silently sell securities or alter real balances to repair the forecast."
+        ]
+      },
+      "result": {
+        "zh": "预测起点是可用人民币银行现金，证券、房产、养老金不当现金；预留、已付与预付不重复扣。预测不生成交易。",
+        "en": "Spendable CNY bank cash is the starting point. Securities, property, and pensions are not cash; reserves/payments/prepayments are not deducted twice. Forecasting posts nothing."
+      },
+      "note": {
+        "zh": "截图待补：S15含月报预测摘要，可识别实际/预计分层，但不是独立现金预测页或年度预算页的截图。",
+        "en": "Screenshot gap: S15 includes a report forecast summary, not the separate forecast or annual-budget screen."
+      },
+      "screenshots": [
+        "S15"
+      ],
+      "cases": [
+        "C23",
+        "C24",
+        "C26"
+      ]
+    },
+    {
+      "id": "M16",
+      "title": {
+        "zh": "月报、不可变归档与ChatGPT复盘",
+        "en": "Monthly reports, immutable archives, and ChatGPT review"
+      },
+      "entry": {
+        "zh": "月度报告 → 月份/报告版本/保存本月报告",
+        "en": "月度报告 (Monthly report) → month / version / save"
+      },
+      "prerequisite": {
+        "zh": "已有本站记录；真实银行账单可能比本站范围更大。",
+        "en": "Recorded app transactions; real bank history may extend beyond the app."
+      },
+      "steps": {
+        "zh": [
+          "选择月份和“最新账目预览”，分别读确认收入、费用、现金净流量和净资产增减。",
+          "展开按成员/原币、关键流水与资产负债核对，检查开账、转账、证券本金和还贷本金的分类。",
+          "看实际积累与未入账周期预计，历史缺期初时保留提示，不把开账当收益。",
+          "核对后点“保存本月报告”；切换“报告版本”查看已保存第N版。",
+          "让ChatGPT按该月完整依据生成总结草稿；回站点核对，依据已变化时重新读取后生成，再采用。"
+        ],
+        "en": [
+          "Choose a month and 最新账目预览. Read income, expense, business cashflow, and net-worth change separately.",
+          "Expand member/original-currency details, key transactions, and asset/liability reconciliation; check opening balances, transfers, securities principal, and loan principal.",
+          "Separate actual accumulation from pending recurring forecasts and preserve unknown-opening-history warnings.",
+          "Choose 保存本月报告, then use 报告版本 to inspect an archived version.",
+          "Ask ChatGPT for a review grounded in the complete monthly context. If its basis changed, regenerate before adoption."
+        ]
+      },
+      "result": {
+        "zh": "归档保存当时数据，不被后来补账改写；新预览/新版本可变化，旧版本不变。同月多版本年度汇总只能按选定规则取一份。",
+        "en": "An archive preserves its original data. New previews/versions may change while earlier versions remain unchanged. Annual totals must not sum multiple versions of the same month."
+      },
+      "note": {
+        "zh": "保存报告不是生成银行对账单，月总结不改账。S13/S16为同月不同归档版本演示，不是一张图证明所有计算。",
+        "en": "Saving a report does not create a bank statement; narrative reviews do not post. S13/S16 illustrate different archives, not complete calculation evidence."
+      },
+      "screenshots": [
+        "S13",
+        "S15",
+        "S16"
+      ],
+      "cases": [
+        "C26",
+        "C27",
+        "C28"
+      ]
+    },
+    {
+      "id": "M17",
+      "title": {
+        "zh": "会员权益、有效期与出行增量成本",
+        "en": "Membership validity and incremental trip costs"
+      },
+      "entry": {
+        "zh": "头像 → 会员权益；日历 → 会员权益",
+        "en": "Avatar or Calendar → 会员权益 (Membership benefits)"
+      },
+      "prerequisite": {
+        "zh": "管理员维护，家人只读；不录卡号、证件或密码。",
+        "en": "Administrator edits; members read. Never store card numbers, identity documents, or passwords."
+      },
+      "steps": {
+        "zh": [
+          "点“新增会员权益”，填名称、品牌、种类、归属、已知等级、覆盖人数和可选已购成本。",
+          "选择未激活/已生效/待核实，填真实生效日期、平台明确到期日或有效天数，未知不勾“无固定到期日”。",
+          "逐条填权益、限制和额外费用，区分每人/每车/每次，记录价格依据与核对日期。",
+          "保存后按出行日期、种类、名称与归属筛选；停用时保留记录。",
+          "规划旅行前让ChatGPT读取会员，计算本次新增支出；未覆盖的人数、车辆、预约和餐饮另核价。"
+        ],
+        "en": [
+          "Choose 新增会员权益 and enter name, brand, type, owner, known tier, covered people, and optional historical cost.",
+          "Select activation status and actual start/platform expiry or duration. Do not mark “no expiry” simply because it is unknown.",
+          "Add benefits, restrictions, and extra charges with per-person/car/visit units, evidence type, and checked date.",
+          "Save and filter by travel date/type/name/owner; deactivate without deleting history.",
+          "Before planning, ask ChatGPT to read benefits and calculate incremental trip costs, including uncovered people, vehicles, reservations, and meals."
+        ]
+      },
+      "result": {
+        "zh": "会员维护不扣银行、不生成资产或消费。已购成本不再次计入本次出游；未知酒店等级不猜折扣，推算有效期要标注。",
+        "en": "Membership maintenance does not debit cash or create assets/expenses. Do not charge sunk purchase cost to a new trip. Unknown hotel tiers yield no invented discount; derived expiry is labeled."
+      },
+      "note": {
+        "zh": "截图待补：现有会员样本沿用旧个人购卡参数，不纳入公开演示。按C31独立构造权益后再采图。",
+        "en": "Screenshot gap: existing membership samples reuse earlier personal purchase parameters and are excluded. Recapture with independent C31 inputs."
+      },
+      "screenshots": [],
+      "cases": [
+        "C31"
+      ]
+    },
+    {
+      "id": "M18",
+      "title": {
+        "zh": "票据附件、重试、登出与常见故障",
+        "en": "Attachments, retries, sign-out, and common recovery"
+      },
+      "entry": {
+        "zh": "计划详情 → 票据与附件；顶部刷新/头像 → 退出登录",
+        "en": "Plan details → 票据与附件; refresh/avatar → sign out"
+      },
+      "prerequisite": {
+        "zh": "附件加密已配置；仅使用演示文件。保存结果不明时先核查原请求。",
+        "en": "Attachment encryption configured; demo files only. Resolve uncertain save results before retrying."
+      },
+      "steps": {
+        "zh": [
+          "在计划详情选PDF/PNG/JPEG/WebP票据，核对预览、名称、大小与计划，明确勾选私密保存后提交。",
+          "单份不超过512KB、每计划最多20份；成功后核对列表和文件选择重置，再决定下一份。",
+          "提示已保存但列表刷新失败时先刷新；连接中断结果不明时检查原结果，不换文件后盲目重传。",
+          "版本冲突先重读，401重新登录，403检查家庭/角色；余额覆盖不明保留草稿，重复疑似项先查历史。",
+          "结束演示时隐藏金额并从头像“退出登录”；共享截图前检查姓名、金额、URL、邀请和附件内容。"
+        ],
+        "en": [
+          "Choose a PDF/PNG/JPEG/WebP in plan details, review its preview/name/size/plan, explicitly confirm private storage, then save.",
+          "Limits are512KB per file and20 per plan. After success inspect the list and cleared selection before the next file.",
+          "If saved but refresh failed, refresh first. For an interrupted unknown result, inspect the original request before changing files and resubmitting.",
+          "Re-read version conflicts, sign in after401, and check household/role after403. Keep uncertain balance coverage as a draft and investigate suspected duplicates.",
+          "Hide amounts and sign out via the avatar after the demo. Inspect names, amounts, URLs, invitations, and receipt content before sharing screenshots."
+        ]
+      },
+      "result": {
+        "zh": "附件私密加密存储，与研究图片引用不同；归档附件保留历史。安全重试不应多存一份，预览不代表已上传成功。",
+        "en": "Attachments are private encrypted files, separate from research image references. Archiving preserves history. Safe retries must not create extra files; a preview does not prove upload success."
+      },
+      "note": {
+        "zh": "S17为隔离附件组件画面，不是生产上传证据。未配置密钥时停止保存并由部署维护者安全配置，不在聊天粘贴密钥。",
+        "en": "S17 is an isolated attachment-component image, not production upload evidence. If encryption is unconfigured, stop and have the deployment maintainer configure it securely; never paste keys into chat."
+      },
+      "screenshots": [
+        "S17"
+      ],
+      "cases": [
+        "C10",
+        "C13",
+        "C33",
+        "C34",
+        "C35",
+        "C36"
+      ]
+    }
+  ],
+  "cases": []
+}

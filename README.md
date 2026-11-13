@@ -1,13 +1,55 @@
 # 家庭财务中心
 
-同一Sites站点的Vinext / React / TypeScript / D1项目。现行开发分支为`codex/chatgpt-mcp-skills`。AI消费、投资、图片理解、周期归并和月度AI总结由ChatGPT及Skill完成；MCP提供受控财务查询和六类待核对草稿，网站保留编辑、家庭审批、真实记账和展示。资产页支持基金股票首次买入、增持和清仓，按实际成交与手续费同步银行现金；不执行银行券商交易。
+**中文** · [English](README.en.md)
 
-新增 Codex 一条 npx 命令安装六个动态 Skill 入口；生活日历直接取消并同步预算取消，保留真实付款与历史。周期 MCP 支持完整流水归并及人工核对。
+用 ChatGPT 整理家庭财务，在网站逐项核对、共同审批并查看账本。覆盖资产与贷款、预算、实际收支、生活日历、周期收支和月度报告。
 
-最新支持家庭自定义资产类型、目标下拉增删和头像账户菜单，详见docs/requirements-asset-types-2026-11-12.md；真实ChatGPT新会话验收见docs/CHATGPT-NEW-CHAT-TEST.md。
+[使用指南与流程截图](docs/USER-GUIDE.md) · [文档导航](docs/README.md) · [开发与验证](docs/DEVELOPMENT.md) · [数据安全](SECURITY.md)
 
-先读docs/requirements-npm-calendar-2026-11-12.md（最新增量）、docs/requirements-chatgpt-mcp-2026-11-12.md（当前迁移）、docs/requirements-consolidated-2026-11-12.md（全量业务规则）和docs/CHATGPT-MCP-SKILLS.md（使用与接续）。旧阶段文档在顶部注明历史，不作为当前配置要求。
+![家庭财务中心演示：建档入口与默认金额隐私模式](docs/assets/workflows/01-onboarding.png)
 
-开发使用Node24、锁文件依赖。验证：`npm run typecheck`、`npm test`、`npm run test:e2e:local`。E2E需要Chrome和Playwright，默认查找work/calendar-qa/node_modules，可通过脚本位置参数指定已有Playwright目录；不需要模型或搜索Key，测试使用独立qa-*.sqlite。`npm run skills:sync`同步内置Skill备份和安装器源；`npm run skills:pack`生成只含通用入口的公开npm包，build时自动生成。`npm run test:e2e:npm-calendar`验证安装、取消及周期全链路。
+*截图来自隔离演示账本。来源、日期与适用范围见[截图说明](docs/assets/workflows/README.md)。*
 
-站点：https://xu-family-finance-20261111.shady-gnat-0277.chatgpt.site。保持同一project_id和原访问范围，使用Sites原生发布；local/server.mjs的模拟身份仅用于本机，不能用作公网服务。源码包不含数据库、密钥、用户截图或依赖缓存。
+## 如何协作
+
+1. 在 ChatGPT 连接自己的家庭财务中心，读取工作流和授权家庭数据。
+2. 整理建档、消费、投资或图片任务，确认后保存为待核对草稿。
+3. 回网站“研究记录”核对金额、账户、日期、来源及余额覆盖情况。
+4. 预算经全体有效登录成员同意后进入正式预算与生活日历。
+5. 实际发生收付款后再核对记账。审批、排期和研究均不自动扣款或交易。
+
+网站不操作银行或券商。公开源码与部署中的私人账本分开；拥有仓库链接不授予家庭财务访问权限。
+
+## 功能入口
+
+| 入口 | 用途 |
+| --- | --- |
+| 财务总览、资产与贷款 | 资产负债、成员归属、自定义类别、目标与受限养老金账户 |
+| 研究记录 | 集中核对七类草稿，查阅研究与处理历史 |
+| 预算与大型支出、生活日历 | 家庭审批、行程、执行、实际消费与投资复核 |
+| 现金流水 | 实际收支、图片候选、预算关联与预付款冲抵 |
+| 周期收支、现金预测、月度报告 | 区分已发生与预计，查看分录汇总及历史归档 |
+| 账户菜单 | 家庭管理、目标、会员权益与工作流集成 |
+
+当前有七个业务工作流入口、十三个财务 MCP 工具；新增连接检查工具已有[本地实现记录](docs/VERIFICATION-PLUGIN-INSTALLATION-2026-11-13.md)，部署数量以当前会话发现为准。财务契约见[接口说明](docs/CHATGPT-MCP-SKILLS.md)。普通使用和 Codex 安装从自己已登录站点的“工作流集成”开始。GitHub 仓库本身不提供已发布的“一键安装插件”。
+
+## 本地开发
+
+建议 Node.js 24；项目声明最低版本为 22.13.0。使用锁文件安装：
+
+```sh
+npm ci
+npm test
+npm run typecheck
+npm run dev:local
+```
+
+预览默认地址为 `http://127.0.0.1:5173`，使用模拟身份与独立 SQLite，只用于本机。浏览器检查、构建和部署边界见[开发说明](docs/DEVELOPMENT.md)。
+
+## 文档与安全状态
+
+README、文档导航、使用指南、开发说明和安全说明提供中英文版本。应用界面当前以中文为主；双语支持指公开指南，历史技术材料暂保留中文。
+
+公开文档已删减个人参数、截图转录和部署回执。旧 Git 提交仍含历史私人文字，历史处理尚未完成；本次不能证明 GitHub 远端、所有分支或生产环境无敏感数据。详见[本轮安全校验](docs/PUBLIC-DATA-REVIEW-2026-11-13.md)。
+
+旧需求与验收记录用于追溯，不能代替当前指南或新验收结果。第三方许可证保留在对应目录；本仓库尚未提供项目级开源许可证。
