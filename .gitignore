@@ -50,3 +50,8 @@ yarn-error.log*
 
 # Generated public npm bootstrap package
 /public/downloads/*.tgz
+/.openai/
+/.idea/
+/.openai/
+/.superpowers/
+/.openai/
