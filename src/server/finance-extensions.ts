@@ -53,7 +53,7 @@ export async function extendFinance(c:any){
   if(options.length>10||items.length>50||new Set(options.map((x:any)=>x.id)).size!==options.length)throw Error('明细或候选数量无效');
   if(items.reduce((n:number,x:any)=>n+x.amount,0)>(p.payload.budget??0))throw Error('明细总额超过正式预算，请重新AI评估');
   const chosen=options.find((x:any)=>x.id===body.selected);if(body.selected&&(!chosen||chosen.amount!==p.payload.budget))throw Error('执行方案金额与正式预算不一致，请重新AI评估');
-  const payload={...p.payload,options,items,selectedOption:body.selected||null};if(p.payload.familyApproval&&JSON.stringify([p.payload.options??[],p.payload.items??[],p.payload.selectedOption??null])!==JSON.stringify([options,items,body.selected||null]))Object.assign(payload,applyFamilyApproval(payload,beginFamilyApproval(p.payload.familyApproval.version+1,state.householdMembers,null,undefined,state.householdRevision)));writeDoc(p.id,'plan',payload);result.id=p.id;return true;
+  const payload={...p.payload,options,items,selectedOption:body.selected||null};if(p.payload.familyApproval&&JSON.stringify([p.payload.options??[],p.payload.items??[],p.payload.selectedOption??null])!==JSON.stringify([options,items,body.selected||null]))Object.assign(payload,{version:(p.payload.version??0)+1},applyFamilyApproval(payload,beginFamilyApproval(p.payload.familyApproval.version+1,state.householdMembers,null,undefined,state.householdRevision)));writeDoc(p.id,'plan',payload);result.id=p.id;return true;
  }
  if(['plan.prepay','plan.consume','plan.prepay.refund'].includes(action)&&day(body.date??new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai'}).format(new Date()))>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai'}).format(new Date()))throw Error('不能提前记录未来实际付款、消费或退款');
  if(action==='plan.prepay'){

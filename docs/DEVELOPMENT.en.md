@@ -52,3 +52,5 @@ Production depends on trusted Sites identity, household authorization, and D1. T
 Keep deployment metadata private and use the legitimate identity of your own deployment. Do not copy someone else's database or replace live metadata with documentation examples. Apply incremental migrations without editing previously applied ones. Separately verify anonymous, nonmember, removed-member, cross-household, and personal-approval behavior without posting production test transactions.
 
 This revision changes documentation and demo images only, not business logic, databases, site audiences, or deployment state.
+
+Localization tests: `npm run test:i18n`. Browser and screenshot acceptance: `npm run test:e2e:i18n`. See [localization maintenance and evidence](UI-I18N.en.md).

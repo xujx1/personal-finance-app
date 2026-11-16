@@ -1,8 +1,9 @@
+import {canManageOwnDraft} from './member-draft-access.mjs';
 import {decimal} from './finance.mjs';
 import {normalizeExpenseDraft} from './expense-plan.mjs';
 
 export function mcpDraftAcceptBody(state,document,payload,checks){
- if(state?.viewer?.canWrite!==true)throw Error('仅账本本人可核对外部草稿');
+ if(!canManageOwnDraft(state,document,payload))throw Error('仅账本本人可核对外部草稿');
  if(document?.payload?.status!=='PENDING')throw Error('此草稿已处理，请刷新核对');
  if(!checks.reviewed)throw Error('请先逐项核对外部分析与金额');
  const kind=document.payload.kind;

@@ -69,3 +69,13 @@ Address known fixture and history remnants, then review GitHub refs and release 
 后续补充18章完整操作手册、40项关键案例和单文件中英文图文版，截图总数由8增至18。关联20个既有测试文件本轮重跑144项通过；40项手工演示仍标not_run，旧截图不当新验收。来源、算术与浏览器限制见[本轮产品文档校验](manual/VERIFICATION.md)。旧历史和夹具风险不因文档补齐消失。
 
 The follow-up adds18 chapters,40 cases, and a standalone bilingual illustrated edition, expanding reviewed images from8 to18. Twenty existing test files were rerun with144 passes; all40 manual executions remain not_run. See [verification](manual/VERIFICATION.md). Existing history/fixture findings remain open.
+
+## 2026-11-16 GitHub同步前增量核查 / Incremental GitHub review
+
+当前仓库经GitHub接口确认是公开仓库，本次保持可见性。新增发布/验收文档已整理为公开摘要，生产回执、本机路径及完整本地证据不进入此次提交。修改和新增文件扫描未检出常见真实凭据或私人邮箱；应用ID格式的唯一命中为显式fixture反例。当前可达历史1490个blob的常见凭据模式检查无命中；这不关闭上文已记录的个人文字和历史夹具来源风险，也不等于全面秘密检测。此次不改写历史、不强制推送。
+
+GitHub metadata confirms the repository is public; visibility is unchanged. New publication/acceptance records were reduced to public summaries, excluding production receipts, local paths and full private evidence. Changed/new file scans found no common real credential or private-email patterns; the app-ID-format match is an explicit fixture counterexample. Common credential checks over1,490 reachable historical blobs found no matches. Existing private-prose and fixture-provenance findings remain open; this is not comprehensive secret detection. No history rewrite or force-push is included.
+
+本次准备同步的代码与已验收v63业务源码一致，fresh768项测试和类型检查通过；更新文档的本地链接与双语配对通过。公开插件仍因身份、组织付款及发卡地区资格受阻，见[发布状态](PUBLIC-PLUGIN-RELEASE-2026-11-16.md)。本次同步不部署站点、不写生产账目。
+
+The source being synchronized matches reviewed v63 business code; a fresh768-test suite and typecheck passed. Updated local documentation links and bilingual pairs passed. Public plugin publication remains blocked on identity, organization payment and card-issuance eligibility; see [publication status](PUBLIC-PLUGIN-RELEASE-2026-11-16.en.md). This synchronization does not deploy the site or write production financial data.

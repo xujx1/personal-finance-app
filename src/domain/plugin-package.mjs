@@ -1,7 +1,7 @@
 import {SKILL_ENTRIES,bootstrapSkill} from './skill-cli.mjs';
 
 export const FINANCE_PLUGIN_VERSION='1.0.0';
-export const FINANCE_WEBSITE='https://xu-family-finance-20261111.shady-gnat-0277.chatgpt.site';
+export const FINANCE_WEBSITE='https://family-finance.shady-gnat-0277.chatgpt.site';
 export const CONNECTION_SKILL=`---
 name: family-finance-connection
 description: 安装家庭财务中心插件后检查当前会话的MCP、登录家庭及权限，或排查技能已安装但无法读取站点的问题。

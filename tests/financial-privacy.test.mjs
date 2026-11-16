@@ -19,7 +19,7 @@ const component=path=>componentUrl(new URL(path,import.meta.url)).then(url=>impo
 
 test('financial prose masks amounts, holdings and percentages while preserving dates and ordinary titles',()=>{
  for(const value of ['余额12345.67元','本金 18万元，利息260.91元','持仓25股，收益率-2.5%','USD 123.45','银行现金 57532.02 CNY','月供1500，数量123.456份','**预算**：300','**¥ 123.45**','单价：**456.78** 元'])assert.doesNotMatch(redactFinancialText(value),/12345|260.91|25股|2.5%|123.45|57532|1500|123.456|300|456.78/);
- for(const value of ['2026-11-12 · 家庭旅行','2026年11月报告','纳斯达克100指数','查看预算与大型支出','报价来源与缓存详情','计划11月14日出发，2位成人'])assert.equal(redactFinancialText(value),value);
+ for(const value of ['2026-11-12 · 家庭旅行','2026年11月报告','纳斯达克100指数','查看预算计划','报价来源与缓存详情','计划11月14日出发，2位成人'])assert.equal(redactFinancialText(value),value);
 });
 
 test('default hidden values omit sensitive children and aria labels while explicit reveal restores them',async()=>{

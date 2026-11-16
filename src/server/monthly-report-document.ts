@@ -9,7 +9,7 @@ const checkMonth=(month:any)=>{
  return month;
 };
 const copy=(value:any)=>JSON.parse(JSON.stringify(value));
-const semanticBasis=(basis:any)=>({month:basis.month,report:basis.report,memberCashflow:basis.memberCashflow,memberJournalActivity:basis.memberJournalActivity,plans:basis.plans,goal:basis.goal,monthlyAccumulation:basis.monthlyAccumulation,rules:basis.rules,accounts:basis.accounts,forecast:basis.forecast});
+const semanticBasis=(basis:any)=>({month:basis.month,report:basis.report,memberCashflow:basis.memberCashflow,memberJournalActivity:basis.memberJournalActivity,plans:basis.plans,goal:basis.goal,monthlyAccumulation:basis.monthlyAccumulation,rules:basis.rules,accounts:basis.accounts,forecast:basis.forecast,siteContext:basis.siteContext});
 
 /** Freeze server-derived report facts; this function never changes the ledger. */
 export async function buildMonthlyReportDocument(db:any,state:any,month:string,context?:any){
@@ -43,7 +43,7 @@ export async function buildMonthlyReportDocument(db:any,state:any,month:string,c
   if(stale&&storedBasis?.month===month&&storedBasis.report)stale=await evidenceHash(semanticBasis(storedBasis))!==await evidenceHash(semanticBasis(basis));
   aiReview={id:review.id,...payload,stale};
  }
- const document:any={schemaVersion:1,month,asOf:basis.asOf,sourceRevision:state.book.revision,basisFingerprint:basis.basisFingerprint,ledger:basis.report,memberCashflow:basis.memberCashflow,memberJournalActivity:basis.memberJournalActivity,monthlyAccumulation:basis.monthlyAccumulation,goal:basis.goal,flows,nextMonth:nextMonthForecast,aiReview,coverage:basis.coverage};
+ const document:any={schemaVersion:2,siteContext:basis.siteContext,month,asOf:basis.asOf,sourceRevision:state.book.revision,basisFingerprint:basis.basisFingerprint,ledger:basis.report,memberCashflow:basis.memberCashflow,memberJournalActivity:basis.memberJournalActivity,monthlyAccumulation:basis.monthlyAccumulation,goal:basis.goal,flows,nextMonth:nextMonthForecast,aiReview,coverage:basis.coverage};
  // Context's basisFingerprint includes its observation date. Hash the underlying
  // facts instead, so merely saving an archive or rereading it on another day
  // cannot create another version. Current forecast values remain part of it.
@@ -61,6 +61,8 @@ export async function extendMonthlyReports(c:any){
  if(ds!==state.book.active_dataset)throw Error('CONFLICT:账本已变化，请重新读取月报');
  const document=await buildMonthlyReportDocument(db,state,body.month);
  if(document.fingerprint!==body.expectedFingerprint)throw Error('CONFLICT:月报内容已变化，请重新核对后保存');
+ if(!document.aiReview)throw Error('请先核对采用本月总结，再保存月度报告');
+ if(document.aiReview.stale)throw Error('月报总结依据已过期，请重新生成并核对后保存');
  const archives=state.documents.filter((d:any)=>d.kind==='monthly_report_archive'&&d.payload.month===body.month),existing=archives.find((d:any)=>d.payload.fingerprint===document.fingerprint);
  if(existing){Object.assign(result,{id:existing.id,version:existing.payload.version,fingerprint:document.fingerprint});return true;}
  const version=archives.reduce((max:number,d:any)=>Math.max(max,Number.isSafeInteger(d.payload.version)&&d.payload.version>0?d.payload.version:0),0)+1;

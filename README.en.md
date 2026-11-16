@@ -28,9 +28,9 @@ The app does not operate bank or brokerage accounts. Public source code is separ
 
 | Area | Purpose |
 | --- | --- |
-| Overview, assets and loans | Assets, liabilities, ownership, custom types, goals, restricted pension accounts |
+| Overview, current assets | Assets, liabilities, ownership, custom types, goals, restricted pension accounts |
 | Research records | Review seven draft types and browse research and processing history |
-| Budgets and calendar | Household approval, itineraries, execution, actual expenses, investment follow-ups |
+| Budget plans and calendar | Household approval, itineraries, execution, actual expenses, investment follow-ups |
 | Cashflow | Actual income and expenses, image candidates, budget links, prepayment settlement |
 | Recurring items, forecasts, monthly reports | Separate actual and forecast values; inspect journal summaries and archives |
 | Account menu | Household management, goals, memberships, workflow integration |
@@ -52,7 +52,9 @@ The preview defaults to `http://127.0.0.1:5173`, with simulated identities and s
 
 ## Documentation and security status
 
-The README, index, user guide, development guide, and security policy are bilingual. The application UI remains primarily Chinese. Historical engineering references remain Chinese and are labeled accordingly.
+As of 2026-11-16, controlled release v63 is deployed and eight confirmed issues were fixed and independently retested by the relevant reviewers. The current account can read its private plugin workflows. Public submission is blocked on developer identity, organization payment and card-issuance eligibility; other real ChatGPT accounts and physical iPad acceptance remain open. See [publication and household access](docs/PUBLIC-PLUGIN-RELEASE-2026-11-16.en.md) and the [Chinese acceptance record](docs/RELEASE-ACCEPTANCE-2026-11-16.md). A GitHub push does not publish a plugin or expand private-ledger access.
+
+The product top bar and household join page offer Chinese / English switching for navigation, forms, system statuses, notices and validation errors. Preferences are saved locally; account names, notes and historical analysis retain their original text. See [product localization and key cases](docs/UI-I18N.en.md). Public user documentation is also bilingual. Display currency defaults to USD in English and CNY in Chinese, with a manual override. Summaries use a valid reference exchange rate while ledger records and input forms retain their actual currencies.
 
 Personal parameters, screenshot transcriptions, and deployment receipts have been removed from public documents. Older Git commits still contain private prose; history cleanup is outstanding. This review does not certify GitHub's remote branches or production security. See the [current review](docs/PUBLIC-DATA-REVIEW-2026-11-13.md).
 

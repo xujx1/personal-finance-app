@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {SKILL_ENTRIES} from '../src/domain/skill-cli.mjs';
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -53,7 +54,7 @@ try{
  page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>pageErrors.push(e.message));
  await check('空家庭显示六步建档入口，基础类别存在但未替用户设置400万元目标',async()=>{
   await page.goto(url,{waitUntil:'networkidle'});const start=page.getByRole('region',{name:'家庭财务建档',exact:true});await start.waitFor();assert.equal(await start.locator('.household-steps > div').count(),6);await start.getByRole('button',{name:/开始家庭财务建档/}).waitFor();
-  const s=await state(),c=await call('get_financial_context');assert.equal(s.accounts.filter(a=>a.category!=='system').length,0);assert.equal(s.documents.filter(d=>d.kind==='savings_goal').length,0);assert.equal(c.onboarding.empty,true);assert.equal(c.onboarding.goalConfigured,false);assert.equal(c.onboarding.steps.find(s=>s.key==='asset_types').status,'ready');assert.ok(c.assetTypes.length>=14);assert.equal((await call('get_skill_bundle')).skills.length,6);await screenshot('01-empty-desktop');
+  const s=await state(),c=await call('get_financial_context');assert.equal(s.accounts.filter(a=>a.category!=='system').length,0);assert.equal(s.documents.filter(d=>d.kind==='savings_goal').length,0);assert.equal(c.onboarding.empty,true);assert.equal(c.onboarding.goalConfigured,false);assert.equal(c.onboarding.steps.find(s=>s.key==='asset_types').status,'ready');assert.ok(c.assetTypes.length>=14);assert.equal((await call('get_skill_bundle')).skills.length,SKILL_ENTRIES.length);await screenshot('01-empty-desktop');
  });
  await check('建档按钮准备家庭私有onboarding任务，再打开ChatGPT入口',async()=>{
   await page.getByRole('region',{name:'家庭财务建档',exact:true}).getByRole('button',{name:/开始家庭财务建档/}).click();const start=page.getByRole('region',{name:'家庭财务建档',exact:true});await start.getByRole('button',{name:'交给ChatGPT ↗',exact:true}).waitFor();
@@ -61,7 +62,7 @@ try{
   const s=await state(),request=s.documents.find(d=>d.kind==='research_request'&&d.payload.kind==='onboarding');assert.ok(request);assert.match(request.payload.question,/每次只问当前关键缺项/);assert.equal((await call('get_financial_context')).onboarding.steps.length,6);await screenshot('02-workflow-task');
  });
  await check('已有资产专用任务保持单一入口，普通工作流导航恢复家庭建档入口',async()=>{
-  await nav('资产与贷款');await page.getByRole('button',{name:'通过ChatGPT登记',exact:true}).click();assert.equal(await page.getByRole('region',{name:'家庭财务建档',exact:true}).count(),0);assert.equal(await page.getByRole('button',{name:'交给ChatGPT ↗',exact:true}).count(),1);
+  await nav('资产现状');await page.getByRole('button',{name:'通过ChatGPT登记',exact:true}).click();assert.equal(await page.getByRole('region',{name:'家庭财务建档',exact:true}).count(),0);assert.equal(await page.getByRole('button',{name:'交给ChatGPT ↗',exact:true}).count(),1);
   await nav('工作流集成');await page.getByRole('region',{name:'家庭财务建档',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'交给ChatGPT ↗',exact:true}).count(),1);
  });
  let spouse,kid,bank,zero,fund,loan,firstRule;
@@ -75,14 +76,14 @@ try{
   const before=await state(),d=await stage('setup',setup('asset_types',{additions:[{id:'onboarding_education',name:'模拟教育基金',baseCategory:'fund',goalBucket:null}]}));await reload('工作流集成');await adoptSetup(d.id);const s=await state(),catalogue=s.documents.find(d=>d.kind==='asset_type_catalog');assert.equal(catalogue.payload.types.length,16);assert.ok(catalogue.payload.types.some(t=>t.id==='onboarding_education'&&t.enabled));assert.deepEqual(s.accounts,before.accounts);assert.deepEqual(s.transactions,before.transactions);
  });
  await check('已有本人现金仅建立OPENING分录，不记新收入且草稿提交本身不改账',async()=>{
-  const d=await stage('asset',asset('模拟本人工行余额','cash','1000.00','user:'+owner));assert.equal((await state()).accounts.filter(a=>a.category==='cash').length,0);await reload('资产与贷款');bank=await adoptActual(d.id,'asset');const s=await state();assert.equal(s.accounts.find(a=>a.id===bank).balance,100000);assert.equal(s.accounts.find(a=>a.id===bank).metadata.ownerMemberId,'user:'+owner);assert.equal(s.transactions.length,1);assert.equal(s.transactions[0].kind,'OPENING');
+  const d=await stage('asset',asset('模拟本人工行余额','cash','1000.00','user:'+owner));assert.equal((await state()).accounts.filter(a=>a.category==='cash').length,0);await reload('资产现状');bank=await adoptActual(d.id,'asset');const s=await state();assert.equal(s.accounts.find(a=>a.id===bank).balance,100000);assert.equal(s.accounts.find(a=>a.id===bank).metadata.ownerMemberId,'user:'+owner);assert.equal(s.transactions.length,1);assert.equal(s.transactions[0].kind,'OPENING');
  });
  await check('只有一笔银行开账也能核对明确20000元未来工资，规则默认不自动入账且不补历史工资',async()=>{
   const before=await state();assert.equal(before.transactions.length,1);assert.equal((await call('get_recurring_candidates')).candidates.length,0);const d=await stage('setup',recurring(bank,'user:'+owner));await reload('工作流集成');firstRule=await adoptSetup(d.id);const s=await state(),rule=s.documents.find(d=>d.id===firstRule).payload;assert.equal(rule.amount,2000000);assert.equal(rule.autoPost,false);assert.equal(rule.principal,null);assert.equal(rule.start,future);assert.deepEqual(s.accounts,before.accounts);assert.deepEqual(s.transactions,before.transactions);assert.equal(s.transactions.some(t=>t.kind==='INCOME'),false);
  });
  await check('配偶零余额现金、宝宝基金和配偶贷款按真实成员ID登记，不扣已有现金',async()=>{
   for(const [name,category,amount,memberId,extra] of [['模拟配偶零余额银行','cash','0.00',spouse,{}],['模拟宝宝教育基金','fund','500.00',kid,{assetTypeId:'onboarding_education'}],['模拟配偶贷款','loan','100000.00',spouse,{}]]){
-   const before=await state(),d=await stage('asset',asset(name,category,amount,memberId,extra));await reload('资产与贷款');const id=await adoptActual(d.id,'asset'),s=await state(),a=s.accounts.find(a=>a.id===id);assert.equal(a.metadata.ownerMemberId,memberId);assert.equal(s.accounts.find(a=>a.id===bank).balance,100000);if(category==='cash'){zero=id;assert.equal(a.balance,0);assert.equal(s.transactions.length,before.transactions.length)}else if(category==='fund'){fund=id;assert.equal(a.balance,50000)}else{loan=id;assert.equal(a.balance,10000000)}
+   const before=await state(),d=await stage('asset',asset(name,category,amount,memberId,extra));await reload('资产现状');const id=await adoptActual(d.id,'asset'),s=await state(),a=s.accounts.find(a=>a.id===id);assert.equal(a.metadata.ownerMemberId,memberId);assert.equal(s.accounts.find(a=>a.id===bank).balance,100000);if(category==='cash'){zero=id;assert.equal(a.balance,0);assert.equal(s.transactions.length,before.transactions.length)}else if(category==='fund'){fund=id;assert.equal(a.balance,50000)}else{loan=id;assert.equal(a.balance,10000000)}
   }
   const s=await state();assert.equal(s.transactions.every(t=>t.kind==='OPENING'),true);assert.equal(s.transactions.length,3);
  });
@@ -103,7 +104,7 @@ try{
  await check('跨成员、外部账户和额外自动入账字段不能通过ChatGPT草稿提交',async()=>{
   const invalid=[recurring(bank,spouse),recurring('foreign-account','user:'+owner),recurring(bank,'user:foreign'),recurring(bank,'user:'+owner,{autoPost:true}),setup('members',{members:[{name:'试图关联外人',linkedUserId:outsider}]})];const before=await state();for(const payload of invalid){const r=await rpc('submit_finance_draft',{kind:'setup',payload,request_id:crypto.randomUUID(),expected_revision:(await state()).book.revision});assert.equal(r.value.result.isError,true,JSON.stringify(r))}const s=await state();assert.deepEqual(s.accounts,before.accounts);assert.deepEqual(s.transactions,before.transactions);assert.equal(s.documents.length,before.documents.length);
  });
- await check('只读家人只能查看不能提交或采用，外人和未登录者无法读取或操作家庭草稿',async()=>{
+ await check('普通家人不能提交或采用家庭配置，外人和未登录者无法读取或操作家庭草稿',async()=>{
   const family=(await json('/api/family')).value,invite=(await json('/api/family',{body:{action:'invite',revision:family.family.revision}})).value;await json('/api/family',{user:viewer,body:{action:'accept',token:invite.token}});
   const p=setup('members',{members:[{name:'模拟只读待核对'}]}),d=await stage('setup',p),before=await state(),readContext=await browser.newContext({extraHTTPHeaders:{'x-local-qa-user':viewer}}),readPage=await readContext.newPage();await readPage.goto(url,{waitUntil:'networkidle'});await nav('工作流集成',readPage);const c=await open(d.id,readPage);assert.equal(await c.getByRole('checkbox',{name:'我已核对家庭建档资料',exact:true}).isDisabled(),true);assert.equal(await c.getByRole('button',{name:'核对并保存建档资料',exact:true}).isDisabled(),true);assert.equal((await rpc('submit_finance_draft',{kind:'setup',payload:p,request_id:crypto.randomUUID(),expected_revision:before.book.revision},viewer)).value.result.isError,true);assert.equal((await command('mcp.draft.accept',{draftId:d.id,confirmed:true,reviewedPayload:p},{user:viewer,allowError:true})).status,403);await readContext.close();
   for(const user of [outsider,'not-a-user']){const status=user===outsider?403:401;assert.equal((await json('/api/finance',{user,allowError:true})).status,status);assert.equal((await rpc('get_financial_context',{},user)).status,status);assert.equal((await rpc('submit_finance_draft',{kind:'setup',payload:p,request_id:crypto.randomUUID(),expected_revision:before.book.revision},user)).status,status);assert.equal((await command('mcp.draft.accept',{draftId:d.id,confirmed:true,reviewedPayload:p},{user,allowError:true})).status,status)}

@@ -93,8 +93,16 @@ Investment research preserves conclusions and sources; follow-ups are marked as 
 | --- | --- |
 | Missing draft | Confirm the household, read the draft back, clear filters, refresh |
 | Conflict or uncertain save | Read ledger and original draft status before creating anything again |
-| Read-only access | Check the role; members may submit their own budget opinions, not general financial changes |
+| Read-only access | Check the role; members may review/revise plans, create their own opening assets and review their own asset/cashflow drafts; general financial writes remain restricted |
 | Installer returns 401 | Follow your own signed-in site's instructions; never publish credentials or private links |
 | Older model instructions | Follow current workflows; retired model, search, and vision keys are no longer required |
 
 See [data security](../SECURITY.en.md). Real-client acceptance is separate; follow the [Chinese new-chat checklist](CHATGPT-NEW-CHAT-TEST.md).
+
+## Product language
+
+Choose **中文 / English** in the product top bar or household join page. Your choice is saved locally; record names, notes and historical analysis keep their original text. See [product localization](UI-I18N.en.md) for behavior, data boundaries and key cases.
+
+Auto display currency uses USD for English and CNY for Chinese. Select USD/CNY manually to override it. Reference conversion shows a source and date; bookkeeping retains the actual currency.
+
+See [plugin publication status](PUBLIC-PLUGIN-RELEASE-2026-11-16.en.md) for private connections, public submission and payment/regional eligibility. A website invitation does not install or authorize another account's ChatGPT plugin.

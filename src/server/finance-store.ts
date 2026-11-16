@@ -1,3 +1,5 @@
+import {validateManualAsset} from '../domain/manual-asset.mjs';
+import {reviseFamilyPlan} from '../domain/plan-revision.mjs';
 import {normalizeFollowUps} from '../domain/investment-followups.mjs';
 import {normalizePension,isPensionAccount,PENSION_TYPE,validatePensionProductTypes} from '../domain/pension.mjs';
 import {consumptionTypeOf,consumptionTypeForWrite} from '../domain/consumption.mjs';
@@ -7,7 +9,7 @@ import {extendFinance} from './finance-extensions.ts';
 import { minor, decimal, balanceJournal } from '../domain/finance.mjs';
 import {normalizeProposal} from '../domain/research.mjs';
 import {normalizeExpenseDraft,expenseResearchNeedsRegeneration,consumptionAdviceNeedsRiskAcknowledgement} from '../domain/expense-plan.mjs';
-import {beginFamilyApproval,currentFamilyApproval,approveFamilyPlan,applyFamilyApproval} from '../domain/family-approval.mjs';
+import {beginFamilyApproval,currentFamilyApproval,approveFamilyPlan,rejectFamilyPlan,applyFamilyApproval} from '../domain/family-approval.mjs';
 import {normalizeLoanMetadata} from '../domain/loan.mjs';
 import {normalizeDepositMetadata} from '../domain/deposit.mjs';
 import {buildFinanceMembers,accountMember,resolveFinanceMember,ownerFields,captureAccountOwners,normalizeMemberProfile} from '../domain/member-ownership.mjs';
@@ -83,7 +85,7 @@ export async function snapshot(db:DB){
 export async function executeCommand(db:DB,input:any,actor:string,options:{signal?:AbortSignal}={}){
  options.signal?.throwIfAborted();
  const key=text(input.key,150), action=text(input.action,40), body=input.body??{};
- const approvalOnly=action==='plan.approve';await assertLedgerAccess(db,!approvalOnly);if((db as any).ledgerScope&&(db as any).ledgerScope.userId!==actor)throw Error('操作人必须是本人');const bookId=ledgerBookId(db);
+ const memberAction=['plan.approve','plan.reject','plan.revise','account.create','mcp.draft.submit','mcp.draft.update','mcp.draft.accept','mcp.draft.reject'].includes(action);await assertLedgerAccess(db,!memberAction);if((db as any).ledgerScope&&(db as any).ledgerScope.userId!==actor)throw Error('操作人必须是本人');const bookId=ledgerBookId(db);
  const fingerprint=await hash(JSON.stringify(canonical({action,body})));
  const book=await ensureBook(db),ds=book.active_dataset;
  const previous:any=await db.prepare('SELECT * FROM commands WHERE book_id=? AND dataset_id=? AND idempotency_key=?').bind(bookId,ds,key).first();
@@ -176,7 +178,8 @@ writeDoc(id,'research_proposal',{...payload,consumptionType:consumptionTypeForWr
   writeDoc(id,'plan',applyFamilyApproval({...old,...planOwner,...riskAcknowledgement,name:text(body.name??a.payload.inputs.question.slice(0,50),100),category:text(body.category??old.category??'其他',30),date:a.payload.inputs.date,end:a.payload.expenseEnd??(old.end&&old.end>=a.payload.inputs.date?old.end:a.payload.inputs.date),consumptionType:consumptionTypeForWrite({expenseDraft}),...(expenseDraft?{expenseDraft,itinerary:expenseDraft.itinerary,items:expenseDraft.items.filter((x:any)=>x.selected),comparisons:expenseDraft.comparisons}:{}),budget:a.payload.inputs.budgetMinor,status:old.status??'PLANNED',reserved:Math.min(old.reserved??0,Math.max(0,a.payload.inputs.budgetMinor-Number(state.planSummaries.find((x:any)=>x.planId===id)?.paid??0))),budgetStatus:'APPROVED',version:(old.version??0)+1,approvedAt:new Date().toISOString(),note:old.note??'本人采纳消费建议，实际付款另行记录',adviceId:a.id},beginFamilyApproval((old.familyApproval?.version??old.version??0)+1,state.householdMembers,actor,undefined,state.householdRevision)));
   writeDoc(a.id,'advice',{...a.payload,...riskAcknowledgement,status:'ACCEPTED',planId:id,acceptedAt:new Date().toISOString()});result.id=id;
   }
- }else if(action==='account.save'){
+ }else if(action==='account.save'||action==='account.create'){
+  if(action==='account.create')validateManualAsset(body,state,actor);
   const id=body.id?text(body.id):uid(), existing=state.accounts.find((a:any)=>a.id===id);
   const category=text(body.category,30);if(!['cash','term_deposit','fund','stock','property','loan','other'].includes(category))throw Error('资产类型无效');
   const currency=body.currency==='USD'?'USD':'CNY';const kind=category==='loan'?'LIABILITY':'ASSET';
@@ -192,7 +195,7 @@ writeDoc(id,'research_proposal',{...payload,consumptionType:consumptionTypeForWr
   stagedAccounts.push({id,name:text(body.name,100),kind,category,currency,metadata});
   rows.push(db.prepare('INSERT INTO accounts VALUES(?,?,?,?,?,?,0,?) ON CONFLICT(dataset_id,id) DO UPDATE SET name=excluded.name,metadata=excluded.metadata').bind(ds,id,text(body.name,100),kind,category,currency,JSON.stringify(metadata)));
   const amount=minor(String(body.amount));const target=kind==='LIABILITY'?-amount:amount;const delta=target-(existing?.signed_balance??0);
-  if(delta)journal(existing?'ADJUSTMENT':'OPENING',Math.abs(delta),[{account_id:id,currency,amount:delta},entry(system('equity',currency),-delta)],{reason:String(body.reason??'手工核对余额'),accountId:id});result.id=id;
+  if(delta)journal(existing?'ADJUSTMENT':'OPENING',Math.abs(delta),[{account_id:id,currency,amount:delta},entry(system('equity',currency),-delta)],{reason:String(body.reason??'手工核对余额'),accountId:id,...(action==='account.create'?{businessDate:body.asOf,source:'manual_opening'}:{})});result.id=id;
  }else if(action==='account.archive'){
   const a=account(body.id);if(a.category==='system'||a.balance!==0)throw Error('请先核对余额并归零，或转出资金，再归档');rows.push(db.prepare('UPDATE accounts SET archived=1 WHERE dataset_id=? AND id=?').bind(ds,a.id));
  }else if(action==='transaction.add'||action==='transaction.record'){
@@ -206,6 +209,10 @@ writeDoc(id,'research_proposal',{...payload,consumptionType:consumptionTypeForWr
   journal(income?'INCOME':'EXPENSE',n,e,{consumptionType:consumptionTypeForWrite(body),note:text(body.note,300),accountId:a.id,relatedAssetId:body.relatedAssetId?account(body.relatedAssetId).id:null});
  }else if(action==='plan.approve'){
   if(Object.keys(body).some(k=>!['planId','version','confirmed'].includes(k)))throw Error('只能提交本人审批，审批人字段无效');if(body.confirmed!==true)throw Error('请本人确认审批');const p=doc(text(body.planId));if(p.kind!=='plan'||['COMPLETED','CANCELLED'].includes(p.payload.status))throw Error('计划不存在或已结束');writeDoc(p.id,'plan',approveFamilyPlan(p.payload,state.householdMembers,actor,body.version,undefined,state.householdRevision));result.id=p.id;
+ }else if(action==='plan.reject'){
+  if(Object.keys(body).some(k=>!['planId','version','reason','confirmed'].includes(k))||body.confirmed!==true)throw Error('请本人确认拒绝，不能指定其他审批人');const p=doc(text(body.planId));if(p.kind!=='plan'||['CANCELLED','COMPLETED'].includes(p.payload.status))throw Error('计划不存在或已结束');writeDoc(p.id,'plan',rejectFamilyPlan(p.payload,state.householdMembers,actor,body.version,body.reason,undefined,state.householdRevision));result.id=p.id;
+ }else if(action==='plan.revise'){
+  const p=doc(text(body.planId));if(p.kind!=='plan')throw Error('计划不存在');const next=reviseFamilyPlan(p.payload,body,state,actor);writeDoc(uid(),'plan_revision',{planId:p.id,previousPlan:p.payload,revisedBy:actor,revisedAt:next.revisedAt});writeDoc(p.id,'plan',next);result.id=p.id;result.version=next.version;
  }else if(action==='plan.schedule'){
   if(body.confirmed!==true)throw Error('请本人确认未来预算计划');const budget=minor(String(body.budget));if(!budget)throw Error('计划预算必须大于0');const when=date(body.date);if(when<=localDate())throw Error('请填写未来计划日期');const principal=body.principal==null?null:minor(String(body.principal)),interest=body.interest==null?null:minor(String(body.interest));const loan=body.loanId?account(text(body.loanId)):null;if(loan&&(loan.kind!=='LIABILITY'||loan.currency!=='CNY'))throw Error('贷款账户无效');if(loan&&(principal===null||interest===null||principal+interest!==budget||principal>loan.balance))throw Error('预计本金与利息须等于计划预算且不超过贷款余额');if(!loan&&(principal!==null||interest!==null))throw Error('请关联贷款账户');const id=uid();const payload:any={...chosenOwner(body.ownerMemberId,'user:'+actor),name:text(body.name,100),consumptionType:consumptionTypeForWrite(body),category:loan?'提前还贷':'未来计划',date:when,end:when,budget,status:'PLANNED',budgetStatus:'APPROVED',version:1,reserved:0,approvedAt:new Date().toISOString(),scheduleOnly:true,loanId:loan?.id??null,principal,interest,repaymentMode:loan?'reduce_monthly_keep_term':null,note:loan?'预计本金和利息，期限不变减少月供；只作计划，实际还款另行确认':'本人确认的未来计划，尚未付款'};Object.assign(payload,applyFamilyApproval(payload,beginFamilyApproval(1,state.householdMembers,actor,undefined,state.householdRevision)));writeDoc(id,'plan',payload);result.id=id;
  }else if(action==='plan.cancel'){
@@ -222,7 +229,7 @@ writeDoc(id,'research_proposal',{...payload,consumptionType:consumptionTypeForWr
   const changed=old.budget!==undefined&&(old.budget!==budget||datesChanged);
   const planOwner=body.ownerMemberId===undefined&&old.ownerMemberId?{ownerMemberId:old.ownerMemberId,ownerLabel:old.ownerLabel,ownerSubject:old.ownerSubject??null}:chosenOwner(body.ownerMemberId,'family');
   const payload={...old,...planOwner,consumptionType:consumptionTypeForWrite({...body,consumptionType:body.consumptionType??old.consumptionType,expenseDraft:old.expenseDraft}),name:text(body.name,100),category:text(body.category??'其他',30),date:date(body.date),end:date(body.end??body.date),budget,status,note:String(body.note??'').slice(0,3000),reserved:['COMPLETED','CANCELLED'].includes(status)?0:old.reserved??0,budgetStatus:approved?'APPROVED':changed?'DRAFT':old.budgetStatus??'DRAFT',version:(old.version??0)+(approved?1:0),approvedAt:approved?new Date().toISOString():old.approvedAt??null};
-  if(payload.end<payload.date)throw Error('结束日期不能早于开始日期');const meaningfullyChanged=(consumptionTypeOf(old)!==payload.consumptionType||['name','category','date','end','budget','ownerMemberId','ownerSubject','note'].some(k=>(old[k]??null)!==((payload as any)[k]??null)));if(old.familyApproval&&meaningfullyChanged)Object.assign(payload,applyFamilyApproval(payload,beginFamilyApproval((old.familyApproval.version??old.version??0)+1,state.householdMembers,null,undefined,state.householdRevision)));else if(approved&&state.household)Object.assign(payload,applyFamilyApproval(payload,beginFamilyApproval((old.familyApproval?.version??old.version??0)+1,state.householdMembers,actor,undefined,state.householdRevision)));writeDoc(id,'plan',payload);result.id=id;
+  if(payload.end<payload.date)throw Error('结束日期不能早于开始日期');const meaningfullyChanged=(consumptionTypeOf(old)!==payload.consumptionType||['name','category','date','end','budget','ownerMemberId','ownerSubject','note'].some(k=>(old[k]??null)!==((payload as any)[k]??null)));if(old.familyApproval&&meaningfullyChanged)Object.assign(payload,{version:(old.version??0)+1},applyFamilyApproval(payload,beginFamilyApproval((old.familyApproval.version??old.version??0)+1,state.householdMembers,null,undefined,state.householdRevision)));else if(approved&&state.household)Object.assign(payload,applyFamilyApproval(payload,beginFamilyApproval((old.familyApproval?.version??old.version??0)+1,state.householdMembers,actor,undefined,state.householdRevision)));writeDoc(id,'plan',payload);result.id=id;
  }else if(action==='plan.reserve'){
   const p=doc(body.planId),amount=minor(String(body.amount));if(p.kind!=='plan'||['CANCELLED','COMPLETED'].includes(p.payload.status))throw Error('计划不可预留');
   const totalCash=state.accounts.filter((a:any)=>a.category==='cash'&&a.currency==='CNY'&&a.kind==='ASSET').reduce((n:number,a:any)=>n+a.balance,0);
@@ -247,7 +254,7 @@ writeDoc(id,'research_proposal',{...payload,consumptionType:consumptionTypeForWr
   journal('LOAN_PAYMENT',n+interest,[...(n?[entry(l,n)]:[]),entry(a,-n-interest),...(interest?[entry(system('expense'),interest)]:[])],{loanId:l.id,accountId:a.id,principal:n,interest,planId:planned?.id??null,note:'贷款实际还款'});if(planned){const paid=Number(state.planSummaries.find((x:any)=>x.planId===planned.id)?.paid??0)+n+interest;const complete=paid>=planned.payload.budget;writeDoc(planned.id,'plan',{...planned.payload,status:complete?'COMPLETED':'IN_PROGRESS',reserved:complete?0:Math.max(0,(planned.payload.reserved??0)-n-interest)});}
  }else if(!await extendFinance({action,body,state,rows,db,ds,account,cash,doc,writeDoc,journal,entry,system,result,assertCashMember,stagedAccounts,actor}))throw Error('暂不支持此操作');
  const resultJson=JSON.stringify(result);
- const accessGuard=ledgerWriteGuard(db,approvalOnly,state.householdRevision);const statements=[...(accessGuard?[accessGuard.statement]:[]),db.prepare('INSERT INTO commands VALUES(?,?,?,?,?,?,?,?)').bind(bookId,ds,key,fingerprint,input.revision,book.fence,Date.now(),resultJson),...rows];
+ const accessGuard=ledgerWriteGuard(db,memberAction,state.householdRevision);const statements=[...(accessGuard?[accessGuard.statement]:[]),db.prepare('INSERT INTO commands VALUES(?,?,?,?,?,?,?,?)').bind(bookId,ds,key,fingerprint,input.revision,book.fence,Date.now(),resultJson),...rows];
  for(const t of journals){statements.push(db.prepare('INSERT INTO transactions VALUES(?,?,?,\'DRAFT\',?,?,?,?)').bind(ds,t.id,t.kind,t.amount,t.original,t.date,JSON.stringify({...t.metadata,idempotencyKey:key})));for(const e of t.entries)statements.push(db.prepare('INSERT INTO entries VALUES(?,?,?,?,?)').bind(ds,t.id,e.account_id,e.currency,e.amount));statements.push(db.prepare("UPDATE transactions SET status='POSTED' WHERE dataset_id=? AND id=?").bind(ds,t.id));}
  statements.push(db.prepare('UPDATE books SET revision=revision+1 WHERE id=?').bind(bookId),db.prepare('INSERT INTO audit_events VALUES(?,?,?,?,?,?)').bind(ds,uid(),new Date().toISOString(),actor,action,JSON.stringify({key,result,body:{...body,reason:body.reason??null}})));
  if(accessGuard)statements.push(db.prepare('DELETE FROM household_guards WHERE id=?').bind(accessGuard.id));

@@ -1,3 +1,4 @@
+import {reviewedMonthlyDocument} from './helpers/monthly-summary.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {openTestDatabase} from './helpers/d1.mjs';
@@ -8,6 +9,7 @@ import {createMcpHandler} from '../src/server/mcp-http.ts';
 
 test('report API and finance command save immutable monthly document, index only in generic snapshot and MCP can list it',async t=>{
  const x=openTestDatabase();t.after(()=>x.sqlite.close());const send=async(action,body)=>executeCommand(x.db,{key:crypto.randomUUID(),revision:(await snapshot(x.db)).book.revision,action,body},'owner');await send('account.save',{name:'模拟银行',category:'cash',currency:'CNY',amount:'1000'});const deps={getUser:async()=>({userId:'owner'}),getDb:()=>x.db,getOwner:()=> 'owner'},api=createReviewHandlers(deps);
+ await reviewedMonthlyDocument(x.db,'2026-11');
  const current=await(await api.GET(new Request('https://fixture.test/api/reviews?month=2026-11'))).json();assert.ok(current.document?.fingerprint);
  const before=await snapshot(x.db),r=await createFinanceHandlers(deps).POST(new Request('https://fixture.test/api/finance',{method:'POST',body:JSON.stringify({key:crypto.randomUUID(),revision:before.book.revision,action:'monthly.report.save',body:{month:'2026-11',expectedFingerprint:current.document.fingerprint}})}));assert.equal(r.status,200);const {id}=await r.json();assert.ok(id);
  const state=await snapshot(x.db);assert.deepEqual(state.accounts,before.accounts);assert.deepEqual(state.transactions,before.transactions);const projected=publicSnapshot(state).documents.find(d=>d.id===id);assert.equal(projected.kind,'monthly_report_archive');assert.equal(projected.payload.document,undefined);

@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {openTestDatabase} from './helpers/d1.mjs';
+import {executeCommand,snapshot} from '../src/server/finance-store.ts';
+import {getMonthlyContext} from '../src/server/mcp-queries.ts';
+import {buildMonthlyReportDocument} from '../src/server/monthly-report-document.ts';
+import {monthlySiteContext} from '../src/domain/monthly-site-context.mjs';
+test('monthly business context follows the calendar, includes source facts and invalidates changed narrative evidence',async t=>{
+ const x=openTestDatabase();t.after(()=>x.sqlite.close());const send=async(action,body)=>executeCommand(x.db,{key:crypto.randomUUID(),revision:(await snapshot(x.db)).book.revision,action,body},'owner'),month='2026-11';
+ await send('account.save',{name:'月报银行',category:'cash',currency:'CNY',amount:'1000.00'});
+ const p=await send('plan.save',{name:'已批准亲子游',category:'旅行',date:month+'-14',end:month+'-15',budget:'200',approve:true});
+ const s=await snapshot(x.db),ds=s.book.active_dataset;
+ const insert=(id,kind,payload)=>x.sqlite.prepare('INSERT INTO documents VALUES(?,?,?,?)').run(ds,id,kind,JSON.stringify(payload));
+ insert('review','investment_review',{title:'减仓复核',summary:'未成交',content:'模拟分析',acceptedAt:month+'-01T00:00:00Z',followUps:[{id:'followup',title:'财报后复核',date:month+'-20'}]});
+ insert('private-task','research_request',{inviteToken:'must-not-leak',content:'unrelated-private-draft'});
+ const before=await snapshot(x.db),basis=await getMonthlyContext(x.db,before,month),context=basis.siteContext;
+ assert.equal(context.calendar.days.length,30);assert.ok(context.calendar.days.find(d=>d.date===month+'-14').events.some(e=>e.planId===p.id));assert.ok(context.calendar.days.find(d=>d.date===month+'-20').events.some(e=>e.reviewId==='review'));
+ assert.ok(context.accounts.some(a=>a.name==='月报银行'&&a.balanceMinor===100000));assert.ok(context.assetTypes.length>4);assert.equal(context.reviews[0].title,'减仓复核');assert.doesNotMatch(JSON.stringify(context),/must-not-leak|unrelated-private-draft/);
+ assert.deepEqual(await snapshot(x.db),before,'monthly queries must not mutate any records');
+ insert('summary','monthly_review',{month,title:'家庭月刊',summary:'已核对结论',sections:[{heading:'生活',body:'本月有计划与复核'}],acceptedAt:month+'-02T00:00:00Z',basisFingerprint:basis.basisFingerprint,basis});
+ let document=await buildMonthlyReportDocument(x.db,await snapshot(x.db),month);assert.equal(document.aiReview.stale,false);assert.deepEqual(document.siteContext,JSON.parse(JSON.stringify(context)));
+ const s2=await snapshot(x.db);x.sqlite.prepare('UPDATE documents SET payload=? WHERE dataset_id=? AND id=?').run(JSON.stringify({...s2.documents.find(d=>d.id==='review').payload,summary:'修订结论'}),ds,'review');
+ document=await buildMonthlyReportDocument(x.db,await snapshot(x.db),month);assert.equal(document.aiReview.stale,true);
+ await send('plan.cancel',{planId:p.id,version:before.documents.find(d=>d.id===p.id).payload.version,confirmed:true});
+ const canceled=monthlySiteContext(await snapshot(x.db),month);assert.ok(canceled.calendar.days.every(d=>!d.events.some(e=>e.planId===p.id)));
+});

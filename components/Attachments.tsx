@@ -2,6 +2,8 @@
 
 import {useEffect,useId,useRef,useState,type FormEvent} from 'react';
 import './Attachments.css';
+import {useI18n} from './I18n';
+
 
 // Small user-selected blob URLs stay local and do not use the image optimizer.
 /* eslint-disable @next/next/no-img-element */
@@ -19,6 +21,8 @@ function selectionError(file:File|null){
 }
 
 export default function Attachments({planId,state,onRefresh,onSave}:AttachmentProps){
+ const {t:tr,locale:uiLocale,message:uiMessage,assetType:uiAssetType,member:uiMember}=useI18n();
+
  const [file,setFile]=useState<File|null>(null),[preview,setPreview]=useState('');
  const [error,setError]=useState(''),[status,setStatus]=useState('');
  const [confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false);
@@ -80,26 +84,26 @@ export default function Attachments({planId,state,onRefresh,onSave}:AttachmentPr
   finally{busyRef.current=false;setBusy(false);}
  }
 
- return <section className="card section-space attachments-panel" aria-label="票据与附件" aria-busy={busy}>
-  <h2>票据与附件</h2>
-  <p className="help-text" id={id+'-help'}>仅在你明确保存后加密存入私人账本。支持 PDF、PNG、JPEG、WebP，单份最大 512KB，每计划最多20份。</p>
-  {!canWrite&&<p className="help-text">当前为只读访问，可下载已保存附件；保存和归档需由管理员操作。</p>}
+ return <section className="card section-space attachments-panel" aria-label={tr("票据与附件")} aria-busy={busy}>
+  <h2>{tr("票据与附件")}</h2>
+  <p className="help-text" id={id+'-help'}>{tr("仅在你明确保存后加密存入私人账本。支持 PDF、PNG、JPEG、WebP，单份最大 512KB，每计划最多20份。")}</p>
+  {!canWrite&&<p className="help-text">{tr("当前为只读访问，可下载已保存附件；保存和归档需由管理员操作。")}</p>}
   <form onSubmit={submit} className="attachment-form">
-   <label className="field">选择票据附件<input ref={input} type="file" accept={acceptedTypes.join(',')} disabled={!canWrite||busy} aria-invalid={Boolean(invalid)} aria-describedby={[id+'-help',error?id+'-error':''].filter(Boolean).join(' ')} onChange={event=>choose(event.target.files?.[0]??null)}/></label>
+   <label className="field">{tr("选择票据附件")}<input ref={input} type="file" accept={acceptedTypes.join(',')} disabled={!canWrite||busy} aria-invalid={Boolean(invalid)} aria-describedby={[id+'-help',error?id+'-error':''].filter(Boolean).join(' ')} onChange={event=>choose(event.target.files?.[0]??null)}/></label>
    {file&&<div className="attachment-selection">
-    <div className="attachment-selection-info"><strong className="attachment-filename">{file.name}</strong><span>{file.size<1024?`${file.size} 字节`:`${(file.size/1024).toLocaleString('zh-CN',{maximumFractionDigits:1})} KB`}</span></div>
-    {preview&&<><img className="attachment-preview" src={preview} alt="待保存附件预览"/><p className="help-text">本地预览可能含票据金额；确认保存后才会上传。</p></>}
-    <button type="button" className="btn" disabled={!canWrite||busy} onClick={clear}>清除所选文件</button>
+    <div className="attachment-selection-info"><strong className="attachment-filename">{file.name}</strong><span>{file.size<1024?tr("{p0} 字节", {p0: file.size}):`${(file.size/1024).toLocaleString(uiLocale,{maximumFractionDigits:1})} KB`}</span></div>
+    {preview&&<><img className="attachment-preview" src={preview} alt={tr("待保存附件预览")}/><p className="help-text">{tr("本地预览可能含票据金额；确认保存后才会上传。")}</p></>}
+    <button type="button" className="btn" disabled={!canWrite||busy} onClick={clear}>{tr("清除所选文件")}</button>
    </div>}
-   <label className="attachment-consent"><input type="checkbox" checked={confirmed} required disabled={!canWrite||busy||!file||Boolean(invalid)} onChange={event=>setConfirmed(event.target.checked)}/><span>确认将此附件私密保存到该计划</span></label>
-   <div className="attachment-actions"><button type="submit" className="btn primary" disabled={!canWrite||!file||busy||!confirmed||Boolean(invalid)}>{busy?'保存中…':'保存附件'}</button></div>
+   <label className="attachment-consent"><input type="checkbox" checked={confirmed} required disabled={!canWrite||busy||!file||Boolean(invalid)} onChange={event=>setConfirmed(event.target.checked)}/><span>{tr("确认将此附件私密保存到该计划")}</span></label>
+   <div className="attachment-actions"><button type="submit" className="btn primary" disabled={!canWrite||!file||busy||!confirmed||Boolean(invalid)}>{busy?tr("保存中…"):tr("保存附件")}</button></div>
   </form>
-  {error&&<p className="notice attachment-message" id={id+'-error'} role="alert">{error}</p>}
-  {status&&<p className="attachment-message attachment-success" role="status">{status}</p>}
+  {error&&<p className="notice attachment-message" id={id+'-error'} role="alert">{uiMessage(error)}</p>}
+  {status&&<p className="attachment-message attachment-success" role="status">{uiMessage(status)}</p>}
   <div className="attachment-saved-list">{files.map(document=><div className="attachment-saved-item" key={document.id}>
    <a className="attachment-filename" href={'/api/attachments?id='+encodeURIComponent(document.id)}>{document.payload.name}</a>
    <span>{Math.ceil((document.payload.size??0)/1024)} KB</span>
-   <button type="button" className="text-button" disabled={!canWrite||busy} onClick={()=>archive(document.id)}>归档附件</button>
+   <button type="button" className="text-button" disabled={!canWrite||busy} onClick={()=>archive(document.id)}>{tr("归档附件")}</button>
   </div>)}</div>
  </section>;
 }

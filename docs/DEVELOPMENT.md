@@ -52,3 +52,5 @@ node --test tests/source-export.test.mjs tests/migration-security.test.mjs tests
 使用现有部署的合法项目身份，私下保存元数据；不要覆盖为文档示例或复用别人的数据库。使用增量迁移，不重写已应用迁移。发布后另验匿名、非成员、移除成员、跨家庭读取/写入与本人审批，不向生产写测试流水。
 
 本次维护只更新文档及演示图片，不修改业务逻辑、数据库、部署访问范围或发布状态。
+
+界面国际化测试：`npm run test:i18n`；浏览器与截图验收：`npm run test:e2e:i18n`。维护说明与证据边界见[产品国际化](UI-I18N.md)。

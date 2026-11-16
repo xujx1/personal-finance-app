@@ -30,7 +30,11 @@
     "test:e2e:memberships": "node local/memberships-e2e.mjs",
     "test:e2e:mcp-amend": "node local/mcp-amend-e2e.mjs",
     "test:e2e:approval-sharing": "node local/approval-sharing-e2e.mjs",
-    "test:e2e:calendar-content": "node local/calendar-content-e2e.mjs"
+    "test:e2e:calendar-content": "node local/calendar-content-e2e.mjs",
+    "test:i18n": "node --test tests/i18n*.test.mjs tests/display-currency.test.mjs",
+    "test:e2e:i18n": "node local/i18n-e2e.mjs",
+    "preview:i18n": "node local/i18n-preview.mjs",
+    "test:e2e:finance-changes": "node local/finance-changes-e2e.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

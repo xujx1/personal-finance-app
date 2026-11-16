@@ -1,0 +1,21 @@
+"use client";
+import {useState,type FormEvent} from 'react';
+import AccessibleDialog from './AccessibleDialog';
+import ExpenseDraftEditor from './ExpenseDraftEditor';
+import {PrivacyEditNotice} from './FinancialPrivacy';
+import {canSubmitFinanceAction} from '../src/domain/finance-ui.mjs';
+import {decimal} from '../src/domain/finance.mjs';
+import {useI18n} from './I18n';
+import './PlanReview.css';
+export default function PlanRevisionButton({plan,state,onSave}:{plan:any;state:any;onSave:any}){
+ const {t:tr}=useI18n(),[open,setOpen]=useState(false);
+ const canEdit=canSubmitFinanceAction(state,'plan.revise',{planId:plan.id,version:plan.version??0});
+ return <><button type="button" className="btn" disabled={!canEdit} onClick={()=>setOpen(true)}>{tr('修改计划')}</button>{open&&<RevisionForm key={plan.id+':'+plan.version} plan={plan} state={state} onSave={onSave} onClose={()=>setOpen(false)}/>}</>;
+}
+function RevisionForm({plan,state,onSave,onClose}:{plan:any;state:any;onSave:any;onClose:()=>void}){
+ const {t:tr,message}=useI18n(),[draft,setDraft]=useState<any>(plan.expenseDraft??null),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [form,setForm]=useState({name:plan.name,category:plan.category,date:plan.date,end:plan.end??plan.date,budget:plan.budget==null?'':decimal(plan.budget),note:plan.note??'',principal:plan.principal==null?'':decimal(plan.principal),interest:plan.interest==null?'':decimal(plan.interest)});
+ function change(field:string,value:string){setForm(current=>({...current,[field]:value}));setConfirmed(false);setError('')}
+ async function submit(event:FormEvent){event.preventDefault();if(!confirmed||busy)return;setBusy(true);setError('');try{const body:any={planId:plan.id,version:plan.version??0,confirmed:true,name:form.name,category:form.category,date:form.date,end:form.end,note:form.note,...(draft?{expenseDraft:draft}:{budget:form.budget}),...(plan.loanId?{principal:form.principal,interest:form.interest}:{})};const result=await onSave('plan.revise',body);if(result)onClose();else setError('保存未完成，请重新核对当前计划版本')}catch(cause){setError(cause instanceof Error?cause.message:'修改未保存，请重试')}finally{setBusy(false)}}
+ return <AccessibleDialog title={tr('修改计划并重新审批')} wide busy={busy} onClose={onClose}><p className="help-text">{tr('保存后旧审批失效，包括修改者在内的全部家人都需重新同意。通过前暂停日历安排和新增付款，已有流水与预付款保留。')}</p><PrivacyEditNotice/><form onSubmit={submit}><fieldset className="mcp-review-fields" disabled={busy||!canSubmitFinanceAction(state,'plan.revise',{planId:plan.id,version:plan.version??0})}><div className="form-grid">{[['name','计划名称','text'],['category','计划类别','text'],['date','开始日期','date'],['end','结束日期','date']].map(([key,label,type])=><label className="field" key={key}>{tr(label)}<input aria-label={tr(label)} type={type} value={form[key as keyof typeof form]} required onChange={e=>change(key,e.target.value)}/></label>)}{!draft&&<label className="field">{tr('计划预算 CNY')}<input aria-label={tr('计划预算 CNY')} inputMode="decimal" value={form.budget} required onChange={e=>change('budget',e.target.value)}/></label>}{plan.loanId&&['principal','interest'].map(key=><label className="field" key={key}>{tr(key==='principal'?'预计本金 CNY':'预计利息 CNY')}<input aria-label={tr(key==='principal'?'预计本金 CNY':'预计利息 CNY')} inputMode="decimal" value={form[key as 'principal'|'interest']} required onChange={e=>change(key,e.target.value)}/></label>)}</div><label className="field">{tr('计划备注')}<textarea aria-label={tr('计划备注')} maxLength={3000} value={form.note} onChange={e=>change('note',e.target.value)}/></label>{draft&&<><p className="notice neutral">{tr('修改清单会重算预算；原研究不会自动更新，请核对新的价格依据。')}</p><ExpenseDraftEditor manualRevision draft={draft} onChange={value=>{setDraft(value);setConfirmed(false);setError('')}} disabled={busy}/></>}<label className="plan-review-confirm"><input type="checkbox" checked={confirmed} required onChange={e=>setConfirmed(e.target.checked)}/>{tr('我已核对修改内容，确认提交全家重新审批')}</label>{error&&<p className="notice" role="alert">{message(error)}</p>}<div className="actions section-space"><button type="button" className="btn" onClick={onClose}>{tr('取消')}</button><button className="btn primary" disabled={busy||!confirmed}>{busy?tr('正在保存…'):tr('保存并重新审批')}</button></div></fieldset></form></AccessibleDialog>;
+}

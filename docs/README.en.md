@@ -7,6 +7,8 @@
 | Goal | Document |
 | --- | --- |
 | Understand the project | [Overview](../README.en.md) |
+| Publication, private use and payment/regional eligibility | [Plugin publication status](PUBLIC-PLUGIN-RELEASE-2026-11-16.en.md) |
+| Latest independent acceptance and fixes | [2026-11-16 acceptance record, Chinese](RELEASE-ACCEPTANCE-2026-11-16.md) |
 | Full product operation —18 chapters | [Product manual](PRODUCT-MANUAL.en.md) |
 | Forty key business cases | [Case library](KEY-CASES.en.md) |
 | Offline illustrated edition, search, print | [Bilingual HTML](product-demo.html) |
@@ -37,3 +39,5 @@ The references below remain in **Chinese**. The [current summary](requirements-l
 Requirements, plans, designs, verification notes, and archives describe different stages. Follow the current summary and topic revisions when descriptions conflict. Retired model/search credentials, inference OAuth configuration, and deployment receipts are not current setup requirements. Some historical paths exist only in the original development environment. Redaction does not change the database or erase Git history.
 
 The main public guides are bilingual. Historical requirements, detailed MCP contracts, and verification reports remain Chinese and are labeled accordingly. This does not claim that every document or the application UI has been translated.
+
+For in-product language switching and acceptance cases, see [product localization](UI-I18N.en.md).

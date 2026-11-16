@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import {I18nProvider} from '../components/I18n';
 
 export const metadata: Metadata = {
   title: "家庭财务中心",
@@ -17,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><I18nProvider>{children}</I18nProvider></body>
     </html>
   );
 }

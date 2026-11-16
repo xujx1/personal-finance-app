@@ -1,3 +1,4 @@
+import {assertMemberDraftAccess} from '../domain/member-draft-access.mjs';
 import {validatePlanExpense} from './plan-expense-draft.ts';
 import {clearReusedQuoteEvidence} from '../domain/stale-quote.mjs';
 import {validateStagedDraft} from './mcp-draft-stage.ts';
@@ -21,6 +22,8 @@ export async function extendMcpDraft(c:any){
   if(updating&&(!Number.isInteger(body.expectedDraftVersion)||body.expectedDraftVersion!==previousVersion))throw Error('CONFLICT:草稿版本已变化，请读取最新草稿再修改');
   if(body.changeNote!==undefined&&(typeof body.changeNote!=='string'||body.changeNote.length>1000))throw Error('修改说明无效或过长');
   const kind=old?.payload.kind??body.kind;
+  if(old)assertMemberDraftAccess(state,actor,kind,old.payload.payload,old);
+  assertMemberDraftAccess(state,actor,kind,body.payload,old);
   if(old&&kind==='cashflow'&&((old.payload.payload.planId??null)!==(body.payload?.planId??null)||(old.payload.payload.prepaymentId??null)!==(body.payload?.prepaymentId??null)))throw Error('不能在续改时更换关联计划或原预付款');
   if(old&&(kind==='budget'&&(old.payload.payload.planId??null)!==(body.payload?.planId??null)||kind==='setup'&&old.payload.payload.section!==body.payload?.section||kind==='recurring'&&old.payload.payload.candidateId!==body.payload?.candidateId))throw Error('不能在续改时更换原计划、建档阶段或周期候选；请为新目标另建草稿');
   const validated=await validateStagedDraft(c,kind,body.payload),id=old?.id??crypto.randomUUID(),now=new Date().toISOString(),draftVersion=old?previousVersion+1:1;
@@ -31,6 +34,8 @@ export async function extendMcpDraft(c:any){
  if(action!=='mcp.draft.accept'&&action!=='mcp.draft.reject')return false;
  only(body,action==='mcp.draft.accept'?['draftId','confirmed','reviewedPayload','actualConfirmed']:['draftId','reason']);
  const d=doc(body.draftId);if(d.kind!=='financial_draft')throw Error('财务草稿不存在');
+ assertMemberDraftAccess(state,actor,d.payload.kind,d.payload.payload,d);
+ if(action==='mcp.draft.accept')assertMemberDraftAccess(state,actor,d.payload.kind,body.reviewedPayload,d);
  if(action==='mcp.draft.reject'){
   if(d.payload.status==='ACCEPTED')throw Error('已采纳的草稿不可拒绝');
   if(body.reason!=null&&(typeof body.reason!=='string'||body.reason.length>1000))throw Error('拒绝理由无效');
@@ -50,7 +55,7 @@ export async function extendMcpDraft(c:any){
   id=old?.id??crypto.randomUUID();destinationKind='plan';const budget=minor(p.budget),expenseDraft={...p.expenseDraft,reviewed:true},version=Math.max(old?.payload.version??0,old?.payload.familyApproval?.version??0)+1;
   const paid=state.planSummaries.find((x:any)=>x.planId===id)?.paid??0;
   const plan={...old?.payload,...ownerFields(state,p.ownerMemberId),name:p.name,category:p.category,consumptionType:p.consumptionType,date:p.date,end:p.end,budget,status:old?.payload.status??'PLANNED',reserved:Math.min(old?.payload.reserved??0,Math.max(0,budget-paid)),version,note:p.note,analysis:p.analysis,expenseDraft,itinerary:expenseDraft.itinerary,items:expenseDraft.items.filter((x:any)=>x.selected),comparisons:expenseDraft.comparisons,mcpDraftId:d.id,externalAnalysis:true};
-  writeDoc(id,'plan',applyFamilyApproval(plan,beginFamilyApproval(version,state.householdMembers,actor,undefined,state.householdRevision)));
+  writeDoc(id,'plan',applyFamilyApproval(plan,beginFamilyApproval(version,state.householdMembers,old?null:actor,undefined,state.householdRevision)));
  }else if(d.payload.kind==='investment'){
   id=crypto.randomUUID();destinationKind='investment_review';writeDoc(id,destinationKind,{...p,...ownerFields(state,p.ownerMemberId),mcpDraftId:d.id,acceptedAt:now,acceptedBy:actor,source:'ChatGPT外部研究，引用未由本站重新核验'});
  }else if(d.payload.kind==='monthly_review'){

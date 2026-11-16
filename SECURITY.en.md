@@ -16,10 +16,12 @@ Screenshots must use isolated demo households or material confirmed for publicat
 | --- | --- | --- | --- |
 | Anonymous, nonmember, other household, removed member | Denied | Denied | Denied |
 | Current household administrator | Allowed | Authorized website review required | Own opinion only |
-| Current signed-in household member | Allowed | Denied | Own opinion only |
+| Current signed-in household member | Allowed | General writes denied; dedicated own opening-asset and own asset/cashflow draft review only | Own opinion only; may reject/revise plans, with everyone approving the new revision |
 | Unlinked bookkeeping profile | No sign-in access | No sign-in access | No vote |
 
 The server derives household scope from authenticated identity. Supplying a household ID is not authorization. MCP exposes bounded queries and draft submission/amendment, not approval delegation, payments, or trades. Review adoption, actual-event confirmation, balance coverage, versions, and idempotency separately. Incorrect currency units are also a data-safety issue.
+
+The member draft exception checks active membership, original submitter, original/reviewed ownership and cash-account ownership. It cannot process others' drafts, shared household funds or global configuration. Cached scopes and old receipts do not restore removed membership. Website invitations, private plugin connections, public publication and GitHub source access are separate permissions; see [publication status](docs/PUBLIC-PLUGIN-RELEASE-2026-11-16.en.md) for payment and regional gates.
 
 Production relies on trusted Sites authentication headers and household checks. Self-hosting requires a trusted authentication edge that removes forged headers and supplies verified identity. Never expose the local simulated-identity adapter publicly. Hiding amounts does not replace server authorization or database security.
 

@@ -73,7 +73,7 @@ try{
   await agenda().getByRole('button',{name:'查看计划详情 →',exact:true}).click();
   await page.getByRole('heading',{name:'模拟跨月旅行',exact:true}).waitFor();
   await page.getByRole('button',{name:'← 返回预算清单',exact:true}).click();
-  await page.getByRole('heading',{name:'预算与大型支出',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'预算计划',exact:true}).waitFor();
   await page.getByRole('navigation').getByRole('button',{name:'生活日历',exact:true}).click();
   await calendar().getByRole('button',{name:'模拟待排期旅行 · 查看计划',exact:true}).waitFor();
  });

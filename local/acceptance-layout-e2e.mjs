@@ -63,7 +63,7 @@ try{
   await check(`${width}: explanatory notes are at least 12px with 4.5 contrast`,async()=>{
    const metrics=await noteMetrics('.subtitle,.help-text,.metric-note,.metric-label,.badge');measurements.push({width,page:'dashboard',metrics});const failures=metrics.filter(n=>n.fontSize<12||n.contrast<4.5);assert.deepEqual(failures,[]);const emphasis=await page.locator('.metric.emphasis .metric-label').evaluate(n=>getComputedStyle(n).color);assert.ok(emphasis.match(/[0-9.]+/g).slice(0,3).every(v=>Number(v)>180),'emphasis label should retain light text');
   });
-  await nav('资产与贷款');const table=page.getByRole('table',{name:'资产与贷款账户'});await table.waitFor();
+  await nav('资产现状');const table=page.getByRole('table',{name:'资产现状账户'});await table.waitFor();
   await check(`${width}: long cash/stock notes stay within their cells; amount and action labels keep nowrap`,async()=>{
    await pageFits();const issues=await table.evaluate(table=>{
     const issues=[];for(const td of table.querySelectorAll('tbody td')){const cell=td.getBoundingClientRect();for(const text of td.querySelectorAll('.asset-name,.asset-name>div,.asset-name small,.asset-detail,.asset-row-actions,.badge,.money')){const box=text.getBoundingClientRect();if(box.left<cell.left-1||box.right>cell.right+1)issues.push({text:text.textContent.slice(0,35),cell:[cell.left,cell.right],box:[box.left,box.right]});}}

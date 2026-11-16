@@ -1,0 +1,87 @@
+import assert from 'node:assert/strict';
+import {spawn,spawnSync} from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import {prepareVendor} from './prepare-vendor.mjs';
+import {openTestDatabase} from '../tests/helpers/d1.mjs';
+import {familyCommand} from '../src/server/family-service.ts';
+
+// Real HTTP handlers, family guards and SQLite; ChatGPT output is an explicit
+// structured fixture. No model, search, production book or payment is contacted.
+const root=fileURLToPath(new URL('../',import.meta.url));
+const modules=path.resolve(process.env.LOCAL_TEST_MODULES??process.argv[2]??path.join(root,'work/calendar-qa/node_modules'));
+const {chromium}=createRequire(path.join(modules,'../package.json'))(path.join(modules,'playwright'));
+const out=path.join(root,'work/finance-changes/e2e');fs.mkdirSync(out,{recursive:true});
+const env={...process.env,LOCAL_TEST_MODULES:path.join(root,'node_modules'),LOCAL_FAMILY_QA:'1',LOCAL_API_PORT:'5874',LOCAL_UI_PORT:'5873',LOCAL_QA_DATABASE:`qa-finance-changes-${Date.now()}.sqlite`};
+for(const k of Object.keys(env))if(k.startsWith('NEW_API_')||k==='TAVILY_API_KEY')delete env[k];
+await prepareVendor(env.LOCAL_TEST_MODULES);
+const qaDirectory=path.join(root,'.sites-runtime/local-qa');fs.mkdirSync(qaDirectory,{recursive:true});const outsiderFixture=openTestDatabase(path.join(qaDirectory,env.LOCAL_QA_DATABASE));await familyCommand(outsiderFixture.db,{userId:'local-simulated-outsider',displayName:'模拟外部用户'},{action:'create',name:'模拟外部家庭'});outsiderFixture.sqlite.close();
+const children=['local/server.mjs','local/vite-server.mjs'].map((script,i)=>{const log=fs.openSync(path.join(out,i?'ui.log':'api.log'),'w');return spawn(process.execPath,[script],{cwd:root,env,stdio:['ignore',log,log]})});
+const url='http://127.0.0.1:5873',api='http://127.0.0.1:5874';
+const owner='local-simulated-owner',member='local-simulated-member',results=[],pageErrors=[],unexpected=[],requests=[];
+let browser,page;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitServer(){for(let i=0;i<100;i++){try{if((await fetch(url)).ok&&(await fetch(api+'/api/finance')).ok)return}catch{}await sleep(200)}throw Error('isolated preview did not start')}
+async function json(route,{user=owner,body,headers={},allowError=false}={}){const r=await fetch(api+route,{method:body?'POST':'GET',headers:{'x-local-qa-user':user,...headers,...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const value=await r.json();if(!allowError)assert.ok(r.ok,JSON.stringify(value));return {status:r.status,value}}
+const state=async()=> (await json('/api/finance')).value;
+async function call(name,args={},user=owner){const {value}=await json('/mcp',{user,body:{jsonrpc:'2.0',id:crypto.randomUUID(),method:'tools/call',params:{name,arguments:args}}});assert.ok(!value.result?.isError,JSON.stringify(value));return value.result.structuredContent}
+async function stage(kind,payload){return call('submit_finance_draft',{kind,payload,request_id:crypto.randomUUID(),expected_revision:(await state()).book.revision})}
+async function command(action,body,user=owner,key=crypto.randomUUID()){return (await json('/api/finance',{user,body:{key,revision:(await state()).book.revision,action,body}})).value}
+async function nav(name,p=page){
+ if(['家庭管理','目标设置','工作流集成','会员权益'].includes(name)){await p.getByRole('button',{name:'账户菜单',exact:true}).click();await p.getByRole('region',{name:'当前账户',exact:true}).getByRole('button',{name,exact:true}).click();return}
+ const toggle=p.getByRole('button',{name:'切换菜单'});if(await toggle.isVisible())await toggle.click();await p.getByRole('navigation').getByRole('button',{name,exact:true}).click();await p.locator('.sidebar').evaluate(node=>Promise.all(node.getAnimations().map(a=>a.finished.catch(()=>{}))))
+}
+async function check(name,fn){await fn();results.push({name,status:'PASS'});console.log('PASS '+name)}
+const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai'}).format(new Date()),month=today.slice(0,7);
+const payload={name:'模拟全家周末安排',category:'旅行',date:today,end:today,budget:'300',ownerMemberId:'family',analysis:'隔离模拟，无真实付款',expenseDraft:{kind:'travel',items:[{id:'fee',name:'门票参考',quantity:'1',unitPrice:'300'}],itinerary:[{id:'visit',date:today,time:'10:00',title:'模拟公园游览'}]}};
+let memberPage,planId,bank;
+async function readPlan(){return (await state()).documents.find(d=>d.id===planId).payload}
+async function poll(fn){for(let i=0;i<100;i++){const v=await fn();if(v)return v;await sleep(100)}throw Error('state did not refresh')}
+async function openPlan(p){await p.goto(url+'/?plan='+planId,{waitUntil:'networkidle'});await p.getByRole('heading',{name:(await readPlan()).name,exact:true}).waitFor()}
+async function showAmounts(p){const button=p.getByRole('button',{name:'显示金额',exact:true});if(await button.isVisible())await button.click()}
+try{
+ await waitServer();browser=await chromium.launch({channel:'chrome',headless:true});
+ const context=await browser.newContext({locale:'zh-CN',viewport:{width:1440,height:1000}}),memberContext=await browser.newContext({locale:'zh-CN',extraHTTPHeaders:{'x-local-qa-user':member},viewport:{width:390,height:844}});
+ for(const c of [context,memberContext])await c.route('**/*',route=>{const u=new URL(route.request().url());if(!['localhost','127.0.0.1'].includes(u.hostname)){unexpected.push(u.origin);return route.abort()}return route.continue()});
+ page=await context.newPage();memberPage=await memberContext.newPage();for(const p of [page,memberPage]){p.on('response',async r=>{if(r.url().endsWith('/api/finance')&&r.request().method()==='POST'&&!r.ok())console.log('COMMAND_ERROR',r.status(),await r.text())});p.setDefaultTimeout(15000);p.on('pageerror',e=>pageErrors.push(e.message))}
+ const family=(await json('/api/family')).value,invite=(await json('/api/family',{body:{action:'invite',revision:family.family.revision}})).value;await json('/api/family',{user:member,body:{action:'accept',token:invite.token}});
+ const draft=await stage('budget',payload);planId=(await command('mcp.draft.accept',{draftId:draft.id,confirmed:true,reviewedPayload:payload})).id;
+ await check('导航名称与顺序符合最新要求',async()=>{await page.goto(url,{waitUntil:'networkidle'});assert.deepEqual(await page.getByRole('navigation').getByRole('button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))),['财务总览','生活日历','研究记录','预算计划','资产现状','现金流水','月度报告','周期收支','现金预测'])});
+ await check('家庭成员在手机上拒绝计划，原因和拒绝状态立即显示，旧审批不能恢复计划',async()=>{
+  const before=await state();await openPlan(memberPage);await memberPage.getByRole('button',{name:'拒绝计划',exact:true}).click();const dialog=memberPage.getByRole('dialog');await dialog.getByLabel('拒绝原因',{exact:true}).fill('希望减少预算并调整出游内容');await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'确认拒绝',exact:true}).click();await dialog.waitFor({state:'detached'});await memberPage.getByRole('region',{name:'家庭预算审批',exact:true}).getByText(/已拒绝，修改后重新审批/).waitFor();assert.equal((await readPlan()).budgetStatus,'REJECTED');assert.equal(await memberPage.getByRole('button',{name:'我同意此预算',exact:true}).count(),0);assert.deepEqual((await state()).accounts,before.accounts);assert.deepEqual((await state()).transactions,before.transactions);await memberPage.screenshot({path:path.join(out,'member-rejection-mobile.png'),fullPage:true})
+ });
+ await check('家人修改费用小票，预算重算，所有人包括修改者必须重新审批，通过后日历恢复',async()=>{
+  await memberPage.getByRole('button',{name:'修改计划',exact:true}).click();const dialog=memberPage.getByRole('dialog');await dialog.getByLabel('计划名称',{exact:true}).fill('模拟修订后的家庭安排');await dialog.getByLabel('项目单价 1',{exact:true}).fill('250');await dialog.getByRole('checkbox',{name:'我已核对修改内容，确认提交全家重新审批',exact:true}).check();await dialog.getByRole('button',{name:'保存并重新审批',exact:true}).click();await dialog.waitFor({state:'detached'});const p=await readPlan();assert.equal(p.budget,25000);assert.equal(p.familyApproval.approvals.length,0);await page.reload({waitUntil:'networkidle'});await nav('生活日历');await page.getByRole('button',{name:today+'，0项安排',exact:true}).waitFor();await memberPage.getByRole('button',{name:'我同意此预算',exact:true}).click();await poll(async()=>(await readPlan()).familyApproval.approvals.length===1);assert.equal((await readPlan()).budgetStatus,'PENDING_APPROVAL');await openPlan(page);await page.getByRole('button',{name:'我同意此预算',exact:true}).click();await poll(async()=>(await readPlan()).budgetStatus==='APPROVED');await nav('生活日历');await page.getByRole('button',{name:today+'，1项安排',exact:true}).waitFor()
+ });
+ await check('普通家人手动录入自己已有存款，保留归属，不生成收入或扣减其他账户',async()=>{
+  await nav('资产现状',memberPage);await memberPage.getByRole('button',{name:'手动新增资产',exact:true}).click();const dialog=memberPage.getByRole('dialog');await dialog.getByLabel('资产名称',{exact:true}).fill('模拟家人现有存款');await dialog.getByLabel('当前原币余额',{exact:true}).fill('1234.56');await dialog.getByLabel('余额核对日期',{exact:true}).fill(new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10));await dialog.getByRole('checkbox',{name:/我已核实归属和余额/}).check();await dialog.getByRole('button',{name:'保存已有资产',exact:true}).click();await dialog.getByRole('alert').waitFor();assert.equal((await state()).accounts.some(a=>a.name==='模拟家人现有存款'),false);await dialog.getByRole('button',{name:'保存已有资产',exact:true}).click();await dialog.waitFor({state:'detached'});const s=await state(),a=s.accounts.find(a=>a.name==='模拟家人现有存款');assert.ok(a);bank=a.id;assert.equal(a.balance,123456);assert.equal(a.metadata.ownerMemberId,'user:'+member);assert.equal(s.transactions.filter(t=>t.kind==='OPENING').length,1);assert.equal(s.transactions.some(t=>t.kind==='INCOME'),false);await showAmounts(memberPage);await memberPage.getByRole('table',{name:'资产现状账户',exact:true}).getByRole('row').filter({hasText:'模拟家人现有存款'}).waitFor();assert.ok(await memberPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await memberPage.screenshot({path:path.join(out,'manual-asset-mobile.png'),fullPage:true})
+ });
+ await check('月报无总结时只显示空态，MCP读取完整生活与财务依据，草稿需核对才展示',async()=>{
+  await page.reload({waitUntil:'networkidle'});await nav('月度报告');await page.getByRole('heading',{name:'本月总结尚未生成',exact:true}).waitFor();assert.ok(await page.getByRole('button',{name:'保存本月报告',exact:true}).isDisabled());
+  await command('transaction.record',{type:'income',accountId:bank,cashMemberId:'user:'+member,amount:'100',date:today,note:'模拟非工资收入',confirmed:true});
+  const basis=await call('get_monthly_review_context',{month});assert.ok(basis.reportDocument.flows.length===2);assert.ok(basis.siteContext.calendar.days.some(d=>d.events.some(e=>e.planId===planId)));assert.ok(basis.siteContext.accounts.some(a=>a.id===bank));
+  const review={month,title:'模拟家庭月刊 · 生活与财务',summary:'本月已确认非工资收入100元。已有存款开账1234.56元不属于收入；250元出游计划已批准，尚未付款。',sections:[{heading:'收入与重点支出',body:'模拟家人收取100元非工资收入，本月暂无确认消费。'},{heading:'家庭生活回顾',body:'已有一个家庭出游计划，批准不等于已出游或付款。'},{heading:'资产与目标',body:'当前存款账面1334.56元。目标以家庭维护记录为准。'},{heading:'下月预测与预算',body:'尚未登记生活费，不保证预测覆盖完整。'}],limitations:['隔离测试数据，非真实家庭账目','当前余额不是历史市场报价'],nextActions:['出游后核对真实支出与付款账户','补充生活费规则'],basisFingerprint:basis.basisFingerprint,ownerMemberId:'family'};
+  const d=await stage('monthly_review',review);await page.reload({waitUntil:'networkidle'});await nav('研究记录');const card=page.locator('[data-draft-id="'+d.id+'"]');await card.locator(':scope > details > summary').click();await card.getByRole('checkbox',{name:'我已核对月度总结并确认保存',exact:true}).check();await card.getByRole('button',{name:'核对并保存月度总结',exact:true}).click();await card.waitFor({state:'detached'});await nav('月度报告');await page.getByRole('heading',{name:review.title,exact:true}).waitFor();assert.ok(await page.locator('.monthly-lead').isVisible());assert.ok(await page.getByRole('button',{name:'保存本月报告',exact:true}).isEnabled());await showAmounts(page);await page.screenshot({path:path.join(out,'monthly-summary-desktop.png'),fullPage:true})
+ });
+ await check('总结按月份不可变归档，后续账目改变保留旧报告并提示新总结需更新，手机可读',async()=>{
+  const before=await state();await page.getByRole('button',{name:'保存本月报告',exact:true}).click();const archive=await poll(async()=>(await state()).documents.find(d=>d.kind==='monthly_report_archive'));await page.getByLabel('报告版本',{exact:true}).selectOption(archive.id);await page.locator('.monthly-cover').waitFor();const original=(await json('/api/reviews?month='+month+'&archive='+archive.id)).value.document;assert.ok(original.aiReview);assert.ok(original.siteContext.calendar.days.length>=28);assert.deepEqual((await state()).accounts,before.accounts);assert.deepEqual((await state()).transactions,before.transactions);
+  await command('transaction.record',{type:'expense',accountId:bank,cashMemberId:'user:'+member,amount:'12.34',date:today,note:'模拟餐饮',confirmed:true});await page.reload({waitUntil:'networkidle'});await nav('月度报告');await page.getByRole('status').filter({hasText:/总结依据已变化/}).waitFor();assert.ok(await page.getByRole('button',{name:'保存本月报告',exact:true}).isDisabled());await page.getByLabel('报告版本',{exact:true}).selectOption(archive.id);await page.getByRole('heading',{name:original.aiReview.title,exact:true}).waitFor();assert.deepEqual((await json('/api/reviews?month='+month+'&archive='+archive.id)).value.document,original);await page.setViewportSize({width:390,height:844});await showAmounts(page);await page.getByText('查看报告依据与覆盖范围',{exact:true}).click();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:path.join(out,'monthly-summary-mobile.png'),fullPage:true});assert.deepEqual(pageErrors,[]);assert.deepEqual(unexpected,[])
+ });
+ await check('家人通过MCP登记本人资产与实际收入，网站仅可选择本人归属并核对到账，不影响其他账户',async()=>{
+  const start=await state(),otherAccounts=start.accounts.filter(a=>a.id!==bank),asOf=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10);
+  const asset={name:'模拟MCP家人存款',category:'cash',currency:'CNY',amount:'500.00',ownerMemberId:'user:'+member,asOf,owned:true};
+  const connection=await call('get_connection_status',{},member);assert.equal(connection.permissions.canSubmitDraft,true);assert.deepEqual(connection.permissions.allowedDraftKinds,['asset','cashflow']);
+  const d=await call('submit_finance_draft',{kind:'asset',payload:asset,request_id:crypto.randomUUID(),expected_revision:start.book.revision},member);
+  const updated={...asset,amount:'600.00'};await call('update_finance_draft',{draft_id:d.id,expected_draft_version:1,payload:updated,request_id:crypto.randomUUID(),expected_revision:(await state()).book.revision},member);
+  await memberPage.reload({waitUntil:'networkidle'});await nav('研究记录',memberPage);let card=memberPage.locator('[data-draft-id="'+d.id+'"]');await card.locator(':scope > details > summary').click();
+  const options=await card.getByLabel('外部资产归属成员',{exact:true}).locator('option').evaluateAll(nodes=>nodes.map(n=>n.value).filter(Boolean));assert.deepEqual(options,['user:'+member]);
+  await card.getByRole('checkbox',{name:/我已确认这是已经实际持有的资产/}).check();await card.getByRole('checkbox',{name:/我已逐项核对外部分析/}).check();await card.getByRole('button',{name:'采用并登记已有资产',exact:true}).click();await card.waitFor({state:'detached'});
+  let s=await state();const account=s.accounts.find(a=>a.name===asset.name);assert.ok(account);assert.equal(account.balance,60000);assert.equal(account.metadata.ownerMemberId,'user:'+member);assert.deepEqual(s.accounts.filter(a=>a.id!==account.id),start.accounts);
+  const income={type:'income',accountId:account.id,cashMemberId:'user:'+member,amount:'88.00',date:today,note:'模拟MCP已到账收入',balanceIncluded:false};const flow=await call('submit_finance_draft',{kind:'cashflow',payload:income,request_id:crypto.randomUUID(),expected_revision:s.book.revision},member);
+  await memberPage.reload({waitUntil:'networkidle'});await nav('研究记录',memberPage);card=memberPage.locator('[data-draft-id="'+flow.id+'"]');await card.locator(':scope > details > summary').click();await card.getByLabel('当前余额覆盖情况',{exact:true}).selectOption('uncovered');await card.getByRole('checkbox',{name:/我已确认收入已到账或支出已支付/}).check();await card.getByRole('checkbox',{name:/我已逐项核对外部分析/}).check();await card.getByRole('button',{name:'采用并记录实际流水',exact:true}).click();await card.waitFor({state:'detached'});
+  s=await state();assert.equal(s.accounts.find(a=>a.id===account.id).balance,68800);assert.deepEqual(s.accounts.filter(a=>a.id!==account.id),start.accounts);assert.deepEqual(s.accounts.filter(a=>otherAccounts.some(x=>x.id===a.id)),otherAccounts);assert.equal(s.transactions.filter(t=>t.kind==='INCOME').length,start.transactions.filter(t=>t.kind==='INCOME').length+1);assert.deepEqual(pageErrors,[]);assert.deepEqual(unexpected,[]);
+ });
+ fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({results,pageErrors,unexpected},null,2));console.log(JSON.stringify({passed:results.length,failed:0,out}));
+}catch(e){if(memberPage)await memberPage.screenshot({path:path.join(out,'member-failure.png'),fullPage:true}).catch(()=>{});if(memberPage)fs.writeFileSync(path.join(out,'member-failure.txt'),await memberPage.locator('body').innerText());fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({results,error:e.message,pageErrors,unexpected},null,2));if(page)await page.screenshot({path:path.join(out,'failure.png'),fullPage:true}).catch(()=>{});throw e}finally{await browser?.close();for(const child of children)child.kill()}
