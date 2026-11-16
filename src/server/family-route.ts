@@ -1,3 +1,4 @@
+import {createRetirementBackup,retireFamilyLogin} from './member-retirement.ts';
 import {familyContext,familyView,familyCommand,previewFamilyInvite,type FamilyUser} from './family-service.ts';
 import {scopeDb} from './ledger-scope.ts';
 const json=(v:any,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -9,8 +10,8 @@ export async function withFamilyRequest(req:Request,getUser:()=>Promise<FamilyUs
  }catch{return json({error:'家庭权限或数据状态已变化，请重新加载'},403)}
 }
 export function createFamilyHandlers(deps:{getUser:()=>Promise<FamilyUser|null>;env:any}){return {
- async GET(_req:Request){const u=await deps.getUser();if(!u)return json({error:'请先使用ChatGPT账号登录'},401);if(!deps.env.DB)return json({error:'数据库尚未配置'},503);try{return json(await familyView(deps.env.DB,u,familyConfig(deps.env)))}catch{return json({error:'家庭资料暂时无法读取'},503)}},
+ async GET(_req:Request){const u=await deps.getUser();if(!u)return json({error:'请先使用ChatGPT账号登录'},401);if(!deps.env.DB)return json({error:'数据库尚未配置'},503);try{if(new URL(_req.url).searchParams.get('retirement_backup')==='1'){const value=await createRetirementBackup(deps.env.DB,u,familyConfig(deps.env));return Response.json(value,{headers:{'Cache-Control':'no-store','Content-Disposition':'attachment; filename=family-retirement-backup.json'}})}return json(await familyView(deps.env.DB,u,familyConfig(deps.env)))}catch(e:any){return json({error:String(e.message).slice(0,160)},String(e.message).includes('管理员')?403:503)}},
  async POST(req:Request){const u=await deps.getUser();if(!u)return json({error:'请先使用ChatGPT账号登录'},401);if(!deps.env.DB)return json({error:'数据库尚未配置'},503);if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)return json({error:'请求来源无效'},403);
-  try{const raw=await req.text();if(raw.length>2000)return json({error:'请求过长'},413);const p=JSON.parse(raw);return json(p.action==='preview'?await previewFamilyInvite(deps.env.DB,p.token):await familyCommand(deps.env.DB,u,p,familyConfig(deps.env)))}catch(e:any){return json({error:String(e.message).slice(0,160)},409)}
+  try{const raw=await req.text();if(raw.length>2000)return json({error:'请求过长'},413);const p=JSON.parse(raw);return json(p.action==='retire'?await retireFamilyLogin(deps.env.DB,u,p,familyConfig(deps.env)):p.action==='preview'?await previewFamilyInvite(deps.env.DB,p.token):await familyCommand(deps.env.DB,u,p,familyConfig(deps.env)))}catch(e:any){return json({error:String(e.message).slice(0,160)},409)}
  }
 };}
