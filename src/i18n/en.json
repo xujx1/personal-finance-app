@@ -2797,5 +2797,15 @@
   "无法生成完整备份，请使用数据库级备份": "A complete backup could not be generated. Use a database-level backup",
   "CONFLICT:账本或家庭状态已变化，请重新下载完整备份": "CONFLICT: The ledger or household changed. Download a fresh complete backup",
   "CONFLICT:迁移未执行，原数据保持不变；请刷新并重新备份": "CONFLICT: Migration was not applied. Original data is unchanged. Refresh and back up again",
-  "备份失败": "Backup failed"
+  "备份失败": "Backup failed",
+  "仅更正存款分类，不改变金额和归属。定期存款不计入可花现金；实际存入或到期转回请使用内部转账。": "Correct the deposit classification without changing the amount or owner. Term deposits are excluded from spendable cash. Use an internal transfer for actual deposits or maturity withdrawals.",
+  "起存日或到期日未补齐时可保存分类，标记资料待完善，不估算利息。": "Classification can be saved with incomplete dates. Details remain pending and interest is not estimated.",
+  "定期到期日（可空）": "Term maturity date (optional)",
+  "到期年份（仅知道年份时填写）": "Maturity year (if the exact date is unknown)",
+  "{p0}年（具体日期待完善）": "{p0} (exact maturity date pending)",
+  "到期年份无效或与存款日期冲突": "Invalid maturity year or conflicting deposit dates",
+  "分类更正不能同时修改余额或归档账户": "Classification correction cannot change the balance or an archived account",
+  "该账户已有实际收付流水，请通过内部转账登记定期存入或到期转回": "This account has actual cashflow history. Record an actual term deposit or maturity withdrawal through an internal transfer.",
+  "该账户仍有关联周期收付，请先调整周期规则及待核对记录": "This account has linked recurring cashflows. Update the rules and pending occurrences first.",
+  "分类更正不能同时更换归属成员": "Classification correction cannot change the owner at the same time"
 }

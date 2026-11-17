@@ -11,7 +11,9 @@ export function normalizeDepositMetadata(input={}, {required=false}={}){
  if(annualRate&&(!/^\d+(\.\d{1,6})?$/.test(annualRate)||Number(annualRate)>100))throw Error('存款年利率必须为0到100之间的百分比');
  if(required&&(!bank||!startDate||!maturityDate||annualRate===''))throw Error('请填写定期存款银行、起存日、年利率和到期日');
  if(startDate&&maturityDate&&maturityDate<=startDate)throw Error('到期日必须晚于起存日');
- return {bank,startDate,annualRate,maturityDate};
+ const rawYear=input.maturityYear,maturityYear=rawYear==null||rawYear===''?null:Number(rawYear);
+ if(maturityYear!==null&&(!/^\d{4}$/.test(String(rawYear))||!Number.isInteger(maturityYear)||maturityYear<1900||maturityYear>9999||maturityDate&&Number(maturityDate.slice(0,4))!==maturityYear||startDate&&Number(startDate.slice(0,4))>maturityYear))throw Error('到期年份无效或与存款日期冲突');
+ return {bank,startDate,annualRate,maturityDate,...(rawYear!==undefined?{maturityYear}:{})};
 }
 export function estimatedDepositInterest(account){
  if(account?.category!=='term_deposit'||!Number.isSafeInteger(account.balance)||account.balance<0||account.balance>MAX_MINOR)return null;

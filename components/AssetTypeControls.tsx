@@ -4,10 +4,10 @@ import {getAssetTypes,assetTypeCatalogue,BASE_ASSET_CATEGORIES,normalizeAssetTyp
 import './AssetTypes.css';
 import {useI18n} from './I18n';
 
-export function AssetTypeSelect({state,category,value,onChange,name='assetTypeId',label='资产分类',excludeTypeIds=[]}:{state:any;category?:string;value?:string;onChange?:(id:string)=>void;name?:string;label?:string;excludeTypeIds?:string[]}){
+export function AssetTypeSelect({state,category,categories,value,onChange,name='assetTypeId',label='资产分类',excludeTypeIds=[]}:{state:any;category?:string;categories?:string[];value?:string;onChange?:(id:string)=>void;name?:string;label?:string;excludeTypeIds?:string[]}){
  const {t:tr,locale:uiLocale,message:uiMessage,assetType:uiAssetType,member:uiMember}=useI18n();
 
- const types=getAssetTypes(state).filter((t:any)=>!excludeTypeIds.includes(t.id)&&(t.enabled||t.id===value)&&t.baseCategory!=='prepayment'&&(!category||t.baseCategory===category));
+ const types=getAssetTypes(state).filter((t:any)=>!excludeTypeIds.includes(t.id)&&(t.enabled||t.id===value)&&t.baseCategory!=='prepayment'&&(categories?categories.includes(t.baseCategory):!category||t.baseCategory===category));
  return <label className="field">{tr(label)}<select aria-label={tr(label)} name={name} value={onChange?value:undefined} defaultValue={onChange?undefined:value} onChange={onChange?e=>onChange(e.target.value):undefined} required><option value="">{tr("请选择资产分类")}</option>{types.map((t:any)=><option key={t.id} value={t.id}>{uiAssetType(t)}{t.enabled?'':tr("（已停用）")}</option>)}</select></label>;
 }
 export default function AssetTypeManager({state,onSave,busy}:{state:any;onSave:any;busy:boolean}){
